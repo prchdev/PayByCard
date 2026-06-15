@@ -1,270 +1,158 @@
-import { CreditCard, Shield, Building2, TrendingUp, Lock, FileCheck, Clock, CheckCircle, Landmark, ArrowRight, Banknote, RefreshCw, UserCheck, Briefcase, Home as HomeIcon, Zap, GraduationCap, Bus, Users } from 'lucide-react';
+import {
+  CreditCard, Shield, Building2, TrendingUp, Lock, FileCheck, Clock, CheckCircle,
+  Landmark, ArrowRight, Banknote, RefreshCw, UserCheck, Briefcase, Home as HomeIcon,
+  Zap, GraduationCap, Bus, Users, Heart, ShoppingBag, Wrench, Plane, Music,
+  Stethoscope, Baby, Dog, Leaf, Truck, Gamepad2, Camera, Coffee, BookOpen,
+  MonitorSmartphone, Wifi, Flame, Droplets, Building, Car, Scissors, Package,
+  Globe, Star, DollarSign, Receipt, Loader2
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-function PaymentFlowSection() {
-  const [activeStep, setActiveStep] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
+const CATEGORY_ICON_MAP: Record<string, React.ElementType> = {
+  'business': Briefcase,
+  'vendor': Briefcase,
+  'professional': Briefcase,
+  'service': Wrench,
+  'housing': HomeIcon,
+  'rent': HomeIcon,
+  'maintenance': Wrench,
+  'utilities': Zap,
+  'tax': Receipt,
+  'administrative': Building,
+  'education': GraduationCap,
+  'academic': GraduationCap,
+  'school': GraduationCap,
+  'college': GraduationCap,
+  'university': GraduationCap,
+  'transportation': Bus,
+  'travel': Plane,
+  'student': Bus,
+  'membership': Users,
+  'club': Users,
+  'subscription': Star,
+  'health': Stethoscope,
+  'medical': Stethoscope,
+  'insurance': Shield,
+  'grocery': ShoppingBag,
+  'shopping': ShoppingBag,
+  'entertainment': Music,
+  'gaming': Gamepad2,
+  'food': Coffee,
+  'restaurant': Coffee,
+  'telecom': Wifi,
+  'internet': Wifi,
+  'mobile': MonitorSmartphone,
+  'electricity': Flame,
+  'water': Droplets,
+  'gas': Flame,
+  'vehicle': Car,
+  'automobile': Car,
+  'salon': Scissors,
+  'beauty': Scissors,
+  'logistics': Truck,
+  'courier': Truck,
+  'charity': Heart,
+  'donation': Heart,
+  'child': Baby,
+  'pet': Dog,
+  'environment': Leaf,
+  'photography': Camera,
+  'books': BookOpen,
+  'import': Globe,
+  'export': Globe,
+  'foreign': Globe,
+};
+
+const CATEGORY_COLORS = [
+  'from-blue-500 to-cyan-500',
+  'from-green-500 to-teal-500',
+  'from-amber-500 to-orange-500',
+  'from-rose-500 to-pink-500',
+  'from-sky-500 to-blue-500',
+  'from-violet-500 to-purple-500',
+  'from-emerald-500 to-green-500',
+  'from-red-500 to-rose-500',
+  'from-indigo-500 to-blue-500',
+  'from-yellow-500 to-amber-500',
+];
+
+function getCategoryIcon(categoryName: string): React.ElementType {
+  const lower = categoryName.toLowerCase();
+  for (const [keyword, Icon] of Object.entries(CATEGORY_ICON_MAP)) {
+    if (lower.includes(keyword)) return Icon;
+  }
+  return DollarSign;
+}
+
+function PaymentCategoriesSection() {
+  const [categories, setCategories] = useState<{ id: string; category_name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setIsVisible(true);
-      },
-      { threshold: 0.15 }
-    );
-    if (sectionRef.current) observer.observe(sectionRef.current);
-    return () => observer.disconnect();
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-categories`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({}),
+          }
+        );
+        const data = await res.json();
+        if (res.ok && data.categories) {
+          setCategories(data.categories);
+        }
+      } catch {
+        // silently fail — section simply won't render
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCategories();
   }, []);
 
-  useEffect(() => {
-    if (!isVisible) return;
-    const interval = setInterval(() => {
-      setActiveStep((prev) => (prev + 1) % 4);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [isVisible]);
+  if (loading) {
+    return (
+      <section className="py-20 px-4">
+        <div className="max-w-7xl mx-auto flex justify-center">
+          <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" />
+        </div>
+      </section>
+    );
+  }
 
-  const steps = [
-    {
-      id: 0,
-      icon: CreditCard,
-      label: 'Customer',
-      sublabel: 'Pays with Credit Card',
-      description: 'Customer pays using a credit card — Visa, Mastercard, RuPay, or Amex — through a secure checkout form.',
-    },
-    {
-      id: 1,
-      icon: RefreshCw,
-      label: 'Payment Aggregator',
-      sublabel: 'Processes Gateway Transaction',
-      description: 'The payment aggregator authenticates and processes the payment gateway transaction, validating card details and triggering bank authorization.',
-    },
-    {
-      id: 2,
-      icon: Building2,
-      label: 'Payout Processing',
-      sublabel: 'Aggregator Initiates Payout',
-      description: 'The payment aggregator processes the payout transaction, verifying beneficiary details and initiating the bank transfer.',
-    },
-    {
-      id: 3,
-      icon: Banknote,
-      label: 'Beneficiary',
-      sublabel: 'Funds Settled to Bank',
-      description: "Funds are settled directly to the beneficiary's bank account — fast, secure, and fully traceable.",
-    },
-  ];
+  if (!categories.length) return null;
 
   return (
-    <section ref={sectionRef} className="py-20 px-4">
+    <section className="py-20 px-4">
       <div className="max-w-7xl mx-auto">
         <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-900 mb-4">
-          How PayByCard <span className="text-[#8c76f0]">Processes Payment</span>
+          Payment <span className="text-[#8c76f0]">Categories</span>
         </h2>
-        <p className="text-center text-gray-600 text-xl mb-16">
-          A secure, transparent 4-step flow — from your card to the beneficiary's bank account
-        </p>
-
-        {/* Desktop */}
-        <div className="hidden lg:block">
-          <div className="flex items-start justify-between mb-10">
-            {steps.map((step, index) => (
-              <div key={step.id} className="flex items-start flex-1 min-w-0">
-                <div
-                  className={`relative flex flex-col items-center flex-1 min-w-0 transition-all duration-700 ${
-                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                  }`}
-                  style={{ transitionDelay: `${index * 120}ms` }}
-                >
-                  <div
-                    className={`group relative w-24 h-24 rounded-3xl flex items-center justify-center mb-4 transition-all duration-500 shadow-lg border-2 cursor-pointer ${
-                      activeStep === step.id
-                        ? 'bg-gradient-to-br from-purple-50 to-violet-100 border-[#8c76f0] scale-110 shadow-xl'
-                        : 'bg-white border-gray-200 hover:border-[#8c76f0] hover:scale-105'
-                    }`}
-                    onClick={() => setActiveStep(step.id)}
-                  >
-                    {activeStep === step.id && (
-                      <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-purple-50/60 to-violet-100/60 animate-pulse" />
-                    )}
-                    <step.icon
-                      className={`w-11 h-11 transition-colors duration-300 ${
-                        activeStep === step.id ? 'text-[#8c76f0]' : 'text-gray-400 group-hover:text-[#8c76f0]'
-                      }`}
-                    />
-                    <div
-                      className={`absolute -top-3 -right-3 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg transition-all duration-300 ${
-                        activeStep === step.id
-                          ? 'bg-[#8c76f0] scale-110'
-                          : 'bg-gray-400'
-                      }`}
-                    >
-                      {step.id + 1}
-                    </div>
-                    {activeStep === step.id && (
-                      <div className="absolute -inset-1 rounded-3xl border-2 border-[#8c76f0] animate-ping opacity-20" />
-                    )}
-                  </div>
-
-                  <h3
-                    className={`text-sm font-bold text-center mb-1 transition-colors duration-300 px-1 ${
-                      activeStep === step.id ? 'text-gray-900' : 'text-gray-600'
-                    }`}
-                  >
-                    {step.label}
-                  </h3>
-                  <p
-                    className={`text-xs text-center font-medium transition-colors duration-300 px-1 leading-tight ${
-                      activeStep === step.id ? 'text-[#8c76f0]' : 'text-gray-400'
-                    }`}
-                  >
-                    {step.sublabel}
-                  </p>
-                </div>
-
-                {index < steps.length - 1 && (
-                  <div className="flex items-center flex-shrink-0 mt-11 mx-0.5">
-                    <div
-                      className={`h-0.5 w-8 transition-all duration-700 ${
-                        activeStep > index
-                          ? 'bg-gradient-to-r from-[#8c76f0] to-violet-400'
-                          : 'bg-gray-200'
-                      }`}
-                    />
-                    <ArrowRight
-                      className={`w-4 h-4 flex-shrink-0 transition-colors duration-500 ${
-                        activeStep > index ? 'text-[#8c76f0]' : 'text-gray-300'
-                      }`}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div
-            className={`transition-all duration-500 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}
-            style={{ transitionDelay: '620ms' }}
-          >
-            <div className="relative bg-white rounded-3xl p-8 border-2 border-[#8c76f0] shadow-lg">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-violet-50/40 rounded-3xl" />
-              <div className="relative flex items-center gap-5">
-                <div className="relative flex-shrink-0 w-16 h-16 rounded-2xl bg-purple-50 border-2 border-[#8c76f0]/30 flex items-center justify-center">
-                  {(() => { const Icon = steps[activeStep].icon; return <Icon className="w-9 h-9 text-[#8c76f0]" />; })()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xl font-bold text-gray-900 mb-1">
-                    Step {activeStep + 1}: {steps[activeStep].label}
-                  </p>
-                  <p className="text-gray-600 leading-relaxed text-sm">{steps[activeStep].description}</p>
-                </div>
-                <div className="ml-auto flex gap-2 flex-shrink-0">
-                  {steps.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setActiveStep(s.id)}
-                      className={`rounded-full transition-all duration-300 ${
-                        activeStep === s.id
-                          ? 'w-6 h-3 bg-[#8c76f0]'
-                          : 'w-3 h-3 bg-gray-300 hover:bg-[#8c76f0]/50'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile */}
-        <div className="lg:hidden space-y-4">
-          {steps.map((step, index) => (
-            <div
-              key={step.id}
-              className={`transition-all duration-700 ${
-                isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
-              }`}
-              style={{ transitionDelay: `${index * 120}ms` }}
-            >
+        <p className="text-center text-gray-600 text-xl mb-16">Choose from multiple payment types</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {categories.map((category, index) => {
+            const Icon = getCategoryIcon(category.category_name);
+            const color = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
+            return (
               <div
-                className={`relative bg-white rounded-3xl p-5 border-2 shadow-lg transition-all duration-500 ${
-                  activeStep === step.id
-                    ? 'border-[#8c76f0] shadow-xl'
-                    : 'border-gray-200 hover:border-[#8c76f0] hover:shadow-xl'
-                }`}
-                onClick={() => setActiveStep(step.id)}
+                key={category.id}
+                className="group relative"
               >
-                {activeStep === step.id && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-violet-50/50 rounded-3xl pointer-events-none" />
-                )}
-                <div className="relative flex items-start gap-4">
-                  <div className="relative flex-shrink-0">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${activeStep === step.id ? 'bg-purple-50' : 'bg-gray-50'}`}>
-                      <step.icon
-                        className={`w-6 h-6 transition-colors duration-300 ${
-                          activeStep === step.id ? 'text-[#8c76f0]' : 'text-gray-400'
-                        }`}
-                      />
-                    </div>
-                    <div
-                      className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold shadow ${
-                        activeStep === step.id
-                          ? 'bg-[#8c76f0]'
-                          : 'bg-gray-400'
-                      }`}
-                    >
-                      {step.id + 1}
-                    </div>
+                <div className={`absolute inset-0 bg-gradient-to-r ${color} rounded-2xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity`} />
+                <div className="relative bg-white rounded-2xl p-6 border-2 border-gray-300 hover:border-[#8c76f0] transition-all hover:scale-105 cursor-pointer text-center shadow-lg hover:shadow-xl flex flex-col items-center justify-center gap-4 py-8">
+                  <div className="w-14 h-14 rounded-2xl bg-[#f3f0fe] flex items-center justify-center shadow-md">
+                    <Icon className="w-7 h-7 text-[#8c76f0] flex-shrink-0" />
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold text-gray-900 mb-0.5">{step.label}</h3>
-                    <p className={`text-xs font-semibold mb-1 ${activeStep === step.id ? 'text-[#8c76f0]' : 'text-gray-400'}`}>
-                      {step.sublabel}
-                    </p>
-                    <p className="text-sm text-gray-600 leading-relaxed">{step.description}</p>
-                  </div>
+                  <p className="text-gray-900 font-semibold text-sm leading-snug">{category.category_name}</p>
                 </div>
               </div>
-              {index < steps.length - 1 && (
-                <div className="flex justify-center py-1.5">
-                  <ArrowRight
-                    className={`w-4 h-4 rotate-90 transition-colors duration-300 ${
-                      activeStep > index ? 'text-[#8c76f0]' : 'text-gray-300'
-                    }`}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Trust badges */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { icon: Shield, label: 'RBI Compliant', desc: 'Fully regulated and compliant with RBI guidelines' },
-            { icon: Lock, label: '256-bit Encryption', desc: 'Bank-grade SSL encryption on every transaction' },
-            { icon: UserCheck, label: 'KYC Verified', desc: 'All users undergo mandatory KYC verification' },
-          ].map((item, index) => (
-            <div
-              key={item.label}
-              className={`group relative bg-white rounded-3xl p-6 border-2 border-gray-200 shadow-lg hover:border-[#8c76f0] hover:shadow-xl transition-all duration-500 flex items-center gap-4 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-              }`}
-              style={{ transitionDelay: `${900 + index * 120}ms` }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-50/0 to-violet-50/0 group-hover:from-purple-50/40 group-hover:to-violet-50/40 rounded-3xl transition-all duration-500" />
-              <div className="relative flex-shrink-0 w-14 h-14 rounded-2xl bg-gray-50 border-2 border-gray-200 group-hover:border-[#8c76f0] group-hover:bg-purple-50 flex items-center justify-center transition-all duration-300">
-                <item.icon className="w-7 h-7 text-gray-400 group-hover:text-[#8c76f0] transition-colors duration-300" />
-              </div>
-              <div className="relative">
-                <p className="text-lg font-bold text-gray-900">{item.label}</p>
-                <p className="text-sm text-gray-500">{item.desc}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
@@ -328,15 +216,6 @@ export default function Home() {
     },
   ];
 
-  const paymentCategories = [
-    { icon: Briefcase, name: 'Business, Vendor & Professional Service Payments', color: 'from-blue-500 to-cyan-500' },
-    { icon: HomeIcon, name: 'Housing, Rent & Maintenance Payments', color: 'from-green-500 to-teal-500' },
-    { icon: Zap, name: 'Utilities, Tax & Administrative Payments', color: 'from-amber-500 to-orange-500' },
-    { icon: GraduationCap, name: 'Education & Academic Payments', color: 'from-rose-500 to-pink-500' },
-    { icon: Bus, name: 'Transportation & Student Travel Payments', color: 'from-sky-500 to-blue-500' },
-    { icon: Users, name: 'Memberships, Clubs & Subscriptions', color: 'from-violet-500 to-purple-500' },
-  ];
-
   const creditCardBenefits = [
     'Earn Reward Points on every payment',
     'Extended Interest-Free Credit Period',
@@ -350,7 +229,7 @@ export default function Home() {
     {
       icon: CheckCircle,
       title: 'Surpass Non-Acceptance',
-      description: 'Pay anyone, anywhere - even vendors who don\'t accept cards',
+      description: "Pay anyone, anywhere - even vendors who don't accept cards",
     },
     {
       icon: Shield,
@@ -458,33 +337,7 @@ export default function Home() {
         </div>
       </section>
 
-      <PaymentFlowSection />
-
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-900 mb-4">
-            Payment <span className="text-[#8c76f0]">Categories</span>
-          </h2>
-          <p className="text-center text-gray-600 text-xl mb-16">Choose from multiple payment types</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {paymentCategories.map((category, index) => (
-              <div
-                key={category.name}
-                className="group relative"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className={`absolute inset-0 bg-gradient-to-r ${category.color} rounded-2xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity`}></div>
-                <div className="relative bg-white rounded-2xl p-6 border-2 border-gray-300 hover:border-[#8c76f0] transition-all hover:scale-105 cursor-pointer text-center shadow-lg hover:shadow-xl flex flex-col items-center justify-center gap-4 py-8">
-                  <div className="w-14 h-14 rounded-2xl bg-[#f3f0fe] flex items-center justify-center shadow-md">
-                    <category.icon className="w-7 h-7 text-[#8c76f0] flex-shrink-0" />
-                  </div>
-                  <p className="text-gray-900 font-semibold text-sm leading-snug">{category.name}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <PaymentCategoriesSection />
 
       <section className="py-20 px-4 bg-gradient-to-b from-transparent via-purple-50 to-transparent">
         <div className="max-w-7xl mx-auto">

@@ -254,8 +254,8 @@ export default function PaymentGatewaySettings() {
                       onChange={(e) => updateGateway(index, 'environment', e.target.value)}
                       className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
                     >
-                      <option value="Testing">Testing</option>
-                      <option value="Production">Production</option>
+                      <option value="test">Testing</option>
+                      <option value="production">Production</option>
                     </select>
                   </div>
 

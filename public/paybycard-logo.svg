@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80" fill="none">
+  <!-- Card shape -->
+  <rect x="4" y="16" width="72" height="48" rx="8" fill="url(#grad1)"/>
+  <!-- Chip -->
+  <rect x="14" y="28" width="16" height="12" rx="2" fill="#f5d060" opacity="0.9"/>
+  <!-- Stripe -->
+  <rect x="4" y="44" width="72" height="10" fill="rgba(0,0,0,0.18)"/>
+  <!-- Brand text -->
+  <text x="88" y="34" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="22" fill="url(#grad2)">PayBy</text>
+  <text x="88" y="60" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="22" fill="url(#grad2)">Card</text>
+  <defs>
+    <linearGradient id="grad1" x1="4" y1="16" x2="76" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8c76f0"/>
+      <stop offset="100%" stop-color="#6d4fe8"/>
+    </linearGradient>
+    <linearGradient id="grad2" x1="88" y1="20" x2="196" y2="65" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8c76f0"/>
+      <stop offset="100%" stop-color="#6d4fe8"/>
+    </linearGradient>
+  </defs>
+</svg>

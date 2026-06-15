@@ -1,0 +1,88 @@
+import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+};
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 200, headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !supabaseServiceKey) throw new Error('Missing Supabase configuration');
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: paymentOptions, error: optionsError } = await supabase
+      .from('payment_options')
+      .select('*')
+      .eq('is_enabled', true)
+      .order('category_name');
+
+    if (optionsError) {
+      return new Response(
+        JSON.stringify({ error: optionsError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: gateways, error: gatewaysError } = await supabase
+      .from('payment_gateway_settings')
+      .select('id, gateway_name, registered_name, gst_number, payout_mode, gst_percentage, visa_charges, mastercard_charges, rupay_charges, amex_charges, diners_charges')
+      .eq('is_enabled', true)
+      .limit(1);
+
+    if (gatewaysError) {
+      return new Response(
+        JSON.stringify({ error: gatewaysError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const defaultGateway = gateways && gateways.length > 0 ? gateways[0] : null;
+
+    if (!defaultGateway) {
+      return new Response(
+        JSON.stringify({ error: 'No active payment gateway available' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const formattedOptions = (paymentOptions || []).map((option: any) => ({
+      id: option.id,
+      gateway_id: defaultGateway.id,
+      category_id: option.id,
+      gateway_name: defaultGateway.gateway_name,
+      gateway_registered_name: defaultGateway.registered_name || '',
+      gateway_gst_number: defaultGateway.gst_number || '',
+      gateway_gst_percentage: parseFloat(defaultGateway.gst_percentage || 0),
+      payout_mode: defaultGateway.payout_mode || 'manual',
+      category_name: option.category_name,
+      card_type: option.category_name,
+      charges_percentage: parseFloat(option.charges_percentage || 0),
+      discounted_charges_percentage: parseFloat(option.discounted_charges_percentage || 0),
+      show_discount: option.show_discount || false,
+      gst_percentage: parseFloat(option.gst_percentage || 0),
+      business_surcharge_percentage: parseFloat(option.business_surcharge_percentage || 0),
+      receiver_kyc_required: option.receiver_kyc_required || false,
+      terms_and_conditions: option.terms_and_conditions || '',
+      settlement_time: option.settlement_time || 'instant',
+      is_instant_settlement: (option.settlement_time || '').toLowerCase() === 'instant',
+    }));
+
+    return new Response(
+      JSON.stringify({ paymentOptions: formattedOptions }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'An error occurred' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

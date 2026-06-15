@@ -92,7 +92,7 @@ function PaymentCategoriesSection() {
     const fetchCategories = async () => {
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-categories`,
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-categories-list`,
           {
             method: 'POST',
             headers: {

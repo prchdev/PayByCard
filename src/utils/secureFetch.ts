@@ -1,84 +1,46 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-const WAF_ENDPOINT = `${SUPABASE_URL}/functions/v1/waf-validate`;
 
 const originalFetch = window.fetch.bind(window);
 
-function extractAuthHeader(options?: RequestInit): string | undefined {
-  if (!options?.headers) return undefined;
-  if (options.headers instanceof Headers) {
-    return options.headers.get("Authorization") || undefined;
-  }
-  if (Array.isArray(options.headers)) {
-    const entry = options.headers.find(
-      ([key]) => key.toLowerCase() === "authorization"
-    );
-    return entry?.[1];
-  }
-  return (options.headers as Record<string, string>)["Authorization"];
+function isSupabaseEdgeFunction(url: string): boolean {
+  return url.startsWith(SUPABASE_URL) && url.includes('/functions/v1/');
 }
 
-async function wafInterceptedFetch(
+function mergeHeaders(init?: RequestInit): Record<string, string> {
+  if (!init?.headers) return { apikey: SUPABASE_ANON_KEY };
+  if (init.headers instanceof Headers) {
+    const result: Record<string, string> = {};
+    init.headers.forEach((value, key) => { result[key] = value; });
+    result['apikey'] = SUPABASE_ANON_KEY;
+    return result;
+  }
+  if (Array.isArray(init.headers)) {
+    const result: Record<string, string> = Object.fromEntries(init.headers);
+    result['apikey'] = SUPABASE_ANON_KEY;
+    return result;
+  }
+  return { ...(init.headers as Record<string, string>), apikey: SUPABASE_ANON_KEY };
+}
+
+async function interceptedFetch(
   input: RequestInfo | URL,
   init?: RequestInit
 ): Promise<Response> {
-  const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  const url =
+    typeof input === 'string'
+      ? input
+      : input instanceof URL
+      ? input.href
+      : input.url;
 
-  const isEdgeFunctionCall =
-    url.includes("/functions/v1/") && url.includes(SUPABASE_URL);
-  const isWafCall = url.includes("/functions/v1/waf-validate");
-
-  if (!isEdgeFunctionCall || isWafCall) {
+  if (!isSupabaseEdgeFunction(url)) {
     return originalFetch(input, init);
   }
 
-  try {
-    let bodyForScan: Record<string, unknown> | undefined;
-    if (init?.body && typeof init.body === "string") {
-      try {
-        bodyForScan = JSON.parse(init.body);
-      } catch {
-        // not JSON
-      }
-    }
-
-    const wafPayload: Record<string, unknown> = { url };
-    if (bodyForScan) {
-      wafPayload.body = bodyForScan;
-    }
-
-    const authHeader = extractAuthHeader(init) || `Bearer ${SUPABASE_ANON_KEY}`;
-
-    const wafRes = await originalFetch(WAF_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: authHeader,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(wafPayload),
-    });
-
-    if (wafRes.ok) {
-      const wafData = await wafRes.json();
-      if (wafData.blocked) {
-        return new Response(
-          JSON.stringify({
-            error: wafData.message || "Request blocked by security filter",
-          }),
-          {
-            status: 403,
-            headers: { "Content-Type": "application/json" },
-          }
-        );
-      }
-    }
-  } catch {
-    // WAF unavailable should never block legitimate requests
-  }
-
-  return originalFetch(input, init);
+  return originalFetch(input, { ...init, headers: mergeHeaders(init) });
 }
 
 export function installWaf(): void {
-  window.fetch = wafInterceptedFetch as typeof window.fetch;
+  window.fetch = interceptedFetch as typeof window.fetch;
 }

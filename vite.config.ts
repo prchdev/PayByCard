@@ -1,9 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+const SUPABASE_URL = 'https://api.paybycard.in';
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(SUPABASE_URL),
+  },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },

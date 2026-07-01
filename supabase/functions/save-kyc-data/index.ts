@@ -32,6 +32,74 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (typeof data !== "object" || Array.isArray(data)) {
+      return new Response(JSON.stringify({ error: "Invalid data payload" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    const MAX_URL_LEN = 2000;
+    const ADDRESS_PROOF_TYPES = ["aadhaar", "driving_license", "voter_id", "passport", "digilocker_aadhaar"];
+
+    if (section === "pan") {
+      if (data.pan_number && !PAN_REGEX.test(String(data.pan_number).trim().toUpperCase())) {
+        return new Response(JSON.stringify({ error: "Invalid PAN number format (e.g. ABCDE1234F)" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (data.pan_photo_url && String(data.pan_photo_url).length > MAX_URL_LEN) {
+        return new Response(JSON.stringify({ error: "PAN photo URL too long" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (data.pan_number) {
+        data.pan_number = String(data.pan_number).trim().toUpperCase();
+      }
+    }
+
+    if (section === "address") {
+      if (data.proof_type && !ADDRESS_PROOF_TYPES.includes(String(data.proof_type))) {
+        return new Response(JSON.stringify({ error: "Invalid address proof type" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (data.id_number && (typeof data.id_number !== "string" || data.id_number.length > 30)) {
+        return new Response(JSON.stringify({ error: "ID number must be at most 30 characters" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (data.address_proof_url_1 && String(data.address_proof_url_1).length > MAX_URL_LEN) {
+        return new Response(JSON.stringify({ error: "Address proof URL too long" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (section === "business") {
+      if (data.business_name && String(data.business_name).length > 200) {
+        return new Response(JSON.stringify({ error: "Business name must be at most 200 characters" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (data.pan_number && !PAN_REGEX.test(String(data.pan_number).trim().toUpperCase())) {
+        return new Response(JSON.stringify({ error: "Invalid business PAN number format" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (data.pan_number) {
+        data.pan_number = String(data.pan_number).trim().toUpperCase();
+      }
+      for (const urlField of ["incorporation_certificate_url", "gst_certificate_url", "loa_url"]) {
+        if (data[urlField] && String(data[urlField]).length > MAX_URL_LEN) {
+          return new Response(JSON.stringify({ error: `${urlField} is too long` }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!

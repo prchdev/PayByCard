@@ -48,6 +48,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (current_password === new_password) {
+      return new Response(
+        JSON.stringify({ error: 'New password must be different from the current password' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id, password_hash')

@@ -54,6 +54,44 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // ── Format validation ──────────────────────────────────────────────────────
+    const acctNum = String(bank_account_number).trim();
+    if (!/^[A-Za-z0-9]{6,20}$/.test(acctNum)) {
+      return new Response(
+        JSON.stringify({ error: "Account number must be 6–20 alphanumeric characters" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const emailRegex = /^[a-zA-Z0-9._%+\-]{1,64}@[a-zA-Z0-9.\-]{1,255}\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(String(email).trim())) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email format" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!/^\d{10}$/.test(String(mobile).replace(/\D/g, "").slice(-10))) {
+      return new Response(
+        JSON.stringify({ error: "Mobile number must be 10 digits" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!/^[A-Za-z ]{1,90}$/.test(String(full_name).trim())) {
+      return new Response(
+        JSON.stringify({ error: "Full name must contain only letters and spaces (max 90 characters)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (pan_number && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(String(pan_number).trim().toUpperCase())) {
+      return new Response(
+        JSON.stringify({ error: "Invalid PAN number format (e.g. ABCDE1234F)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (!["Saving", "Current"].includes(account_type)) {
       return new Response(
         JSON.stringify({ error: "Invalid account type" }),

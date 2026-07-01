@@ -29,6 +29,36 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const panNorm = String(pan_number).trim().toUpperCase();
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panNorm)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid PAN number format (e.g. ABCDE1234F)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (String(pan_photo_url).length > 2000) {
+      return new Response(
+        JSON.stringify({ error: "PAN photo URL too long" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const emailRegex = /^[a-zA-Z0-9._%+\-]{1,64}@[a-zA-Z0-9.\-]{1,255}\.[a-zA-Z]{2,}$/;
+    if (email && !emailRegex.test(String(email).trim())) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email format" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (mobile && !/^\d{10}$/.test(String(mobile).replace(/\D/g, "").slice(-10))) {
+      return new Response(
+        JSON.stringify({ error: "Mobile number must be 10 digits" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!

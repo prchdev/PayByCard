@@ -45,6 +45,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const emailRegex = /^[a-zA-Z0-9._%+\-]{1,64}@[a-zA-Z0-9.\-]{1,255}\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(String(email).trim())) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid email or password' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id, email, mobile_number, is_mobile_verified, is_email_verified, kyc_completed, first_name, last_name, password_hash, is_disabled, is_restricted, failed_login_attempts, locked_until')

@@ -70,6 +70,12 @@ Deno.serve(async (req: Request) => {
     if (isNaN(parsedTotal) || parsedTotal < MIN_AMOUNT || parsedTotal > MAX_AMOUNT * 1.5) {
       return err("Invalid total amount");
     }
+    const parsedCharges = parseFloat(charges || 0);
+    const parsedGst = parseFloat(gst || 0);
+    const parsedDiscount = parseFloat(discount || 0);
+    if (isNaN(parsedCharges) || parsedCharges < 0) return err("Charges must be a non-negative number");
+    if (isNaN(parsedGst) || parsedGst < 0) return err("GST must be a non-negative number");
+    if (isNaN(parsedDiscount) || parsedDiscount < 0) return err("Discount must be a non-negative number");
     if (billFileUrl && typeof billFileUrl === "string" && billFileUrl.length > MAX_STR) {
       return err("billFileUrl too long");
     }

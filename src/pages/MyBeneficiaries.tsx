@@ -569,15 +569,10 @@ export default function MyBeneficiaries() {
                     >
                       {beneficiary.status}
                     </span>
-                    {beneficiary.is_verified_merchant ? (
+                    {beneficiary.is_verified_merchant && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-semibold">
                         <CheckCircle className="w-3.5 h-3.5" />
                         Verified Merchant
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-semibold">
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        Merchant KYC Pending
                       </span>
                     )}
                   </div>

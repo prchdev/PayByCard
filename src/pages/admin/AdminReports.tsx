@@ -170,7 +170,7 @@ function downloadCSV(rows: TxRecord[]) {
     'Sender Name', 'Sender Email', 'Sender Mobile', 'Sender PAN',
     'Company Name', 'Company PAN', 'Company GST Number', 'Company Address',
     // Beneficiary Details
-    'Beneficiary Name', 'Beneficiary PAN', 'Beneficiary Bank', 'Beneficiary Account', 'Beneficiary IFSC',
+    'Beneficiary Name', 'Beneficiary Email', 'Beneficiary Mobile', 'Beneficiary PAN', 'Beneficiary Bank', 'Beneficiary Account', 'Beneficiary IFSC',
     // Payment Details
     'Category', 'Payment Option', 'Gateway', 'Environment',
     'Base Amount (INR)', 'Platform Charges (INR)', 'CGST 9% (INR)', 'SGST 9% (INR)', 'Total Charged (INR)',
@@ -213,6 +213,8 @@ function downloadCSV(rows: TxRecord[]) {
       r.business_kyc_verified ? (r.company_address || '') : '',
       // Beneficiary
       bene.full_name || '',
+      bene.email || '',
+      bene.mobile || '',
       r.receiver_pan || '',
       bene.bank_name || '',
       bene.bank_account || '',

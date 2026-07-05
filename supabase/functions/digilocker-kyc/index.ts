@@ -538,7 +538,8 @@ function parseAddressTag(tag: string): { house: string; street: string; locality
 function parseAddressElement(xmlBlock: string): {
   house: string; street: string; locality: string; vtc: string; district: string; state: string; pincode: string; line1: string;
 } {
-  const addrTagRe = /<Address2?[\s\S]*?(?:\/>|>)/gi;
+  // Match <Address>, <Address2>, or <Poa> tags (Aadhaar-style)
+  const addrTagRe = /<(?:Address2?|Poa|POA|poa)[\s\S]*?(?:\/>|>)/gi;
   const tags: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = addrTagRe.exec(xmlBlock)) !== null) {
@@ -598,9 +599,71 @@ function parseCertificateAddressXml(xml: string): {
   locality: string; vtc: string; district: string; state: string; pincode: string;
 } {
   const issuedToBlock = extractIssuedToBlock(xml);
-  const name = attrInTag(issuedToBlock, 'Person', 'name') || attrInTag(xml, 'Person', 'name') || '';
-  const dob  = attrInTag(issuedToBlock, 'Person', 'dob')  || attrInTag(xml, 'Person', 'dob')  || '';
+
+  // Name — Person element first, then DL/cert element attributes
+  const name = attrInTag(issuedToBlock, 'Person', 'name')
+    || attrInTag(xml, 'Person', 'name')
+    || attrInTag(xml, 'DrivingLicence', 'name')
+    || attrInTag(xml, 'EpicDetails', 'name')
+    || attrInTag(xml, 'Poi', 'name')
+    || '';
+
+  // DOB — same priority chain
+  const dob = attrInTag(issuedToBlock, 'Person', 'dob')
+    || attrInTag(xml, 'Person', 'dob')
+    || attrInTag(xml, 'DrivingLicence', 'dob')
+    || attrInTag(xml, 'EpicDetails', 'dob')
+    || attrInTag(xml, 'Poi', 'dob')
+    || '';
+
+  // Strategy 1: <Address> / <Address2> / <Poa> elements (handled by parseAddressElement)
   const addr = parseAddressElement(issuedToBlock);
+  if (addr.district || addr.state || addr.pincode || addr.house) {
+    const { line1: _l, ...rest } = addr;
+    return { name, dob, ...rest };
+  }
+
+  // Strategy 2: full XML fallback (in case IssuedTo wrapper is missing)
+  const addrFull = parseAddressElement(xml);
+  if (addrFull.district || addrFull.state || addrFull.pincode || addrFull.house) {
+    const { line1: _l, ...rest } = addrFull;
+    return { name, dob, ...rest };
+  }
+
+  // Strategy 3: Aadhaar-style <Poa> attributes (dist/pc etc.)
+  const poaBlock = issuedToBlock || xml;
+  const poaHouse    = attrInTag(poaBlock, 'Poa', 'house') || attrInTag(poaBlock, 'Poa', 'co');
+  const poaStreet   = attrInTag(poaBlock, 'Poa', 'lm') || attrInTag(poaBlock, 'Poa', 'street');
+  const poaLocality = attrInTag(poaBlock, 'Poa', 'loc');
+  const poaVtc      = attrInTag(poaBlock, 'Poa', 'vtc') || attrInTag(poaBlock, 'Poa', 'subdist');
+  const poaDist     = attrInTag(poaBlock, 'Poa', 'dist');
+  const poaState    = attrInTag(poaBlock, 'Poa', 'state');
+  const poaPin      = attrInTag(poaBlock, 'Poa', 'pc') || attrInTag(poaBlock, 'Poa', 'pincode') || attrInTag(poaBlock, 'Poa', 'pin');
+  if (poaDist || poaState || poaPin || poaHouse) {
+    return { name, dob, house: poaHouse, street: poaStreet, locality: poaLocality, vtc: poaVtc, district: poaDist, state: poaState, pincode: poaPin };
+  }
+
+  // Strategy 4: address attributes on the main certificate element (DrivingLicence, EpicDetails, etc.)
+  const ga = (tag: string, attr: string) => attrInTag(xml, tag, attr);
+  for (const certTag of ['DrivingLicence', 'EpicDetails', 'PassportDetails', 'RegistrationCertificate']) {
+    const tagRe = new RegExp(`<${certTag}[\\s\\S]*?(?:\\/>|>)`, 'i');
+    const certMatch = xml.match(tagRe);
+    if (!certMatch) continue;
+    const el = certMatch[0];
+    const gEl = (attr: string) => { const r = new RegExp(`\\b${attr}=["']([^"']*)["']`, 'i'); const mm = el.match(r); return mm ? mm[1].trim() : ''; };
+    const house    = gEl('house') || gEl('add1');
+    const street   = gEl('line2') || gEl('street') || gEl('landmark') || gEl('lm') || gEl('add2');
+    const locality = gEl('locality') || gEl('loc') || gEl('add3');
+    const vtc      = gEl('vtc') || gEl('postOffice') || gEl('subDistrict') || gEl('add4');
+    const district = gEl('district') || gEl('dist') || ga(certTag, 'district') || ga(certTag, 'dist');
+    const state    = gEl('state') || ga(certTag, 'state');
+    const pincode  = gEl('pin') || gEl('pc') || gEl('pincode');
+    if (district || state || pincode || house) {
+      return { name, dob, house, street, locality, vtc, district, state, pincode };
+    }
+  }
+
+  // Final fallback — return whatever addr had (may be empty)
   const { line1: _line1, ...rest } = addr;
   return { name, dob, ...rest };
 }
@@ -612,6 +675,15 @@ function extractCertIdNumber(xml: string, doctype: 'dl' | 'passport' | 'voter_id
       || attrInTag(xml, 'Person', 'epicno')
       || xmlAttr(xml, 'epicno')
       || certRootNum
+      || '';
+  }
+  if (doctype === 'dl') {
+    return certRootNum
+      || attrInTag(xml, 'DrivingLicence', 'dlno')
+      || attrInTag(xml, 'DrivingLicence', 'number')
+      || attrInTag(xml, 'CertificateData', 'dlno')
+      || attrInTag(xml, 'CertificateData', 'number')
+      || attrInTag(xml, 'Person', 'number')
       || '';
   }
   return certRootNum

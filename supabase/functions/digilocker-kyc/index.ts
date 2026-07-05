@@ -668,6 +668,107 @@ function parseCertificateAddressXml(xml: string): {
   return { name, dob, ...rest };
 }
 
+// ── Dedicated DL XML parser — covers all real-world RTO XML variants ──────────
+function parseDlXml(xml: string): {
+  name: string; dob: string; dlNumber: string;
+  house: string; street: string; locality: string; vtc: string;
+  district: string; state: string; pincode: string;
+} {
+  const ga = (tag: string, attr: string) => attrInTag(xml, tag, attr);
+  const gEl = (tagEl: string, attr: string) => {
+    const r = new RegExp(`\\b${attr}=["']([^"']*)["']`, 'i');
+    const mm = tagEl.match(r);
+    return mm ? mm[1].trim() : '';
+  };
+  const getTextEl = (attr: string) => {
+    const r = new RegExp(`<${attr}[^>]*>([^<]+)<\/${attr}>`, 'i');
+    const mm = xml.match(r);
+    return mm ? mm[1].trim() : '';
+  };
+
+  // Name / DOB — Person, POI, or DrivingLicence element
+  const name = ga('Person', 'name') || ga('POI', 'name') || ga('Poi', 'name') || ga('DrivingLicence', 'name') || '';
+  const dob  = ga('Person', 'dob')  || ga('POI', 'dob')  || ga('Poi', 'dob')  || ga('DrivingLicence', 'dob')  || '';
+
+  // DL number
+  const dlNumber = attrInTag(xml, 'Certificate', 'number')
+    || ga('DrivingLicence', 'dlno')
+    || ga('DrivingLicence', 'number')
+    || ga('CertificateData', 'dlno')
+    || '';
+
+  // ── Strategy 1: POA element with attributes ──────────────────────────────
+  const poaTagRe = /<POA[\s\S]*?(?:\/>|>)/gi;
+  let pm: RegExpExecArray | null;
+  while ((pm = poaTagRe.exec(xml)) !== null) {
+    const t = pm[0];
+    const house    = gEl(t, 'house') || gEl(t, 'add1') || gEl(t, 'co');
+    const street   = gEl(t, 'street') || gEl(t, 'add2') || gEl(t, 'landmark') || gEl(t, 'lm');
+    const locality = gEl(t, 'locality') || gEl(t, 'loc') || gEl(t, 'add3');
+    const vtc      = gEl(t, 'vtc') || gEl(t, 'postoffice') || gEl(t, 'subdist') || gEl(t, 'add4');
+    const district = gEl(t, 'district') || gEl(t, 'dist');
+    const state    = gEl(t, 'state');
+    const pincode  = gEl(t, 'pincode') || gEl(t, 'pin') || gEl(t, 'pc');
+    if (district || state || pincode || house) {
+      return { name, dob, dlNumber, house, street, locality, vtc, district, state, pincode };
+    }
+  }
+
+  // ── Strategy 2: <Address> / <Poa> attributes (generic element names) ────
+  const genericAddrRe = /<(?:Address2?|Poa|poa)[\s\S]*?(?:\/>|>)/gi;
+  while ((pm = genericAddrRe.exec(xml)) !== null) {
+    const t = pm[0];
+    const house    = gEl(t, 'house') || gEl(t, 'add1');
+    const street   = gEl(t, 'street') || gEl(t, 'add2') || gEl(t, 'landmark') || gEl(t, 'lm');
+    const locality = gEl(t, 'locality') || gEl(t, 'loc') || gEl(t, 'add3');
+    const vtc      = gEl(t, 'vtc') || gEl(t, 'postoffice') || gEl(t, 'add4');
+    const district = gEl(t, 'district') || gEl(t, 'dist');
+    const state    = gEl(t, 'state');
+    const pincode  = gEl(t, 'pincode') || gEl(t, 'pin') || gEl(t, 'pc');
+    if (district || state || pincode || house) {
+      return { name, dob, dlNumber, house, street, locality, vtc, district, state, pincode };
+    }
+  }
+
+  // ── Strategy 3: address attributes on <DrivingLicence> element itself ────
+  const dlTagRe = /<DrivingLicence[\s\S]*?(?:\/>|>)/i;
+  const dlMatch = xml.match(dlTagRe);
+  if (dlMatch) {
+    const el = dlMatch[0];
+    const house    = gEl(el, 'house') || gEl(el, 'add1');
+    const street   = gEl(el, 'street') || gEl(el, 'add2') || gEl(el, 'landmark');
+    const locality = gEl(el, 'locality') || gEl(el, 'loc') || gEl(el, 'add3');
+    const vtc      = gEl(el, 'vtc') || gEl(el, 'postoffice') || gEl(el, 'add4');
+    const district = gEl(el, 'district') || gEl(el, 'dist');
+    const state    = gEl(el, 'state');
+    const pincode  = gEl(el, 'pin') || gEl(el, 'pc') || gEl(el, 'pincode');
+    if (district || state || pincode || house) {
+      return { name, dob, dlNumber, house, street, locality, vtc, district, state, pincode };
+    }
+
+    // presentaddress / permanentaddress as unstructured string fallback
+    const addrStr = gEl(el, 'presentaddress') || gEl(el, 'permanentaddress');
+    if (addrStr) {
+      const p = parseAddressLine1(addrStr);
+      return { name, dob, dlNumber, house: p.address || addrStr, street: '', locality: p.locality, vtc: '', district: p.district, state: p.state, pincode: p.pincode };
+    }
+  }
+
+  // ── Strategy 4: child text elements e.g. <District>...</District> ────────
+  const txtDistrict = getTextEl('District') || getTextEl('district');
+  const txtState    = getTextEl('State')    || getTextEl('state');
+  const txtPincode  = getTextEl('Pincode')  || getTextEl('PinCode') || getTextEl('Pin');
+  const txtHouse    = getTextEl('House')    || getTextEl('HouseNo') || getTextEl('Address1');
+  const txtStreet   = getTextEl('Street')   || getTextEl('Landmark') || getTextEl('Address2');
+  const txtLocality = getTextEl('Locality') || getTextEl('Area') || getTextEl('Address3');
+  const txtVtc      = getTextEl('VTC')      || getTextEl('PostOffice') || getTextEl('SubDistrict');
+  if (txtDistrict || txtState || txtPincode || txtHouse) {
+    return { name, dob, dlNumber, house: txtHouse, street: txtStreet, locality: txtLocality, vtc: txtVtc, district: txtDistrict, state: txtState, pincode: txtPincode };
+  }
+
+  return { name, dob, dlNumber, house: '', street: '', locality: '', vtc: '', district: '', state: '', pincode: '' };
+}
+
 function extractCertIdNumber(xml: string, doctype: 'dl' | 'passport' | 'voter_id'): string {
   const certRootNum = attrInTag(xml, 'Certificate', 'number');
   if (doctype === 'voter_id') {
@@ -843,14 +944,19 @@ async function fetchDigiLockerData(
   if (!addrParsed && dlDoc?.uri) {
     try {
       const xml = await fetchDocumentXml(accessToken, dlDoc.uri, 'dl');
-      const parsed = parseCertificateAddressXml(xml);
-      if (hasAddress(parsed)) {
+      const parsed = parseDlXml(xml);
+      // Accept if we have any address data (house may hold a full address string)
+      if (parsed.district || parsed.state || parsed.pincode || parsed.house || parsed.locality) {
         addrProofType = 'driving_license';
-        addrIdNumber = extractCertIdNumber(xml, 'dl');
+        addrIdNumber = parsed.dlNumber || extractCertIdNumber(xml, 'dl');
         addrRawXml = xml;
         addrParsed = parsed;
+      } else {
+        console.error('DL XML parsed but no address fields found. XML snippet:', xml.slice(0, 500));
       }
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.error('DL document fetch/parse error:', (e as Error).message);
+    }
   }
 
   if (!addrParsed && voterDoc?.uri) {

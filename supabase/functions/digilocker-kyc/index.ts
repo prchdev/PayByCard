@@ -518,10 +518,10 @@ function parseAddressTag(tag: string): { house: string; street: string; locality
     return m ? m[1].trim() : '';
   };
 
-  const house    = ga('house');
-  const street   = ga('line2') || ga('street') || ga('landmark');
-  const locality = ga('locality') || ga('loc');
-  const vtc      = ga('vtc') || ga('postOffice') || ga('subDistrict');
+  const house    = ga('house') || ga('add1');
+  const street   = ga('line2') || ga('street') || ga('landmark') || ga('lm') || ga('add2');
+  const locality = ga('locality') || ga('loc') || ga('add3');
+  const vtc      = ga('vtc') || ga('postOffice') || ga('subDistrict') || ga('add4');
   const district = ga('district') || ga('dist');
   const state    = ga('state');
   const pincode  = ga('pin') || ga('pc') || ga('pincode');
@@ -550,7 +550,7 @@ function parseAddressElement(xmlBlock: string): {
   const score = (tag: string) => {
     let s = 0;
     if (/type=["'](present|permanent)["']/i.test(tag)) s += 10;
-    for (const attr of ['district', 'dist', 'state', 'pin', 'pc', 'pincode', 'house', 'line1']) {
+    for (const attr of ['district', 'dist', 'state', 'pin', 'pc', 'pincode', 'house', 'line1', 'add1']) {
       const re = new RegExp(`\\b${attr}=["']([^"']+)["']`, 'i');
       if (re.test(tag)) s += 1;
     }
@@ -646,7 +646,7 @@ function normalizeDob(dob: string): string {
   return dob;
 }
 
-type AddrResult = { house: string; street: string; locality: string; vtc: string; district: string; state: string; pincode: string };
+type AddrResult = { house: string; street: string; locality: string; vtc: string; district: string; state: string; pincode: string; name?: string; dob?: string };
 function hasAddress(a: AddrResult | null | undefined): boolean {
   return !!(a?.district || a?.state || a?.pincode || a?.house || a?.locality);
 }
@@ -808,8 +808,8 @@ async function fetchDigiLockerData(
 
   return {
     pan_number:         panParsed?.panNumber      || '',
-    full_name:          panParsed?.name || aadhaarParsed?.name || userDetailsName || tokenName,
-    dob:                panParsed?.dob  || aadhaarParsed?.dob  || userDetailsDob  || tokenDob,
+    full_name:          panParsed?.name || aadhaarParsed?.name || addrParsed?.name || userDetailsName || tokenName,
+    dob:                panParsed?.dob  || aadhaarParsed?.dob  || addrParsed?.dob  || userDetailsDob  || tokenDob,
     address:            addressParts.join(', '),
     city:               addrParsed?.district || addrParsed?.vtc || '',
     state:              addrParsed?.state    || '',

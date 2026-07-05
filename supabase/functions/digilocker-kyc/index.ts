@@ -420,15 +420,20 @@ async function fetchDocumentXml(accessToken: string, uri: string, label: string)
   }
 
   const outerXml = await res.text();
+  console.log(`[fetchDocumentXml] ${label} outer XML length=${outerXml.length} snippet:`, outerXml.slice(0, 300));
 
   const dataContentMatch = outerXml.match(/<DataContent[^>]*>([\s\S]*?)<\/DataContent>/i);
   let innerXml = outerXml;
   if (dataContentMatch) {
     try {
       innerXml = atob(dataContentMatch[1].trim().replace(/\s+/g, ''));
-    } catch {
+      console.log(`[fetchDocumentXml] ${label} base64 decode SUCCESS, inner length=${innerXml.length} snippet:`, innerXml.slice(0, 300));
+    } catch (e) {
+      console.error(`[fetchDocumentXml] ${label} base64 decode FAILED:`, (e as Error).message, 'base64 len=', dataContentMatch[1].length);
       innerXml = outerXml;
     }
+  } else {
+    console.log(`[fetchDocumentXml] ${label} no DataContent wrapper found, using raw XML`);
   }
 
   return innerXml;
@@ -841,7 +846,7 @@ async function fetchDigiLockerData(
     .map((s: string) => s.replace('issued/', ''));
 
   const docs = await fetchIssuedDocuments(accessToken);
-
+  console.log('[fetchDigiLockerData] issued docs:', JSON.stringify(docs.map((d: any) => ({ uri: d.uri, type: d.type, doctype: d.doctype, issuerid: d.issuerid }))));
   const allUris = new Set(docs.map((d: any) => d.uri).filter(Boolean));
   for (const uri of scopeUris) {
     if (!allUris.has(uri)) {
@@ -879,7 +884,7 @@ async function fetchDigiLockerData(
   const passportDoc = docs.find((d: any) => isPassportDoc(d));
   const voterDoc    = docs.find((d: any) => isVoterDoc(d));
   const dlDoc       = docs.find((d: any) => isDlDoc(d));
-
+  console.log('[fetchDigiLockerData] dlDoc:', JSON.stringify(dlDoc || null));
   let aadhaarParsed: ReturnType<typeof parseAadhaarXml> | null = null;
   let aadhaarRawXml: string | null = null;
 
@@ -946,6 +951,7 @@ async function fetchDigiLockerData(
     try {
       const xml = await fetchDocumentXml(accessToken, dlDoc.uri, 'dl');
       const parsed = parseDlXml(xml);
+      console.log('[DL] parseDlXml result:', JSON.stringify({ name: parsed.name, dob: parsed.dob, dlNumber: parsed.dlNumber, district: parsed.district, state: parsed.state, pincode: parsed.pincode, house: parsed.house, locality: parsed.locality }));
       // Accept if we have any address data (house may hold a full address string)
       if (parsed.district || parsed.state || parsed.pincode || parsed.house || parsed.locality) {
         addrProofType = 'driving_license';

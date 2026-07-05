@@ -425,7 +425,7 @@ async function fetchDocumentXml(accessToken: string, uri: string, label: string)
   let innerXml = outerXml;
   if (dataContentMatch) {
     try {
-      innerXml = atob(dataContentMatch[1].trim());
+      innerXml = atob(dataContentMatch[1].trim().replace(/\s+/g, ''));
     } catch {
       innerXml = outerXml;
     }
@@ -864,11 +864,12 @@ async function fetchDigiLockerData(
   const DL_DOCTYPES       = new Set(['DRVLC', 'DL']);
   const DL_ISSUERS        = new Set(['in.gov.transport', 'in.gov.morth', 'in.gov.rto']);
 
-  const isAadhaarDoc  = (d: any) => AADHAAR_DOCTYPES.has(d.doctype)  || AADHAAR_ISSUERS.has(d.issuerid);
-  const isPanDoc      = (d: any) => PAN_DOCTYPES.has(d.doctype)       || PAN_ISSUERS.has(d.issuerid);
-  const isPassportDoc = (d: any) => PASSPORT_DOCTYPES.has(d.doctype)  || PASSPORT_ISSUERS.has(d.issuerid);
-  const isVoterDoc    = (d: any) => VOTERID_DOCTYPES.has(d.doctype)   || VOTERID_ISSUERS.has(d.issuerid);
-  const isDlDoc       = (d: any) => DL_DOCTYPES.has(d.doctype)        || DL_ISSUERS.has(d.issuerid);
+  const isAadhaarDoc  = (d: any) => AADHAAR_DOCTYPES.has(d.doctype || d.type)  || AADHAAR_ISSUERS.has(d.issuerid);
+  const isPanDoc      = (d: any) => PAN_DOCTYPES.has(d.doctype || d.type)       || PAN_ISSUERS.has(d.issuerid);
+  const isPassportDoc = (d: any) => PASSPORT_DOCTYPES.has(d.doctype || d.type)  || PASSPORT_ISSUERS.has(d.issuerid);
+  const isVoterDoc    = (d: any) => VOTERID_DOCTYPES.has(d.doctype || d.type)   || VOTERID_ISSUERS.has(d.issuerid);
+  const isDlDoc       = (d: any) => DL_DOCTYPES.has(d.doctype || d.type) || DL_ISSUERS.has(d.issuerid) ||
+    ['in.gov.transport', 'in.gov.morth', 'in.gov.rto'].some(p => (d.issuerid || '').startsWith(p));
 
   const aadhaarDoc =
     docs.find((d: any) => d.doctype === 'EAADHAAR') ||

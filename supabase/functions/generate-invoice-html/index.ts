@@ -104,7 +104,7 @@ function buildHtml(
     else settlementLabel = settlementTime;
   }
 
-  const payinRef = payment.gateway_transaction_id || "&#8212;";
+  const payinRef = payment.gateway_transaction_id || payment.payment_reference || "&#8212;";
   const payinDate = fmtDate(payment.completed_at || payment.created_at);
   const payinGateway = gatewayName || "&#8212;";
 

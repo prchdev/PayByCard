@@ -85,6 +85,9 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   const coPan   = d._company_pan   || "";
   const coCin   = d._company_cin   || "";
 
+  const invYear = d.invoice_year || new Date().getFullYear();
+  const invoiceNumDisplay = d.invoice_number ? `PAY-${invYear}-${d.invoice_number}` : null;
+
   let y = 50; // current Y from top of page
 
   // ── HEADER: company info (left) + INVOICE title (right) ───────────────────
@@ -101,10 +104,10 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
 
   // Meta rows on right
   let ry = 50 + invTitleSz + 4;
-  const metaRows: [string, string][] = [
-    ["Invoice No.", d.payment_reference || "—"],
-    ["Invoice Date", d.date || "—"],
-  ];
+  const metaRows: [string, string][] = [];
+  if (invoiceNumDisplay) metaRows.push(["Invoice No.", invoiceNumDisplay]);
+  metaRows.push(["Order No.", d.payment_reference || "—"]);
+  metaRows.push(["Invoice Date", d.date || "—"]);
   if (d.completed_at) metaRows.push(["Completed", fmtDate(d.completed_at)]);
   for (const [lbl, val] of metaRows) {
     T(lbl, RX - 220, ry + 8, 8, reg, GRAY);
@@ -234,19 +237,20 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   T("Amount (INR)", RX - TW("Amount (INR)", 8, bld) - 8, y + 13, 8, bld, GRAY);
   y += 18;
 
-  // Description line 1: transfer + sub-line with beneficiary
-  const tranDesc = `Payment Transfer - ${d.category_name || "Service"}`;
+  // Description line 1: Platform Fees + sub-lines for beneficiary and transfer amount
+  const tranDesc = `Platform Fees - ${d.category_name || "Service"}`;
   const tranSub  = `To: ${d.receiver_name || "—"} · ${trunc(d.receiver_account || "", 16)} · ${d.receiver_ifsc || ""}`;
-  const tranVal  = `Rs. ${fmtAmt(baseAmt)}`;
-  R(ML, y, CW, 24, BGFAINT);
-  L(ML, y + 24, RX, y + 24, 0.5, LGRAY);
+  const tranAmtLine = `Amount: Rs. ${fmtAmt(baseAmt)}`;
+  const tranVal  = `Rs. ${fmtAmt(charges)}`;
+  R(ML, y, CW, 32, BGFAINT);
+  L(ML, y + 32, RX, y + 32, 0.5, LGRAY);
   T(trunc(tranDesc, 55), ML + 8, y + 12, 9, reg, DARK);
   T(trunc(tranSub, 65), ML + 8, y + 21, 7.5, reg, GRAY);
+  T(trunc(tranAmtLine, 45), ML + 8, y + 29, 7.5, reg, GRAY);
   T(tranVal, RX - TW(tranVal, 9) - 8, y + 12, 9, reg, GRAY);
-  y += 24;
+  y += 32;
 
   const simpleRows = [
-    ["Service Charges", `Rs. ${fmtAmt(charges)}`],
     ["CGST (9%)", `Rs. ${fmtAmt(cgst)}`],
     ["SGST (9%)", `Rs. ${fmtAmt(sgst)}`],
   ];
@@ -259,7 +263,8 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   }
 
   // Total row
-  const totalStr = `Rs. ${fmtAmt(total)}`;
+  const totalCharged = charges + gst;
+  const totalStr = `Rs. ${fmtAmt(totalCharged)}`;
   R(ML, y, CW, 22, TOT_BG);
   T("TOTAL CHARGED", ML + 8, y + 16, 11, bld, WHITE);
   T(totalStr, RX - TW(totalStr, 13, bld) - 8, y + 16, 13, bld, WHITE);
@@ -408,6 +413,8 @@ Deno.serve(async (req: Request) => {
       _company_cin:     co?.cin             || "U62099MH2025PTC462923",
       // Invoice meta
       payment_reference: payment.payment_reference,
+      invoice_number:    payment.invoice_number ?? null,
+      invoice_year:      new Date(payment.completed_at || payment.created_at).getFullYear(),
       date:              fmtDate(payment.created_at),
       completed_at:      payment.completed_at,
       // Sender

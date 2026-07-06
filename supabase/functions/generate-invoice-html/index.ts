@@ -73,8 +73,12 @@ function buildHtml(
   const gst = parseFloat(String(payment.gst || 0));
   const cgst = gst / 2;
   const sgst = gst / 2;
-  const total = parseFloat(String(payment.total_amount || 0));
+  const totalCharged = charges + cgst + sgst;
   const businessKycVerified = bizKyc?.status === "verified";
+
+  // Invoice number in PAY-YEAR-N format (only for completed/refunded)
+  const invYear = new Date(payment.completed_at || payment.created_at).getFullYear();
+  const invoiceNumDisplay = payment.invoice_number ? `PAY-${invYear}-${payment.invoice_number}` : null;
   const categoryName = payment.category_details?.category_name || payment.selected_payment_option?.card_type || "—";
   const settlementTime = payment.category_details?.settlement_time || null;
   const gatewayName = payment.payment_gateway_settings?.gateway_name || null;
@@ -147,8 +151,12 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
       <td style="vertical-align:top;text-align:right;">
         <div style="font-size:26px;font-weight:800;color:#0f172a;letter-spacing:-1px;margin-bottom:8px;">INVOICE</div>
         <table style="border-collapse:collapse;margin-left:auto;font-size:11.5px;">
-          <tr>
+          ${invoiceNumDisplay ? `<tr>
             <td style="padding:3px 0;color:#64748b;padding-right:12px;">Invoice No.</td>
+            <td style="padding:3px 0;font-weight:700;font-family:Courier New,monospace;">${invoiceNumDisplay}</td>
+          </tr>` : ""}
+          <tr>
+            <td style="padding:3px 0;color:#64748b;padding-right:12px;">Order No.</td>
             <td style="padding:3px 0;font-weight:700;font-family:Courier New,monospace;">${payment.payment_reference || "&#8212;"}</td>
           </tr>
           <tr>
@@ -239,14 +247,11 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
       <tbody>
         <tr>
           <td style="padding:7px 8px;font-size:12px;border-bottom:1px solid #e2e8f0;">
-            Payment Transfer &#8212; ${categoryName} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
-            <span style="font-size:10.5px;color:#64748b;">To: ${bene.full_name || "&#8212;"} &middot; ${bene.bank_account || ""} &middot; ${bene.ifsc || ""}</span>
+            Platform Fees &#8212; ${categoryName} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
+            <span style="font-size:10.5px;color:#64748b;">To: ${bene.full_name || "&#8212;"} &middot; ${bene.bank_account || ""} &middot; ${bene.ifsc || ""}</span><br/>
+            <span style="font-size:10.5px;color:#64748b;">Amount: &#8377;${fmt(baseAmt)}</span>
           </td>
-          <td style="padding:7px 8px;text-align:right;font-size:12px;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(baseAmt)}</td>
-        </tr>
-        <tr>
-          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">Service Charges</td>
-          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(charges)}</td>
+          <td style="padding:7px 8px;text-align:right;font-size:12px;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(charges)}</td>
         </tr>
         <tr>
           <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">CGST (9%)</td>
@@ -258,7 +263,7 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
         </tr>
         <tr style="background:#0f172a;">
           <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#fff;">TOTAL CHARGED</td>
-          <td style="padding:10px 8px;text-align:right;font-size:16px;font-weight:800;color:#fff;">&#8377;${fmt(total)}</td>
+          <td style="padding:10px 8px;text-align:right;font-size:16px;font-weight:800;color:#fff;">&#8377;${fmt(totalCharged)}</td>
         </tr>
         ${isRefund ? `<tr style="background:#fff7ed;">
           <td style="padding:8px 8px;font-size:12px;font-weight:700;color:#9a3412;border-top:1px solid #fed7aa;">Refund Amount</td>

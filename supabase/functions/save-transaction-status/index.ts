@@ -233,7 +233,7 @@ async function sendTransactionEmails(supabase: any, payment: any, paymentStatus:
       ["Amount", formatCurrency(payment.amount)],
       ["Platform Charges", formatCurrency(payment.charges || 0)],
       ["GST on Charges", formatCurrency(payment.gst || 0)],
-      ["Total Charged", formatCurrency(payment.total_amount || payment.amount)],
+      ["Total Charged", formatCurrency(parseFloat(String(payment.charges || 0)) + parseFloat(String(payment.gst || 0)))],
       ["Status", statusLabel],
     ];
 
@@ -257,7 +257,11 @@ async function sendTransactionEmails(supabase: any, payment: any, paymentStatus:
       invoiceBase64 = await generateInvoicePdf(payment.id, isRefund ? "refund" : "settlement");
     }
 
-    const invoiceFilename = `invoice-${payment.payment_reference || "txn"}.html`;
+    const invYear = new Date(payment.completed_at || payment.created_at || new Date()).getFullYear();
+    const invoiceRef = payment.invoice_number
+      ? `PAY-${invYear}-${payment.invoice_number}`
+      : (payment.payment_reference || "txn");
+    const invoiceFilename = `invoice-${invoiceRef}.html`;
 
     // Sender email
     if (senderEmail && statusDisplay?.senderSubject) {

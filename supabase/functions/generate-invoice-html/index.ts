@@ -112,6 +112,15 @@ function buildHtml(
   const payoutDate = payout?.completed_at ? fmtDate(payout.completed_at) : (payout?.payout_date ? payout.payout_date : "&#8212;");
   const payoutRef = payout?.utr_number || payout?.payout_reference_number || "&#8212;";
 
+  const secondRowLabel = isRefund ? "Refund Transaction" : "PayOut Transaction";
+  const secondRowMode = isRefund ? (gatewayName || "&#8212;") : payoutMode;
+  const secondRowDate = isRefund
+    ? (payout?.completed_at ? fmtDate(payout.completed_at) : "&#8212;")
+    : payoutDate;
+  const secondRowRef = isRefund
+    ? (payout?.utr_number || payout?.payout_reference_number || "&#8212;")
+    : payoutRef;
+
   const additionalSection = `
   <div style="margin-bottom:24px;">
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Additional Details</div>
@@ -132,10 +141,10 @@ function buildHtml(
           <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${payinRef}</td>
         </tr>
         <tr>
-          <td style="padding:7px 10px;font-size:11.5px;font-weight:600;">PayOut Transaction</td>
-          <td style="padding:7px 10px;font-size:11.5px;">${payoutMode}</td>
-          <td style="padding:7px 10px;font-size:11.5px;">${payoutDate}</td>
-          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${payoutRef}</td>
+          <td style="padding:7px 10px;font-size:11.5px;font-weight:600;">${secondRowLabel}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${secondRowMode}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${secondRowDate}</td>
+          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${secondRowRef}</td>
         </tr>
       </tbody>
     </table>

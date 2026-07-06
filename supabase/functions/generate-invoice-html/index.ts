@@ -108,7 +108,7 @@ function buildHtml(
   const payinDate = fmtDate(payment.completed_at || payment.created_at);
   const payinGateway = gatewayName || "&#8212;";
 
-  const payoutMode = payout?.payout_mode || payment.payout_mode_snapshot || "&#8212;";
+  const payoutMode = payment.payout_mode || payout?.transfer_type || "&#8212;";
   const payoutDate = payout?.completed_at ? fmtDate(payout.completed_at) : (payout?.payout_date ? payout.payout_date : "&#8212;");
   const payoutRef = payout?.utr_number || payout?.payout_reference_number || "&#8212;";
 
@@ -359,7 +359,7 @@ Deno.serve(async (req: Request) => {
       supabase.from("kyc_pan_verification").select("pan_number").eq("user_id", userId).eq("status", "verified").maybeSingle(),
       supabase.from("kyc_business_info").select("business_name, business_pan, gst_number, business_address, status").eq("user_id", userId).maybeSingle(),
       supabase.from("kyc_address_proof").select("address, city, state, pincode").eq("user_id", userId).eq("status", "verified").maybeSingle(),
-      supabase.from("payouts").select("status, payout_mode, payout_reference, utr_number, completed_at, payout_date, payout_reference_number, payout_confirmed_amount").eq("payment_id", payment_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("payouts").select("status, transfer_type, payout_reference, utr_number, completed_at, payout_date, payout_reference_number, payout_confirmed_amount").eq("payment_id", payment_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       beneficiaryId ? supabase.from("beneficiaries").select("pan_number").eq("id", beneficiaryId).maybeSingle() : Promise.resolve({ data: null }),
       supabase.from("master_settings").select("company_name, address, cin, gst_number, pan, company_logo_url, website_url, support_email, phone_number").limit(1).maybeSingle(),
     ]);

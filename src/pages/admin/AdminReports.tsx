@@ -70,6 +70,7 @@ interface TxRecord {
   company_address: string | null;
   receiver_pan: string | null;
   gateway_settlement_status?: string | null;
+  invoice_number?: number | null;
 }
 
 const STATUS_OPTIONS = [
@@ -282,7 +283,9 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
   const gst = parseFloat(r.gst || '0');
   const cgst = gst / 2;
   const sgst = gst / 2;
-  const total = parseFloat(r.total_amount || '0');
+  const totalCharged = charges + gst;
+  const invYear = new Date(r.completed_at || r.created_at).getFullYear();
+  const invoiceNumDisplay = r.invoice_number ? `PAY-${invYear}-${r.invoice_number}` : null;
   const logoHtml = co.company_logo_url
     ? `<img src="${co.company_logo_url}" alt="${co.company_name}" style="height:44px;object-fit:contain;margin-bottom:4px;" />`
     : `<span style="font-size:20px;font-weight:800;color:#1e293b;letter-spacing:-0.5px;">${co.company_name}</span>`;
@@ -316,8 +319,12 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
       <td style="vertical-align:top;text-align:right;">
         <div style="font-size:26px;font-weight:800;color:#0f172a;letter-spacing:-1px;margin-bottom:8px;">INVOICE</div>
         <table style="border-collapse:collapse;margin-left:auto;font-size:11.5px;">
-          <tr>
+          ${invoiceNumDisplay ? `<tr>
             <td style="padding:3px 0;color:#64748b;padding-right:12px;">Invoice No.</td>
+            <td style="padding:3px 0;font-weight:700;font-family:Courier New,monospace;">${invoiceNumDisplay}</td>
+          </tr>` : ''}
+          <tr>
+            <td style="padding:3px 0;color:#64748b;padding-right:12px;">Order No.</td>
             <td style="padding:3px 0;font-weight:700;font-family:Courier New,monospace;">${r.payment_reference}</td>
           </tr>
           <tr>
@@ -416,14 +423,11 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
       <tbody>
         <tr>
           <td style="padding:7px 8px;font-size:12px;border-bottom:1px solid #e2e8f0;">
-            Payment Transfer — ${r.category_details?.category_name || 'Service'} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
-            <span style="font-size:10.5px;color:#64748b;">To: ${bene.full_name || '—'} · ${bene.bank_account || ''} · ${bene.ifsc || ''}</span>
+            Platform Fees &#8212; ${r.category_details?.category_name || 'Service'} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
+            <span style="font-size:10.5px;color:#64748b;">To: ${bene.full_name || '—'} · ${bene.bank_account || ''} · ${bene.ifsc || ''}</span><br/>
+            <span style="font-size:10.5px;color:#64748b;">Amount: ₹${fmt(baseAmt)}</span>
           </td>
-          <td style="padding:7px 8px;text-align:right;font-size:12px;border-bottom:1px solid #e2e8f0;">₹${fmt(baseAmt)}</td>
-        </tr>
-        <tr>
-          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">Service Charges</td>
-          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">₹${fmt(charges)}</td>
+          <td style="padding:7px 8px;text-align:right;font-size:12px;border-bottom:1px solid #e2e8f0;">₹${fmt(charges)}</td>
         </tr>
         <tr>
           <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">CGST (9%)</td>
@@ -435,7 +439,7 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
         </tr>
         <tr style="background:#0f172a;">
           <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#fff;">TOTAL CHARGED</td>
-          <td style="padding:10px 8px;text-align:right;font-size:16px;font-weight:800;color:#fff;">₹${fmt(total)}</td>
+          <td style="padding:10px 8px;text-align:right;font-size:16px;font-weight:800;color:#fff;">₹${fmt(totalCharged)}</td>
         </tr>
       </tbody>
     </table>

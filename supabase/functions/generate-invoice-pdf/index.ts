@@ -98,9 +98,9 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   y += 12;
   if (coPhone) { T(coPhone, ML, y + 9, 8, reg, GRAY); y += 12; }
 
-  // INVOICE on right
+  // TAX INVOICE on right
   const invTitleSz = 22;
-  T("INVOICE", RX - TW("INVOICE", invTitleSz, bld), 50 + invTitleSz - 2, invTitleSz, bld);
+  T("TAX INVOICE", RX - TW("TAX INVOICE", invTitleSz, bld), 50 + invTitleSz - 2, invTitleSz, bld);
 
   // Meta rows on right
   let ry = 50 + invTitleSz + 4;

@@ -317,7 +317,7 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
         </div>
       </td>
       <td style="vertical-align:top;text-align:right;">
-        <div style="font-size:26px;font-weight:800;color:#0f172a;letter-spacing:-1px;margin-bottom:8px;">INVOICE</div>
+        <div style="font-size:26px;font-weight:800;color:#0f172a;letter-spacing:-1px;margin-bottom:8px;">TAX INVOICE</div>
         <table style="border-collapse:collapse;margin-left:auto;font-size:11.5px;">
           ${invoiceNumDisplay ? `<tr>
             <td style="padding:3px 0;color:#64748b;padding-right:12px;">Invoice No.</td>

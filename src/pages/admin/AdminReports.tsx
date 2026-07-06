@@ -399,7 +399,7 @@ ${r.gateway_environment ? row('Environment', r.gateway_environment.charAt(0).toU
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Beneficiary Details</div>
         <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
           ${row('Name', bene.full_name || '—', false, true)}
-          ${r.receiver_pan ? row('PAN Number', r.receiver_pan, true) : ''}
+          ${row('PAN Number', r.receiver_pan || '—', true)}
           ${row('Bank', bene.bank_name || '—')}
           ${row('Account No.', bene.bank_account || '—', true)}
           ${row('IFSC Code', bene.ifsc || '—', true)}

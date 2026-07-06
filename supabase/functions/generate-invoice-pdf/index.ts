@@ -186,8 +186,8 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
 
   const bnRows: [string, string, boolean][] = [
     ["Name", trunc(d.receiver_name || "—", 22), true],
+    ["PAN Number", d.receiver_pan || "—", false],
   ];
-  if (d.receiver_pan) bnRows.push(["PAN Number", d.receiver_pan, false]);
   bnRows.push(["Bank", trunc(d.receiver_bank || "—", 22), false]);
   bnRows.push(["Account No.", trunc(d.receiver_account || "—", 20), false]);
   bnRows.push(["IFSC Code", trunc(d.receiver_ifsc || "—", 16), false]);
@@ -360,13 +360,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const [userRes, panRes, bizRes, addrRes, payoutRes, beneRes, companyRes] = await Promise.all([
+    const [userRes, panRes, bizRes, addrRes, payoutRes, beneRes, merchantRes, companyRes] = await Promise.all([
       supabase.from("users").select("first_name, last_name, middle_name, email, mobile_number").eq("id", payment.user_id).maybeSingle(),
       supabase.from("kyc_pan_verification").select("pan_number").eq("user_id", payment.user_id).eq("status", "verified").maybeSingle(),
       supabase.from("kyc_business_info").select("company_name, company_pan, gst_number, address, status").eq("user_id", payment.user_id).eq("status", "approved").maybeSingle(),
       supabase.from("kyc_address_proof").select("address, city, state, pincode").eq("user_id", payment.user_id).eq("status", "verified").maybeSingle(),
       supabase.from("payouts").select("status, payout_reference, utr_number, completed_at, payout_date, payout_reference_number, payout_confirmed_amount").eq("payment_id", payment.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       payment.beneficiary_id ? supabase.from("beneficiaries").select("pan_number").eq("id", payment.beneficiary_id).maybeSingle() : Promise.resolve({ data: null }),
+      supabase.from("merchant_onboarding").select("pan_number").eq("payment_id", payment.id).neq("pan_number", "").limit(1).maybeSingle(),
       supabase.from("master_settings").select("company_name, address, cin, gst_number, pan, company_logo_url, website_url, support_email, phone_number").limit(1).maybeSingle(),
     ]);
 
@@ -430,7 +431,7 @@ Deno.serve(async (req: Request) => {
       company_address:     biz?.address       || null,
       // Beneficiary
       receiver_name:    bene.full_name    || "—",
-      receiver_pan:     beneRes.data?.pan_number || null,
+      receiver_pan:     beneRes.data?.pan_number || merchantRes.data?.pan_number || null,
       receiver_bank:    bene.bank_name    || "—",
       receiver_account: bene.bank_account || "—",
       receiver_ifsc:    bene.ifsc         || "—",

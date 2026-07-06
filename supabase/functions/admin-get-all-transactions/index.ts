@@ -124,6 +124,7 @@ Deno.serve(async (req: Request) => {
       addrResult,
       bizResult,
       beneResult,
+      merchantResult,
     ] = await Promise.all([
       // Payouts (always needed)
       supabase
@@ -163,6 +164,11 @@ Deno.serve(async (req: Request) => {
       // Beneficiary PAN — opt-in only
       include_kyc && beneficiaryIds.length > 0
         ? supabase.from("beneficiaries").select("id, pan_number").in("id", beneficiaryIds)
+        : Promise.resolve({ data: [] as any[] }),
+
+      // Merchant onboarding PAN — fallback when beneficiary has no PAN (opt-in only)
+      include_kyc && paymentIds.length > 0
+        ? supabase.from("merchant_onboarding").select("payment_id, pan_number").in("payment_id", paymentIds).neq("pan_number", "")
         : Promise.resolve({ data: [] as any[] }),
     ]);
 
@@ -215,6 +221,11 @@ Deno.serve(async (req: Request) => {
       if (r.pan_number) benePanMap[r.id] = r.pan_number;
     }
 
+    const merchantPanMap: Record<string, string> = {};
+    for (const r of (merchantResult.data || [])) {
+      if (r.payment_id && r.pan_number) merchantPanMap[r.payment_id] = r.pan_number;
+    }
+
     // Enrich payments
     const enriched = payments.map((payment: any) => {
       const payout = payoutMap[payment.id] ?? null;
@@ -258,7 +269,7 @@ Deno.serve(async (req: Request) => {
         company_pan: biz?.business_pan ?? null,
         company_gst: biz?.gst_number ?? null,
         company_address: biz?.business_address ?? null,
-        receiver_pan: payment.beneficiary_id ? (benePanMap[payment.beneficiary_id] ?? null) : null,
+        receiver_pan: (payment.beneficiary_id ? benePanMap[payment.beneficiary_id] : null) ?? merchantPanMap[payment.id] ?? null,
       };
     });
 

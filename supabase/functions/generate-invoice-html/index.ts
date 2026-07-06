@@ -254,7 +254,7 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Beneficiary Details</div>
         <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
           ${row("Name", bene.full_name || "&#8212;", false, true)}
-          ${receiverPan ? row("PAN Number", receiverPan, true) : ""}
+          ${row("PAN Number", receiverPan || "&#8212;", true)}
           ${row("Bank", bene.bank_name || "&#8212;")}
           ${row("Account No.", bene.bank_account || "&#8212;", true)}
           ${row("IFSC Code", bene.ifsc || "&#8212;", true)}
@@ -363,13 +363,14 @@ Deno.serve(async (req: Request) => {
     const userId = payment.user_id;
     const beneficiaryId = payment.beneficiary_id;
 
-    const [userRes, panRes, bizRes, addrRes, payoutRes, beneRes, companyRes] = await Promise.all([
+    const [userRes, panRes, bizRes, addrRes, payoutRes, beneRes, merchantRes, companyRes] = await Promise.all([
       supabase.from("users").select("first_name, last_name, email, mobile_number").eq("id", userId).maybeSingle(),
       supabase.from("kyc_pan_verification").select("pan_number").eq("user_id", userId).eq("status", "verified").maybeSingle(),
       supabase.from("kyc_business_info").select("business_name, business_pan, gst_number, business_address, status").eq("user_id", userId).maybeSingle(),
       supabase.from("kyc_address_proof").select("address, city, state, pincode").eq("user_id", userId).eq("status", "verified").maybeSingle(),
       supabase.from("payouts").select("status, transfer_type, payout_reference, utr_number, completed_at, payout_date, payout_reference_number, payout_confirmed_amount").eq("payment_id", payment_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       beneficiaryId ? supabase.from("beneficiaries").select("pan_number").eq("id", beneficiaryId).maybeSingle() : Promise.resolve({ data: null }),
+      supabase.from("merchant_onboarding").select("pan_number").eq("payment_id", payment_id).neq("pan_number", "").limit(1).maybeSingle(),
       supabase.from("master_settings").select("company_name, address, cin, gst_number, pan, company_logo_url, website_url, support_email, phone_number").limit(1).maybeSingle(),
     ]);
 
@@ -381,7 +382,7 @@ Deno.serve(async (req: Request) => {
       ? [addrData.address, addrData.city, addrData.state, addrData.pincode].filter(Boolean).join(", ")
       : null;
     const payout = payoutRes.data;
-    const receiverPan: string | null = beneRes.data?.pan_number ?? null;
+    const receiverPan: string | null = beneRes.data?.pan_number || merchantRes.data?.pan_number || null;
 
     const co = {
       company_name: "PayByCard Technologies Private Limited",

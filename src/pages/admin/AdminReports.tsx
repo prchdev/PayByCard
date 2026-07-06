@@ -527,7 +527,11 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
   const charges = parseFloat(r.charges || '0');
   const gstTotal = parseFloat(r.gst || '0');
   const halfGst = parseFloat((gstTotal / 2).toFixed(2));
-  const total = parseFloat(r.total_amount || '0');
+  const totalCharged = parseFloat((charges + gstTotal).toFixed(2));
+  const baseAmt = parseFloat(r.amount || '0');
+
+  const invYear = new Date(r.completed_at || r.created_at).getFullYear();
+  const invoiceNo = r.invoice_number ? `PAY-${invYear}-${r.invoice_number}` : r.payment_reference;
 
   const supplierGstin = (co.gst_number || '').toUpperCase().trim();
   // Use buyer's company GSTIN for B2B when business KYC verified
@@ -580,11 +584,12 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
     { Nm: 'BeneficiaryBank', Val: bene.bank_name || '' },
     { Nm: 'BeneficiaryAccount', Val: bene.bank_account || '' },
     { Nm: 'IFSC', Val: bene.ifsc || '' },
-    { Nm: 'BaseTransferAmount', Val: parseFloat(r.amount || '0').toFixed(2) },
-    { Nm: 'ServiceCharges', Val: charges.toFixed(2) },
+    { Nm: 'TransferAmount', Val: baseAmt.toFixed(2) },
+    { Nm: 'PlatformFees', Val: charges.toFixed(2) },
     { Nm: 'Gateway', Val: r.gateway_name || '' },
     { Nm: 'PaymentOption', Val: r.selected_payment_option?.card_type || r.card_type || '' },
     { Nm: 'Category', Val: r.category_details?.category_name || '' },
+    { Nm: 'OrderNo', Val: r.payment_reference },
   ];
   if (r.sender_pan) attribs.push({ Nm: 'PayerPAN', Val: r.sender_pan });
   if (r.receiver_pan) attribs.push({ Nm: 'BeneficiaryPAN', Val: r.receiver_pan });
@@ -606,7 +611,7 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
     },
     DocDtls: {
       Typ: docType,
-      No: r.payment_reference,
+      No: invoiceNo,
       Dt: docDate,
     },
     SellerDtls: {
@@ -641,7 +646,7 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
     ItemList: [
       {
         SlNo: '1',
-        PrdDesc: `Payment Transfer Service - ${r.category_details?.category_name || 'Fund Transfer'}`,
+        PrdDesc: `Platform Fees - ${r.category_details?.category_name || 'Fund Transfer'}`,
         IsServc: 'Y',
         HsnCd: '998399',
         Barcde: null,
@@ -665,7 +670,7 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
         StateCesNonAdvlAmt: 0,
         OthChrg: 0,
         TotItemVal: itemTotal,
-        OrdLineRef: r.payment_reference,
+        OrdLineRef: invoiceNo,
         OrgCntry: null,
         PrdSlNo: null,
         BchDtls: null,
@@ -682,7 +687,7 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
       Discount: 0,
       OthChrg: 0,
       RndOffAmt: 0,
-      TotInvVal: parseFloat(total.toFixed(2)),
+      TotInvVal: totalCharged,
       TotInvValFc: 0,
     },
     PayDtls: {
@@ -695,14 +700,14 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
       CrTrn: '',
       DirDr: '',
       CrDay: 0,
-      PaidAmt: isRefund ? 0 : parseFloat(total.toFixed(2)),
+      PaidAmt: isRefund ? 0 : totalCharged,
       PaymtDue: 0,
     },
     RefDtls: isRefund
       ? {
-          InvRm: `Refund for transaction ${r.payment_reference}`,
+          InvRm: `Refund for transaction ${invoiceNo}`,
           DocPerdDtls: null,
-          PrecDocDtls: [{ InvNo: r.payment_reference, InvDt: docDate, OthRefNo: r.gateway_transaction_id || '' }],
+          PrecDocDtls: [{ InvNo: invoiceNo, InvDt: docDate, OthRefNo: r.gateway_transaction_id || '' }],
           ContrDtls: null,
         }
       : null,
@@ -710,7 +715,7 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
       {
         Url: co.website_url || 'https://paybycard.in',
         Docs: docRefs,
-        Info: amountInWords(parseFloat(total.toFixed(2))),
+        Info: amountInWords(totalCharged),
       },
     ],
     EwbDtls: null,

@@ -104,21 +104,42 @@ function buildHtml(
     else settlementLabel = settlementTime;
   }
 
-  const payoutSection = payout ? `
+  const payinRef = payment.gateway_transaction_id || "—";
+  const payinDate = fmtDate(payment.completed_at || payment.created_at);
+  const payinGateway = gatewayName || "—";
+
+  const payoutMode = payout?.payout_mode || payment.payout_mode_snapshot || "—";
+  const payoutDate = payout?.completed_at ? fmtDate(payout.completed_at) : (payout?.payout_date ? payout.payout_date : "—");
+  const payoutRef = payout?.utr_number || payout?.payout_reference_number || "—";
+
+  const additionalSection = `
   <div style="margin-bottom:24px;">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Payout / Settlement Details</div>
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Additional Details</div>
     <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
-      ${row("Payout Status", payout.status || "—")}
-      ${payment.gateway_transaction_id ? row("Gateway Transaction Ref", payment.gateway_transaction_id, true) : ""}
-      ${payout.completed_at && !isRefund ? row("Gateway Transaction Date", fmtDate(payout.completed_at)) : ""}
-      ${payout.utr_number || payout.payout_reference_number ? row("UTR / Reference", payout.utr_number || payout.payout_reference_number || "", true) : ""}
-      ${payout.payout_reference ? row("Payout Reference", payout.payout_reference, true) : ""}
-      ${payout.payout_date || (payout.completed_at && !isRefund) ? row("Payout Date", payout.payout_date || fmtDate(payout.completed_at)) : ""}
-      ${isRefund && payout.completed_at ? row("Refund Date & Time", fmtDate(payout.completed_at)) : ""}
-      ${payout.payout_confirmed_amount != null ? row("Confirmed Amount", "&#8377;" + fmt(payout.payout_confirmed_amount), false, true) : ""}
-      ${isRefund ? row("Refund Amount", "&#8377;" + fmt(baseAmt), false, true) : ""}
+      <thead>
+        <tr style="background:#e2e8f0;">
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;width:30%;">Type</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;width:20%;">Gateway / Mode</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;width:25%;">Date &amp; Time</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;">Reference No.</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:7px 10px;font-size:11.5px;font-weight:600;">PayIn Transaction</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${payinGateway}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${payinDate}</td>
+          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${payinRef}</td>
+        </tr>
+        <tr>
+          <td style="padding:7px 10px;font-size:11.5px;font-weight:600;">PayOut Transaction</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${payoutMode}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${payoutDate}</td>
+          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${payoutRef}</td>
+        </tr>
+      </tbody>
     </table>
-  </div>` : "";
+  </div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -273,7 +294,7 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
     </table>
   </div>
 
-  ${payoutSection}
+  ${additionalSection}
 
   <!-- Footer -->
   <div style="border-top:1px solid #e2e8f0;padding-top:16px;margin-top:8px;display:table;width:100%;">
@@ -338,7 +359,7 @@ Deno.serve(async (req: Request) => {
       supabase.from("kyc_pan_verification").select("pan_number").eq("user_id", userId).eq("status", "verified").maybeSingle(),
       supabase.from("kyc_business_info").select("business_name, business_pan, gst_number, business_address, status").eq("user_id", userId).maybeSingle(),
       supabase.from("kyc_address_proof").select("address, city, state, pincode").eq("user_id", userId).eq("status", "verified").maybeSingle(),
-      supabase.from("payouts").select("status, payout_reference, utr_number, completed_at, payout_date, payout_reference_number, payout_confirmed_amount").eq("payment_id", payment_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("payouts").select("status, payout_mode, payout_reference, utr_number, completed_at, payout_date, payout_reference_number, payout_confirmed_amount").eq("payment_id", payment_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       beneficiaryId ? supabase.from("beneficiaries").select("pan_number").eq("id", beneficiaryId).maybeSingle() : Promise.resolve({ data: null }),
       supabase.from("master_settings").select("company_name, address, cin, gst_number, pan, company_logo_url, website_url, support_email, phone_number").limit(1).maybeSingle(),
     ]);

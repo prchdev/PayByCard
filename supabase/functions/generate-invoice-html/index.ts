@@ -104,13 +104,13 @@ function buildHtml(
     else settlementLabel = settlementTime;
   }
 
-  const payinRef = payment.gateway_transaction_id || "—";
+  const payinRef = payment.gateway_transaction_id || "&#8212;";
   const payinDate = fmtDate(payment.completed_at || payment.created_at);
-  const payinGateway = gatewayName || "—";
+  const payinGateway = gatewayName || "&#8212;";
 
-  const payoutMode = payout?.payout_mode || payment.payout_mode_snapshot || "—";
-  const payoutDate = payout?.completed_at ? fmtDate(payout.completed_at) : (payout?.payout_date ? payout.payout_date : "—");
-  const payoutRef = payout?.utr_number || payout?.payout_reference_number || "—";
+  const payoutMode = payout?.payout_mode || payment.payout_mode_snapshot || "&#8212;";
+  const payoutDate = payout?.completed_at ? fmtDate(payout.completed_at) : (payout?.payout_date ? payout.payout_date : "&#8212;");
+  const payoutRef = payout?.utr_number || payout?.payout_reference_number || "&#8212;";
 
   const additionalSection = `
   <div style="margin-bottom:24px;">

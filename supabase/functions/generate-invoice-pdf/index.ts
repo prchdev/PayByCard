@@ -448,7 +448,7 @@ Deno.serve(async (req: Request) => {
       total_amount: payment.total_amount || payment.amount,
       // Payout
       payout_status:           payout?.status          || null,
-      gateway_ref:             payment.gateway_transaction_id || null,
+      gateway_ref:             payment.gateway_transaction_id || payment.payment_reference || null,
       utr_number:              payout?.utr_number || payout?.payout_reference_number || null,
       payout_reference:        payout?.payout_reference || null,
       payout_date:             payoutDate,

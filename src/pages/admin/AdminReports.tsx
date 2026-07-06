@@ -446,6 +446,35 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
   </div>
 
 
+  <!-- Additional Details -->
+  <div style="margin-bottom:24px;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Additional Details</div>
+    <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
+      <thead>
+        <tr style="background:#e2e8f0;">
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;width:30%;">Type</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;width:20%;">Gateway / Mode</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;width:25%;">Date &amp; Time</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;">Reference No.</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:7px 10px;font-size:11.5px;font-weight:600;">PayIn Transaction</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${r.gateway_name || '&#8212;'}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${fmtDate(r.completed_at || r.created_at)}</td>
+          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${r.gateway_transaction_id || r.payment_reference}</td>
+        </tr>
+        <tr>
+          <td style="padding:7px 10px;font-size:11.5px;font-weight:600;">PayOut Transaction</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${r.payout_mode ? formatPayoutMode(r.payout_mode) : '&#8212;'}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${payout?.completed_at ? fmtDate(payout.completed_at) : (payout?.payout_date ? payout.payout_date : '&#8212;')}</td>
+          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${payout?.utr_number || payout?.payout_reference_number || '&#8212;'}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
   <!-- Footer -->
   <div style="border-top:1px solid #e2e8f0;padding-top:16px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
     <div style="font-size:10.5px;color:#94a3b8;line-height:1.6;">
@@ -707,7 +736,7 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
       ? {
           InvRm: `Refund for transaction ${invoiceNo}`,
           DocPerdDtls: null,
-          PrecDocDtls: [{ InvNo: invoiceNo, InvDt: docDate, OthRefNo: r.gateway_transaction_id || '' }],
+          PrecDocDtls: [{ InvNo: invoiceNo, InvDt: docDate, OthRefNo: r.gateway_transaction_id || r.payment_reference || '' }],
           ContrDtls: null,
         }
       : null,

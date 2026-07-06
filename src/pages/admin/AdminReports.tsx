@@ -391,8 +391,7 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
             : r.category_details.settlement_time) : ''}
           ${row('Payment Option', option)}
           ${row('Gateway', r.gateway_name || '—')}
-          ${r.gateway_transaction_id ? row('Gateway Tx ID', r.gateway_transaction_id, true) : ''}
-          ${r.gateway_environment ? row('Environment', r.gateway_environment.charAt(0).toUpperCase() + r.gateway_environment.slice(1)) : ''}
+${r.gateway_environment ? row('Environment', r.gateway_environment.charAt(0).toUpperCase() + r.gateway_environment.slice(1)) : ''}
         </table>
       </td>
       <!-- Right: Beneficiary -->

@@ -51,6 +51,7 @@ Deno.serve(async (req: Request) => {
       addressPendingRes,
       merchantKycRes,
       pendingPayoutsRes,
+      manualPaymentsRes,
       totalPaymentsRes,
       completedPaymentsRes,
       inProgressPaymentsRes,
@@ -79,11 +80,18 @@ Deno.serve(async (req: Request) => {
         .select("id", { count: "exact", head: true })
         .in("status", ["pending", "under_review"]),
 
-      // Payouts awaiting processing (pending + processing)
+      // Payouts awaiting processing (pending + processing) — existing payout records
       supabase
         .from("payouts")
-        .select("id", { count: "exact", head: true })
+        .select("id, payment_id")
         .in("status", ["pending", "processing"]),
+
+      // Manual-mode payments needing payout (no payout record created yet)
+      supabase
+        .from("payments")
+        .select("id")
+        .in("status", ["settlement_pending", "settlement_in_progress", "kyc_pending", "merchant_kyc_review"])
+        .eq("payout_mode", "manual"),
 
       // All payments ever
       supabase.from("payments").select("id", { count: "exact", head: true }),
@@ -118,6 +126,15 @@ Deno.serve(async (req: Request) => {
         .select("id", { count: "exact", head: true })
         .in("status", ["In Progress", "in_progress"]),
     ]);
+
+    // Pending payouts = existing payout records + manual-mode payments with no payout record yet
+    const payoutCoveredPaymentIds = new Set(
+      (pendingPayoutsRes.data || []).map((p: any) => p.payment_id).filter(Boolean)
+    );
+    const uncoveredManualPayments = (manualPaymentsRes.data || []).filter(
+      (p: any) => !payoutCoveredPaymentIds.has(p.id)
+    );
+    const pendingPayoutsCount = (pendingPayoutsRes.data || []).length + uncoveredManualPayments.length;
 
     // KYC reviews = count of distinct users with at least one section in verification_pending
     // This matches the per-user getOverallStatus() logic used on the KYC Verification page
@@ -189,7 +206,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         totalUsers: usersRes.count ?? 0,
         pendingKycReviews,
-        pendingPayouts: pendingPayoutsRes.count ?? 0,
+        pendingPayouts: pendingPayoutsCount,
         totalPayments: totalPaymentsRes.count ?? 0,
         completedPayments: completedPaymentsRes.count ?? 0,
         pendingPayments: inProgressPaymentsRes.count ?? 0,

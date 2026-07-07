@@ -987,8 +987,8 @@ async function fetchDigiLockerData(
     } catch { /* ignore */ }
   }
 
-  if (!addrParsed && dlAttemptedButFailed) {
-    throw new Error('DRIVING_LICENSE_UNAVAILABLE');
+  if (!addrParsed) {
+    throw new Error(dlAttemptedButFailed ? 'DRIVING_LICENSE_UNAVAILABLE' : 'ADDRESS_PROOF_UNAVAILABLE');
   }
 
   const addrFileKey = addrProofType === 'passport' ? 'passport'
@@ -1218,9 +1218,10 @@ Deno.serve(async (req: Request) => {
         try {
           kycData = await fetchDigiLockerData(supabase, apiKey, apiSecret, code, redirectUri, userId, codeVerifier);
         } catch (e) {
-          if ((e as Error).message === 'DRIVING_LICENSE_UNAVAILABLE') {
+          const msg = (e as Error).message;
+          if (msg === 'DRIVING_LICENSE_UNAVAILABLE' || msg === 'ADDRESS_PROOF_UNAVAILABLE') {
             return new Response(
-              JSON.stringify({ success: false, autoApproved: false, error: 'DRIVING_LICENSE_UNAVAILABLE' }),
+              JSON.stringify({ success: false, autoApproved: false, error: msg }),
               { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }

@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
 
     const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
     const MAX_URL_LEN = 2000;
-    const ADDRESS_PROOF_TYPES = ["aadhaar", "driving_license", "voter_id", "passport", "digilocker_aadhaar"];
+    const ADDRESS_PROOF_TYPES = ["aadhar", "aadhaar", "driving_license", "voter_id", "passport", "digilocker_aadhaar"];
 
     if (section === "pan") {
       if (data.pan_number && !PAN_REGEX.test(String(data.pan_number).trim().toUpperCase())) {

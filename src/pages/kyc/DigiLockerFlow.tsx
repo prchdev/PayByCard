@@ -33,7 +33,8 @@ type Step =
   | 'verifying'
   | 'success'
   | 'error'
-  | 'name_mismatch';
+  | 'name_mismatch'
+  | 'dl_unavailable';
 
 interface NameMismatch {
   registeredName: string;
@@ -450,6 +451,12 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
         });
         setStep('success');
         onSuccess({ ...data.kycData, autoApproved: true });
+      } else if (data.error === 'DRIVING_LICENSE_UNAVAILABLE') {
+        logEvent(userId, providerName, 'auto_approve_dl_unavailable', false, {
+          error_code: 'DRIVING_LICENSE_UNAVAILABLE',
+          duration_ms,
+        });
+        setStep('dl_unavailable');
       } else if ((data.nameMatches === false || data.nameMismatch) && data.nameMismatch) {
         logEvent(userId, providerName, 'auto_approve_name_mismatch', false, {
           error_code: 'NAME_MISMATCH',
@@ -502,6 +509,46 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
     sessionStorage.removeItem('digilocker_oauth_code');
     sessionStorage.removeItem('digilocker_code_verifier');
   };
+
+  // ── DL Unavailable state ─────────────────────────────────────────────────────
+  if (step === 'dl_unavailable') {
+    return (
+      <div className="bg-white border-2 border-amber-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-5 py-4 bg-amber-50 border-b border-amber-200 flex items-start gap-3">
+          <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <AlertCircle className="w-5 h-5 text-amber-600" />
+          </div>
+          <div>
+            <p className="font-semibold text-amber-800 text-sm">Driving License Unavailable</p>
+            <p className="text-xs text-amber-600 mt-0.5">
+              Your Driving License could not be retrieved from DigiLocker.
+            </p>
+          </div>
+        </div>
+
+        <div className="px-5 py-5 space-y-4">
+          <p className="text-sm text-gray-700 leading-relaxed">
+            Driver License is not available in DigiLocker. Please proceed with uploading address proof manually or connect your driving license with DigiLocker and verify again.
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => onFallback('dl_unavailable')}
+              className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              Upload Address Proof Manually
+            </button>
+            <button
+              onClick={retry}
+              className="w-full py-2.5 px-4 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl border-2 border-gray-200 transition-colors flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Connect DL to DigiLocker &amp; Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Name mismatch state ───────────────────────────────────────────────────────
   if (step === 'name_mismatch' && nameMismatch) {

@@ -947,22 +947,30 @@ async function fetchDigiLockerData(
     } catch { /* ignore */ }
   }
 
-  if (!addrParsed && dlDoc?.uri) {
-    try {
-      const xml = await fetchDocumentXml(accessToken, dlDoc.uri, 'dl');
-      const parsed = parseDlXml(xml);
-      console.log('[DL] parseDlXml result:', JSON.stringify({ name: parsed.name, dob: parsed.dob, dlNumber: parsed.dlNumber, district: parsed.district, state: parsed.state, pincode: parsed.pincode, house: parsed.house, locality: parsed.locality }));
-      // Accept if we have any address data (house may hold a full address string)
-      if (parsed.district || parsed.state || parsed.pincode || parsed.house || parsed.locality) {
-        addrProofType = 'driving_license';
-        addrIdNumber = parsed.dlNumber || extractCertIdNumber(xml, 'dl');
-        addrRawXml = xml;
-        addrParsed = parsed;
-      } else {
-        console.error('DL XML parsed but no address fields found. XML snippet:', xml.slice(0, 500));
+  let dlAttemptedButFailed = false;
+
+  if (!addrParsed && dlDoc) {
+    if (!dlDoc.uri) {
+      dlAttemptedButFailed = true;
+    } else {
+      try {
+        const xml = await fetchDocumentXml(accessToken, dlDoc.uri, 'dl');
+        const parsed = parseDlXml(xml);
+        console.log('[DL] parseDlXml result:', JSON.stringify({ name: parsed.name, dob: parsed.dob, dlNumber: parsed.dlNumber, district: parsed.district, state: parsed.state, pincode: parsed.pincode, house: parsed.house, locality: parsed.locality }));
+        // Accept if we have any address data (house may hold a full address string)
+        if (parsed.district || parsed.state || parsed.pincode || parsed.house || parsed.locality) {
+          addrProofType = 'driving_license';
+          addrIdNumber = parsed.dlNumber || extractCertIdNumber(xml, 'dl');
+          addrRawXml = xml;
+          addrParsed = parsed;
+        } else {
+          console.error('DL XML parsed but no address fields found. XML snippet:', xml.slice(0, 500));
+          dlAttemptedButFailed = true;
+        }
+      } catch (e) {
+        console.error('DL document fetch/parse error:', (e as Error).message);
+        dlAttemptedButFailed = true;
       }
-    } catch (e) {
-      console.error('DL document fetch/parse error:', (e as Error).message);
     }
   }
 
@@ -977,6 +985,10 @@ async function fetchDigiLockerData(
         addrParsed = parsed;
       }
     } catch { /* ignore */ }
+  }
+
+  if (!addrParsed && dlAttemptedButFailed) {
+    throw new Error('DRIVING_LICENSE_UNAVAILABLE');
   }
 
   const addrFileKey = addrProofType === 'passport' ? 'passport'
@@ -1203,7 +1215,17 @@ Deno.serve(async (req: Request) => {
         kycData = await fetchCashFreeDocuments(supabase, apiKey, apiSecret, publicKey, provider.environment, code, userId);
       } else {
         const redirectUri = bodyRedirectUri || savedRedirectUri || '';
-        kycData = await fetchDigiLockerData(supabase, apiKey, apiSecret, code, redirectUri, userId, codeVerifier);
+        try {
+          kycData = await fetchDigiLockerData(supabase, apiKey, apiSecret, code, redirectUri, userId, codeVerifier);
+        } catch (e) {
+          if ((e as Error).message === 'DRIVING_LICENSE_UNAVAILABLE') {
+            return new Response(
+              JSON.stringify({ success: false, autoApproved: false, error: 'DRIVING_LICENSE_UNAVAILABLE' }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          throw e;
+        }
       }
 
       if (!kycData.pan_number) {

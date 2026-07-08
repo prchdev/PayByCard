@@ -311,26 +311,12 @@ async function sendTransactionEmails(supabase: any, payment: any, paymentStatus:
 
 /**
  * Looks up a previously verified merchant_onboarding record for the same beneficiary.
- * Match priority: (1) same beneficiary_id, (2) same email or mobile from the beneficiaries table.
+ * All three must match: same beneficiary_id (bank account), same email, AND same mobile.
  */
 async function findPreviousVerifiedKyc(supabase: any, beneficiaryId: string | null, currentOnboardingId: string | null): Promise<any | null> {
   if (!beneficiaryId) return null;
 
-  const baseQuery = () =>
-    supabase
-      .from("merchant_onboarding")
-      .select("*")
-      .eq("status", "verified")
-      .order("verified_at", { ascending: false })
-      .limit(1);
-
-  // 1. Match by beneficiary_id
-  const q1 = baseQuery().eq("beneficiary_id", beneficiaryId);
-  if (currentOnboardingId) q1.neq("id", currentOnboardingId);
-  const { data: beneMatch } = await q1.maybeSingle();
-  if (beneMatch) return beneMatch;
-
-  // 2. Fallback: match by email / mobile via beneficiaries table
+  // Resolve email and mobile for this beneficiary
   const { data: bene } = await supabase
     .from("beneficiaries")
     .select("email, mobile")
@@ -339,16 +325,24 @@ async function findPreviousVerifiedKyc(supabase: any, beneficiaryId: string | nu
 
   const email = bene?.email?.trim() || null;
   const mobile = bene?.mobile?.trim() || null;
-  if (!email && !mobile) return null;
 
-  const conditions: string[] = [];
-  if (email) conditions.push(`email.eq.${email}`);
-  if (mobile) conditions.push(`mobile.eq.${mobile}`);
+  // Require all three: same bank account, same email, same mobile
+  if (!email || !mobile) return null;
 
-  const q2 = baseQuery().or(conditions.join(","));
-  if (currentOnboardingId) q2.neq("id", currentOnboardingId);
-  const { data: contactMatches } = await q2;
-  return contactMatches?.[0] ?? null;
+  let query = supabase
+    .from("merchant_onboarding")
+    .select("*")
+    .eq("status", "verified")
+    .eq("beneficiary_id", beneficiaryId)
+    .eq("email", email)
+    .eq("mobile", mobile)
+    .order("verified_at", { ascending: false })
+    .limit(1);
+
+  if (currentOnboardingId) query = query.neq("id", currentOnboardingId);
+
+  const { data: matches } = await query;
+  return matches?.[0] ?? null;
 }
 
 async function sendKycRequestEmails(supabase: any, payment: any): Promise<boolean> {

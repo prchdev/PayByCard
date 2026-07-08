@@ -66,50 +66,33 @@ Deno.serve(async (req: Request) => {
 
     // ── Auto-reuse: skip KYC form if merchant was previously verified ─────
     if (record.beneficiary_id) {
-      let previousKyc: any = null;
-
-      // 1. Match by beneficiary_id (exact same bank account)
-      const { data: beneMatch } = await supabase
-        .from("merchant_onboarding")
-        .select("*")
-        .eq("beneficiary_id", record.beneficiary_id)
-        .eq("status", "verified")
-        .neq("id", record.id)
-        .order("verified_at", { ascending: false })
-        .limit(1)
+      // Look up beneficiary's email + mobile for the AND match
+      const { data: bene } = await supabase
+        .from("beneficiaries")
+        .select("email, mobile")
+        .eq("id", record.beneficiary_id)
         .maybeSingle();
 
-      if (beneMatch) {
-        previousKyc = beneMatch;
-      } else {
-        // 2. Look up beneficiary's email + mobile, then match across verified records
-        const { data: bene } = await supabase
-          .from("beneficiaries")
-          .select("email, mobile")
-          .eq("id", record.beneficiary_id)
+      const beneEmail = bene?.email?.trim() || null;
+      const beneMobile = bene?.mobile?.trim() || null;
+
+      let previousKyc: any = null;
+
+      if (beneEmail && beneMobile) {
+        // All three must match: same bank account, same email, same mobile
+        const { data: match } = await supabase
+          .from("merchant_onboarding")
+          .select("*")
+          .eq("beneficiary_id", record.beneficiary_id)
+          .eq("email", beneEmail)
+          .eq("mobile", beneMobile)
+          .eq("status", "verified")
+          .neq("id", record.id)
+          .order("verified_at", { ascending: false })
+          .limit(1)
           .maybeSingle();
 
-        const email = bene?.email?.trim() || null;
-        const mobile = bene?.mobile?.trim() || null;
-
-        if (email || mobile) {
-          const conditions: string[] = [];
-          if (email) conditions.push(`email.eq.${email}`);
-          if (mobile) conditions.push(`mobile.eq.${mobile}`);
-
-          const { data: contactMatches } = await supabase
-            .from("merchant_onboarding")
-            .select("*")
-            .eq("status", "verified")
-            .neq("id", record.id)
-            .or(conditions.join(","))
-            .order("verified_at", { ascending: false })
-            .limit(1);
-
-          if (contactMatches && contactMatches.length > 0) {
-            previousKyc = contactMatches[0];
-          }
-        }
+        previousKyc = match ?? null;
       }
 
       if (previousKyc) {

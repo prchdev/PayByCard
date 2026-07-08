@@ -309,12 +309,121 @@ async function sendTransactionEmails(supabase: any, payment: any, paymentStatus:
   }
 }
 
-async function sendKycRequestEmails(supabase: any, payment: any) {
+/**
+ * Looks up a previously verified merchant_onboarding record for the same beneficiary.
+ * Match priority: (1) same beneficiary_id, (2) same email or mobile from the beneficiaries table.
+ */
+async function findPreviousVerifiedKyc(supabase: any, beneficiaryId: string | null, currentOnboardingId: string | null): Promise<any | null> {
+  if (!beneficiaryId) return null;
+
+  const baseQuery = () =>
+    supabase
+      .from("merchant_onboarding")
+      .select("*")
+      .eq("status", "verified")
+      .order("verified_at", { ascending: false })
+      .limit(1);
+
+  // 1. Match by beneficiary_id
+  const q1 = baseQuery().eq("beneficiary_id", beneficiaryId);
+  if (currentOnboardingId) q1.neq("id", currentOnboardingId);
+  const { data: beneMatch } = await q1.maybeSingle();
+  if (beneMatch) return beneMatch;
+
+  // 2. Fallback: match by email / mobile via beneficiaries table
+  const { data: bene } = await supabase
+    .from("beneficiaries")
+    .select("email, mobile")
+    .eq("id", beneficiaryId)
+    .maybeSingle();
+
+  const email = bene?.email?.trim() || null;
+  const mobile = bene?.mobile?.trim() || null;
+  if (!email && !mobile) return null;
+
+  const conditions: string[] = [];
+  if (email) conditions.push(`email.eq.${email}`);
+  if (mobile) conditions.push(`mobile.eq.${mobile}`);
+
+  const q2 = baseQuery().or(conditions.join(","));
+  if (currentOnboardingId) q2.neq("id", currentOnboardingId);
+  const { data: contactMatches } = await q2;
+  return contactMatches?.[0] ?? null;
+}
+
+async function sendKycRequestEmails(supabase: any, payment: any): Promise<boolean> {
   try {
     const beneficiaryDetails = payment.beneficiary_details || {};
     const receiverName = beneficiaryDetails.full_name || "Beneficiary";
     const receiverEmail = beneficiaryDetails.email;
     const receiverMobile = beneficiaryDetails.mobile || "";
+
+    // ── Auto-reuse: if beneficiary was previously verified, skip KYC flow ──
+    const previousKyc = await findPreviousVerifiedKyc(supabase, payment.beneficiary_id || null, null);
+
+    if (previousKyc) {
+      const nowIso = new Date().toISOString();
+
+      // Create a pre-verified merchant_onboarding record for this payment
+      await supabase.from("merchant_onboarding").insert({
+        payment_id: payment.id,
+        beneficiary_id: payment.beneficiary_id || null,
+        full_name: previousKyc.full_name ?? receiverName,
+        email: previousKyc.email ?? receiverEmail ?? "",
+        mobile: previousKyc.mobile ?? receiverMobile,
+        sender_name: payment.beneficiary_details?.full_name ?? "Sender",
+        category_name: payment.category_details?.category_name ?? "Payment",
+        token: crypto.randomUUID(),
+        status: "verified",
+        expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+        kyc_completed_at: nowIso,
+        verified_at: nowIso,
+        updated_at: nowIso,
+        pan_number: previousKyc.pan_number ?? null,
+        pan_photo_url: previousKyc.pan_photo_url ?? null,
+        dob: previousKyc.dob ?? null,
+        id_number: previousKyc.id_number ?? null,
+        aadhaar_front_url: previousKyc.aadhaar_front_url ?? null,
+        aadhaar_back_url: previousKyc.aadhaar_back_url ?? null,
+        address: previousKyc.address ?? null,
+        city: previousKyc.city ?? null,
+        state: previousKyc.state ?? null,
+        pincode: previousKyc.pincode ?? null,
+        bank_account_number: previousKyc.bank_account_number ?? null,
+        bank_ifsc: previousKyc.bank_ifsc ?? null,
+        bank_name: previousKyc.bank_name ?? null,
+        bank_branch: previousKyc.bank_branch ?? null,
+        kyc_method: previousKyc.kyc_method ?? null,
+        digilocker_verified: previousKyc.digilocker_verified ?? null,
+        digilocker_provider: previousKyc.digilocker_provider ?? null,
+        address_proof_type: previousKyc.address_proof_type ?? null,
+      });
+
+      // Mark beneficiary as verified merchant
+      if (payment.beneficiary_id) {
+        await supabase
+          .from("beneficiaries")
+          .update({ is_verified_merchant: true, updated_at: nowIso })
+          .eq("id", payment.beneficiary_id);
+      }
+
+      // Advance payment to settlement_pending
+      await supabase
+        .from("payments")
+        .update({ status: "settlement_pending", updated_at: nowIso })
+        .eq("id", payment.id);
+
+      await supabase.from("payment_logs").insert({
+        payment_id: payment.id,
+        status: "settlement_pending",
+        message: "Merchant KYC auto-reused from a previous verified submission. Payment queued for settlement.",
+        metadata: { previous_merchant_onboarding_id: previousKyc.id },
+      });
+
+      // Signal to the caller that KYC was auto-resolved (payment is now settlement_pending)
+      return true;
+    }
+    // ── End auto-reuse ────────────────────────────────────────────────────
 
     // Fetch sender name from users table
     const { data: senderUser } = await supabase
@@ -370,7 +479,7 @@ async function sendKycRequestEmails(supabase: any, payment: any) {
 
       if (insertErr) {
         console.error("Failed to create merchant_onboarding record:", insertErr);
-        return;
+        return false;
       }
     }
 
@@ -426,7 +535,9 @@ async function sendKycRequestEmails(supabase: any, payment: any) {
     }
   } catch (err) {
     console.error("Error sending KYC request:", err);
+    return false;
   }
+  return false;
 }
 
 async function triggerPayout(supabase: any, payment: any) {
@@ -571,7 +682,20 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(sendTransactionEmails(supabase, updatedPayment || fullPayment, resolvedStatus));
 
         if (!isEligibleForPayout) {
-          EdgeRuntime.waitUntil(sendKycRequestEmails(supabase, fullPayment));
+          // sendKycRequestEmails returns true when KYC was auto-reused from a previous
+          // verified submission (no email/SMS sent to merchant). In that case the payment
+          // has already been advanced to settlement_pending, so trigger auto-payout.
+          EdgeRuntime.waitUntil(
+            sendKycRequestEmails(supabase, fullPayment).then((autoResolved) => {
+              if (autoResolved) {
+                const payoutModeResolved = fullPayment.payment_gateway_settings?.payout_mode || "manual";
+                const splitConfiguredResolved = fullPayment.split_configured === true;
+                if (payoutModeResolved === "payout" || (payoutModeResolved === "payment_split" && !splitConfiguredResolved)) {
+                  return triggerPayout(supabase, fullPayment);
+                }
+              }
+            })
+          );
         }
       }
     }

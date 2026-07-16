@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   CheckCircle, ArrowUpRight, Users, Clock, AlertCircle, XCircle,
-  RefreshCw, History, TrendingUp, Hourglass, Hash, Landmark, ShieldCheck,
+  RefreshCw, History, TrendingUp, Hourglass, Hash, Landmark,
 } from 'lucide-react';import MobileLayout from '../../components/mobile/MobileLayout';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -83,19 +83,22 @@ export default function MobileDashboard() {
   if (!userId) return null;
 
   const quickActions = [
-    { icon: ArrowUpRight, label: 'Make Payment', path: '/mobile/make-payment', color: 'from-[#8c76f0] to-purple-600', textColor: 'text-white' },
-    { icon: Users, label: 'Add Payee', path: '/mobile/my-beneficiaries', color: 'bg-white border border-gray-200', textColor: 'text-gray-700' },
-    { icon: Landmark, label: 'Bank Accounts', path: '/mobile/my-bank-accounts', color: 'bg-white border border-gray-200', textColor: 'text-gray-700' },
-    { icon: ShieldCheck, label: 'KYC Details', path: '/mobile/kyc-verification', color: 'bg-white border border-gray-200', textColor: 'text-gray-700' },
+    { icon: Users, label: 'Add Payee', path: '/mobile/my-beneficiaries' },
+    { icon: ArrowUpRight, label: 'Make Payment', path: '/mobile/make-payment' },
+    { icon: Landmark, label: 'My Bank Account', path: '/mobile/my-bank-accounts' },
+    { icon: History, label: 'Payment History', path: '/mobile/my-transactions' },
   ];
 
   return (
     <MobileLayout userId={userId} userEmail={userEmail} onLogout={handleLogout}>
       <div className="px-4 py-4 space-y-4">
         {/* Welcome */}
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Welcome back!</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Here's your account overview</p>
+        <div className="flex items-center gap-3">
+          <img src="/PayByCard-Logo.png" alt="PayByCard" className="w-20 h-10 object-contain" />
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Welcome back!</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Here's your account overview</p>
+          </div>
         </div>
 
         {/* KYC Banner */}
@@ -182,7 +185,7 @@ export default function MobileDashboard() {
               <button
                 key={a.label}
                 onClick={() => navigate(a.path, { state: { userId, userEmail } })}
-                className={`flex items-center gap-2.5 px-3 py-3 rounded-xl font-medium text-sm active:scale-95 transition-transform ${a.color} ${a.textColor}`}
+                className="flex items-center gap-2.5 px-3 py-3 rounded-xl font-medium text-sm active:scale-95 transition-transform bg-white border border-gray-200 text-gray-700 hover:border-[#8c76f0] hover:text-[#8c76f0]"
               >
                 <a.icon className="w-4 h-4 flex-shrink-0" />
                 {a.label}
@@ -211,7 +214,7 @@ export default function MobileDashboard() {
               <Clock className="w-8 h-8 text-gray-300 mx-auto mb-2" />
               <p className="text-sm text-gray-700 font-medium">No transactions yet</p>
               <button onClick={() => navigate('/mobile/make-payment', { state: { userId, userEmail } })}
-                className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium">Make First Payment</button>
+                className="mt-3 px-4 py-2 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-lg text-xs font-medium">Make First Payment</button>
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">

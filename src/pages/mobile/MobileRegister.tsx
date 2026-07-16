@@ -249,7 +249,7 @@ export default function MobileRegister() {
               {activeModal === 'terms' ? <TermsOfService /> : <Privacy />}
             </div>
             <div className="sticky bottom-0 px-4 py-3 border-t border-gray-200 bg-white rounded-b-2xl flex justify-end">
-              <button onClick={() => setActiveModal(null)} className="px-5 py-2 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl text-sm font-medium">
+              <button onClick={() => setActiveModal(null)} className="px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl text-sm font-semibold">
                 Close
               </button>
             </div>

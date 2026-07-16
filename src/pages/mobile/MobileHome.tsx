@@ -1,10 +1,16 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, Landmark, Zap, BadgeIndianRupee, Building2, Lock,
+  Fingerprint, LogOut, AlertCircle,
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function MobileHome() {
   const navigate = useNavigate();
+  const { isRemembered, rememberedEmail, biometricUnlock, clearRememberedSession } = useAuth();
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
 
   const highlights = [
     { icon: BadgeIndianRupee, label: 'Lowest Fees' },
@@ -14,6 +20,28 @@ export default function MobileHome() {
     { icon: Landmark, label: 'Registered Company' },
     { icon: Lock, label: '100% Secure' },
   ];
+
+  const handleBiometricUnlock = async () => {
+    setUnlocking(true);
+    setUnlockError('');
+
+    // Simulate biometric prompt — in native React app this will be replaced
+    // with the actual Biometric / Phone lock API call.
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      biometricUnlock();
+      navigate('/mobile/dashboard');
+    } catch {
+      setUnlockError('Biometric authentication failed. Please try again.');
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  const handleSwitchAccount = () => {
+    clearRememberedSession();
+    navigate('/mobile/login');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-purple-50/30 to-white">
@@ -34,20 +62,58 @@ export default function MobileHome() {
             Use Credit Card to Pay Any Expenses By Transferring to Beneficiary Bank Account
           </p>
 
-          <div className="flex flex-col gap-3 pt-2">
-            <button
-              onClick={() => navigate('/mobile/register')}
-              className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-purple-500/30 active:scale-95 transition-transform"
-            >
-              Register
-            </button>
-            <button
-              onClick={() => navigate('/mobile/login')}
-              className="w-full border-2 border-[#8c76f0] text-[#8c76f0] font-semibold py-3.5 rounded-xl active:scale-95 transition-transform"
-            >
-              Login
-            </button>
-          </div>
+          {isRemembered ? (
+            <div className="flex flex-col gap-3 pt-2">
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-16 h-16 bg-gradient-to-br from-[#8c76f0] to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/30">
+                    <Fingerprint className="w-8 h-8 text-white" />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900 mt-1">Welcome Back</p>
+                  <p className="text-xs text-gray-500">{rememberedEmail}</p>
+                </div>
+
+                {unlockError && (
+                  <div className="flex items-start gap-2 bg-red-50 border border-red-300 rounded-xl p-3">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" />
+                    <p className="text-xs text-red-800">{unlockError}</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleBiometricUnlock}
+                  disabled={unlocking}
+                  className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform flex items-center justify-center gap-2"
+                >
+                  <Fingerprint className="w-5 h-5" />
+                  {unlocking ? 'Authenticating...' : 'Unlock with Biometric'}
+                </button>
+
+                <button
+                  onClick={handleSwitchAccount}
+                  className="w-full flex items-center justify-center gap-2 text-sm text-gray-600 font-medium py-2 active:scale-95 transition-transform"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Switch Account
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 pt-2">
+              <button
+                onClick={() => navigate('/mobile/register')}
+                className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-purple-500/30 active:scale-95 transition-transform"
+              >
+                Register
+              </button>
+              <button
+                onClick={() => navigate('/mobile/login')}
+                className="w-full border-2 border-[#8c76f0] text-[#8c76f0] font-semibold py-3.5 rounded-xl active:scale-95 transition-transform"
+              >
+                Login
+              </button>
+            </div>
+          )}
         </div>
       </section>
 

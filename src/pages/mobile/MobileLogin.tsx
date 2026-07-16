@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function MobileLogin() {
@@ -69,9 +69,7 @@ export default function MobileLogin() {
     <div className="min-h-screen bg-gray-50 flex flex-col px-4 pt-20 pb-8">
       <div className="flex-1 max-w-sm w-full mx-auto">
         <div className="text-center mb-6">
-          <div className="w-14 h-14 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-purple-500/30">
-            <LogIn className="w-7 h-7 text-white" />
-          </div>
+          <img src="/PayByCard-Logo.png" alt="PayByCard" className="w-32 h-16 mx-auto object-contain mb-3" />
           <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
           <p className="text-sm text-gray-500 mt-1">Sign in to your PayByCard account</p>
         </div>

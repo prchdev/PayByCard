@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, UserPlus, AlertCircle, X, FileText, Shield } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, X, FileText, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { validatePassword, PASSWORD_REQUIREMENTS } from '../../utils/passwordValidation';
 import TermsOfService from '../TermsOfService';
@@ -88,9 +88,7 @@ export default function MobileRegister() {
       <div className="min-h-screen bg-gray-50 px-4 pt-20 pb-8">
         <div className="max-w-sm w-full mx-auto">
           <div className="text-center mb-5">
-            <div className="w-14 h-14 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-purple-500/30">
-              <UserPlus className="w-7 h-7 text-white" />
-            </div>
+            <img src="/PayByCard-Logo.png" alt="PayByCard" className="w-32 h-16 mx-auto object-contain mb-3" />
             <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
             <p className="text-sm text-gray-500 mt-1">Sign up for your PayByCard account</p>
           </div>

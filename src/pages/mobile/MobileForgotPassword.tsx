@@ -129,27 +129,27 @@ export default function MobileForgotPassword() {
           onChange={(e) => handleOtpChange(e.target.value, i, setter, refs)}
           onKeyDown={(e) => handleOtpKeyDown(e, i, otp, refs)}
           onPaste={(e) => handleOtpPaste(e, setter, refs)}
-          className="w-10 h-12 text-center text-lg font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8c76f0]"
+          className="w-9 h-11 text-center text-base font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8c76f0]"
         />
       ))}
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 pt-20 pb-8">
+    <div className="min-h-screen bg-gray-50 px-4 pt-12 pb-6">
       <div className="max-w-sm w-full mx-auto">
-        <button onClick={() => navigate('/mobile/login')} className="mb-4 flex items-center text-sm text-gray-600">
+        <button onClick={() => navigate('/mobile/login')} className="mb-3 flex items-center text-sm text-gray-600">
           <ArrowLeft className="w-4 h-4 mr-1" />Back to Login
         </button>
 
-        <div className="text-center mb-5">
-          <img src="/PayByCard-Logo.png" alt="PayByCard" className="w-28 h-28 object-contain mx-auto mb-3" />
-          <h1 className="text-2xl font-bold text-gray-900">
+        <div className="text-center mb-4">
+          <img src="/PayByCard-Logo.png" alt="PayByCard" className="w-20 h-20 object-contain mx-auto mb-2" />
+          <h1 className="text-xl font-bold text-gray-900">
             {step === 'email' && 'Forgot Password'}
             {step === 'otp' && 'Verify OTPs'}
             {step === 'password' && 'Reset Password'}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 mt-0.5">
             {step === 'email' && 'Enter your email to receive codes'}
             {step === 'otp' && `Codes sent to email${maskedMobile ? ` and ${maskedMobile}` : ' and mobile'}`}
             {step === 'password' && 'Create a new password'}
@@ -169,26 +169,26 @@ export default function MobileForgotPassword() {
           </div>
         )}
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
           {step === 'email' && (
-            <form onSubmit={handleSendOTP} className="space-y-4">
+            <form onSubmit={handleSendOTP} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Email Address</label>
                 <input
                   type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] text-sm"
                   placeholder="john.doe@example.com" autoComplete="email"
                 />
               </div>
               <button type="submit" disabled={loading}
-                className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-3 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform">
+                className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform">
                 {loading ? 'Sending...' : 'Send OTPs'}
               </button>
             </form>
           )}
 
           {step === 'otp' && (
-            <form onSubmit={handleVerifyOTP} className="space-y-6">
+            <form onSubmit={handleVerifyOTP} className="space-y-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Mail className="w-4 h-4 text-[#8c76f0]" />
@@ -217,7 +217,7 @@ export default function MobileForgotPassword() {
                 </div>
               </div>
               <button type="submit" disabled={loading}
-                className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-3 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform">
+                className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform">
                 {loading ? 'Verifying...' : 'Verify OTPs'}
               </button>
               <button type="button" onClick={() => { setStep('email'); setSuccess(''); setError(''); }}
@@ -226,14 +226,14 @@ export default function MobileForgotPassword() {
           )}
 
           {step === 'password' && (
-            <form onSubmit={handleResetPassword} className="space-y-4">
+            <form onSubmit={handleResetPassword} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">New Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'} value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] text-sm pr-10"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] text-sm pr-10"
                     placeholder="••••••••"
                   />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -247,7 +247,7 @@ export default function MobileForgotPassword() {
                   <input
                     type={showConfirm ? 'text' : 'password'} value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] text-sm pr-10"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] text-sm pr-10"
                     placeholder="••••••••"
                   />
                   <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -265,7 +265,7 @@ export default function MobileForgotPassword() {
                 </ul>
               </div>
               <button type="submit" disabled={loading}
-                className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-3 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform">
+                className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform">
                 {loading ? 'Resetting...' : 'Reset Password'}
               </button>
             </form>

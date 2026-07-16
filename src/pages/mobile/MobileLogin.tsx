@@ -66,12 +66,12 @@ export default function MobileLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col px-4 pt-20 pb-8">
+    <div className="min-h-screen bg-gray-50 flex flex-col px-4 pt-12 pb-6">
       <div className="flex-1 max-w-sm w-full mx-auto">
-        <div className="text-center mb-6">
-          <img src="/PayByCard-Logo.png" alt="PayByCard" className="w-32 h-16 mx-auto object-contain mb-3" />
-          <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to your PayByCard account</p>
+        <div className="text-center mb-4">
+          <img src="/PayByCard-Logo.png" alt="PayByCard" className="w-28 h-14 mx-auto object-contain mb-2" />
+          <h1 className="text-xl font-bold text-gray-900">Welcome Back</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Sign in to your PayByCard account</p>
         </div>
 
         {error && (
@@ -93,14 +93,14 @@ export default function MobileLogin() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <form onSubmit={handleSubmit} className="space-y-3 bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">Email Address</label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value.replace(/[^A-Za-z0-9@_.\-]/g, '') })}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] focus:border-transparent text-sm"
               placeholder="amit.jha@example.com"
               maxLength={100}
               autoComplete="email"
@@ -115,7 +115,7 @@ export default function MobileLogin() {
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] focus:border-transparent text-sm pr-10"
+                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] focus:border-transparent text-sm pr-10"
                 placeholder="••••••••"
                 minLength={8}
                 maxLength={20}
@@ -136,13 +136,13 @@ export default function MobileLogin() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-3 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform"
+            className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform"
           >
             {isSubmitting ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-600 mt-4">
+        <p className="text-center text-sm text-gray-600 mt-3">
           Don't have an account?{' '}
           <button onClick={() => navigate('/mobile/register')} className="text-[#8c76f0] font-semibold">
             Sign Up

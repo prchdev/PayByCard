@@ -104,17 +104,17 @@ export default function MobileVerifyOTP() {
       onChange={(e) => handleOTPChange(e.target.value, index, setter, otp, prefix)}
       onKeyDown={(e) => handleKeyDown(e, index, otp, prefix)}
       onPaste={(e) => handlePaste(e, setter)}
-      className="w-10 h-12 text-center text-lg font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8c76f0] focus:border-transparent"
+      className="w-9 h-11 text-center text-base font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8c76f0] focus:border-transparent"
     />
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 pt-20 pb-8">
+    <div className="min-h-screen bg-gray-50 px-4 pt-12 pb-6">
       <div className="max-w-sm w-full mx-auto">
-        <div className="text-center mb-5">
-          <img src="/PayByCard-Logo.png" alt="PayByCard" className="w-28 h-28 object-contain mx-auto mb-3" />
-          <h1 className="text-2xl font-bold text-gray-900">Verify Your Account</h1>
-          <p className="text-sm text-gray-500 mt-1">
+        <div className="text-center mb-4">
+          <img src="/PayByCard-Logo.png" alt="PayByCard" className="w-20 h-20 object-contain mx-auto mb-2" />
+          <h1 className="text-xl font-bold text-gray-900">Verify Your Account</h1>
+          <p className="text-xs text-gray-500 mt-0.5">
             {fromLogin ? 'Verify your mobile and email to continue' : 'Codes sent to your mobile and email'}
           </p>
         </div>
@@ -132,7 +132,7 @@ export default function MobileVerifyOTP() {
           </div>
         )}
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-6">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-4">
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -183,7 +183,7 @@ export default function MobileVerifyOTP() {
 
           <button
             onClick={handleVerify} disabled={isVerifying}
-            className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-3 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform"
+            className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform"
           >
             {isVerifying ? 'Verifying...' : 'Verify & Continue'}
           </button>

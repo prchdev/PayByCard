@@ -156,12 +156,12 @@ export default function MobileHelpSupport() {
       onLogout={handleLogout}
       showBack={true}
     >
-      <div className="px-4 py-4">
+      <div className="px-4 py-3">
         {/* Header */}
-        <div className="mb-5">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-xl flex items-center justify-center">
-              <MessageCircle className="w-5 h-5 text-white" />
+        <div className="mb-3">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-9 h-9 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-xl flex items-center justify-center">
+              <MessageCircle className="w-4.5 h-4.5 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">Help & Support</h1>
@@ -173,15 +173,15 @@ export default function MobileHelpSupport() {
         {/* Create Ticket - Full Width Button */}
         <button
           onClick={() => setShowCreateModal(true)}
-          className="w-full flex items-center justify-center gap-2 mb-5 px-6 py-3.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-2 mb-3 px-6 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg active:scale-[0.98]"
         >
           <Plus className="w-5 h-5" />
           Create New Ticket
         </button>
 
         {/* Status Filter - Horizontal Scrollable Pills */}
-        <div className="mb-5">
-          <p className="text-xs font-medium text-gray-600 mb-2 px-1">Filter by Status</p>
+        <div className="mb-3">
+          <p className="text-xs font-medium text-gray-600 mb-1.5 px-1">Filter by Status</p>
           <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {STATUS_OPTIONS.map((status) => (
               <button
@@ -190,7 +190,7 @@ export default function MobileHelpSupport() {
                   setStatusFilter(status);
                   setCurrentPage(1);
                 }}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
                   statusFilter === status
                     ? 'bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white shadow-md'
                     : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
@@ -204,27 +204,27 @@ export default function MobileHelpSupport() {
 
         {/* Loading State */}
         {loading ? (
-          <div className="bg-white rounded-2xl border-2 border-gray-200 p-10 flex items-center justify-center">
+          <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 flex items-center justify-center">
             <div className="text-center">
-              <Loader2 className="w-10 h-10 text-[#8c76f0] animate-spin mx-auto mb-3" />
+              <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin mx-auto mb-2" />
               <p className="text-gray-600 text-sm">Loading tickets...</p>
             </div>
           </div>
         ) : tickets.length === 0 ? (
           /* Empty State */
-          <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-purple-50 to-violet-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <MessageCircle className="w-8 h-8 text-[#8c76f0]" />
+          <div className="bg-white rounded-2xl border-2 border-gray-200 p-5 text-center">
+            <div className="w-12 h-12 bg-gradient-to-r from-purple-50 to-violet-50 rounded-full flex items-center justify-center mx-auto mb-2">
+              <MessageCircle className="w-6 h-6 text-[#8c76f0]" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Tickets Found</h3>
-            <p className="text-gray-600 text-sm mb-5 max-w-xs mx-auto">
+            <h3 className="text-base font-semibold text-gray-900 mb-1.5">No Tickets Found</h3>
+            <p className="text-gray-600 text-xs mb-3 max-w-xs mx-auto">
               {statusFilter !== 'All'
                 ? `You don't have any tickets with status "${statusFilter}"`
                 : "You haven't created any support tickets yet"}
             </p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
             >
               <Plus className="w-5 h-5" />
               Create Your First Ticket
@@ -233,15 +233,15 @@ export default function MobileHelpSupport() {
         ) : (
           /* Ticket Cards */
           <>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {tickets.map((ticket) => (
                 <div
                   key={ticket.id}
                   onClick={() => handleTicketClick(ticket)}
-                  className="bg-white rounded-2xl border-2 border-gray-200 hover:border-[#8c76f0] p-4 transition-all cursor-pointer active:scale-[0.99]"
+                  className="bg-white rounded-2xl border-2 border-gray-200 hover:border-[#8c76f0] p-3 transition-all cursor-pointer active:scale-[0.99]"
                 >
                   {/* Top row: ticket number + status badge */}
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start justify-between mb-2">
                     <div>
                       <p className="text-xs text-gray-500 font-medium">Ticket #</p>
                       <p className="text-sm font-bold text-[#8c76f0]">{ticket.ticket_number}</p>
@@ -252,19 +252,19 @@ export default function MobileHelpSupport() {
                   </div>
 
                   {/* Category */}
-                  <div className="mb-2">
+                  <div className="mb-1.5">
                     <p className="text-xs text-gray-500">Category</p>
                     <p className="text-sm font-medium text-gray-900">{ticket.category}</p>
                   </div>
 
                   {/* Sub-Category */}
-                  <div className="mb-3">
+                  <div className="mb-2">
                     <p className="text-xs text-gray-500">Sub-Category</p>
                     <p className="text-sm text-gray-700 truncate">{ticket.sub_category}</p>
                   </div>
 
                   {/* Bottom row: priority + created date + view button */}
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-gray-500">Priority:</span>
@@ -296,7 +296,7 @@ export default function MobileHelpSupport() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="mt-5 flex items-center justify-between">
+              <div className="mt-3 flex items-center justify-between">
                 <p className="text-xs text-gray-600">
                   Page {currentPage} of {totalPages}
                 </p>
@@ -304,7 +304,7 @@ export default function MobileHelpSupport() {
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="flex items-center gap-1 px-3 py-2 bg-white border-2 border-gray-200 rounded-xl text-gray-700 text-sm font-medium hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white border-2 border-gray-200 rounded-xl text-gray-700 text-sm font-medium hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Prev
@@ -312,7 +312,7 @@ export default function MobileHelpSupport() {
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages}
-                    className="flex items-center gap-1 px-3 py-2 bg-white border-2 border-gray-200 rounded-xl text-gray-700 text-sm font-medium hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white border-2 border-gray-200 rounded-xl text-gray-700 text-sm font-medium hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     Next
                     <ChevronRight className="w-4 h-4" />
@@ -324,9 +324,9 @@ export default function MobileHelpSupport() {
         )}
 
         {/* Info Banner */}
-        <div className="mt-6 bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-[#8c76f0] rounded-2xl px-4 py-4 shadow-lg">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-[#8c76f0] mt-0.5 flex-shrink-0" />
+        <div className="mt-4 bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-[#8c76f0] rounded-2xl px-3 py-2.5 shadow-lg">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-[#8c76f0] mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm font-medium text-gray-900">About Support Tickets</p>
               <p className="text-xs text-gray-700 mt-1">

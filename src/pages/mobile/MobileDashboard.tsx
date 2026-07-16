@@ -91,7 +91,7 @@ export default function MobileDashboard() {
 
   return (
     <MobileLayout userId={userId} userEmail={userEmail} onLogout={handleLogout}>
-      <div className="px-4 py-4 space-y-4">
+      <div className="px-4 py-3 space-y-3">
         {/* Welcome */}
         <div>
           <h1 className="text-xl font-bold text-gray-900">Welcome back!</h1>
@@ -144,28 +144,28 @@ export default function MobileDashboard() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-2.5">
-          <div className="bg-white rounded-xl border border-gray-200 p-3">
-            <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center mb-2">
-              <TrendingUp className="w-4 h-4 text-[#8c76f0]" />
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-white rounded-xl border border-gray-200 p-2.5">
+            <div className="w-7 h-7 bg-purple-50 rounded-lg flex items-center justify-center mb-1.5">
+              <TrendingUp className="w-3.5 h-3.5 text-[#8c76f0]" />
             </div>
             {stats ? (
               <p className="text-base font-bold text-gray-900">₹{stats.amount_processed.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
             ) : <div className="h-5 w-16 bg-gray-100 rounded animate-pulse" />}
             <p className="text-[10px] text-gray-500 mt-0.5">Processed</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-3">
-            <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center mb-2">
-              <Hourglass className="w-4 h-4 text-amber-500" />
+          <div className="bg-white rounded-xl border border-gray-200 p-2.5">
+            <div className="w-7 h-7 bg-amber-50 rounded-lg flex items-center justify-center mb-1.5">
+              <Hourglass className="w-3.5 h-3.5 text-amber-500" />
             </div>
             {stats ? (
               <p className="text-base font-bold text-gray-900">₹{stats.amount_in_settlement.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
             ) : <div className="h-5 w-16 bg-gray-100 rounded animate-pulse" />}
             <p className="text-[10px] text-gray-500 mt-0.5">In Settlement</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-3">
-            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center mb-2">
-              <Hash className="w-4 h-4 text-blue-500" />
+          <div className="bg-white rounded-xl border border-gray-200 p-2.5">
+            <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center mb-1.5">
+              <Hash className="w-3.5 h-3.5 text-blue-500" />
             </div>
             {stats ? (
               <p className="text-base font-bold text-gray-900">{stats.total_transactions}</p>
@@ -176,13 +176,13 @@ export default function MobileDashboard() {
 
         {/* Quick Actions */}
         <div>
-          <h2 className="text-sm font-bold text-gray-900 mb-2">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-2.5">
+          <h2 className="text-sm font-bold text-gray-900 mb-1.5">Quick Actions</h2>
+          <div className="grid grid-cols-2 gap-2">
             {quickActions.map((a) => (
               <button
                 key={a.label}
                 onClick={() => navigate(a.path, { state: { userId, userEmail } })}
-                className="flex items-center gap-2.5 px-3 py-3 rounded-xl font-medium text-sm active:scale-95 transition-transform bg-white border border-gray-200 text-gray-700 hover:border-[#8c76f0] hover:text-[#8c76f0]"
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-medium text-sm active:scale-95 transition-transform bg-white border border-gray-200 text-gray-700 hover:border-[#8c76f0] hover:text-[#8c76f0]"
               >
                 <a.icon className="w-4 h-4 flex-shrink-0" />
                 {a.label}
@@ -193,7 +193,7 @@ export default function MobileDashboard() {
 
         {/* Recent Activity */}
         <div>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1.5">
             <h2 className="text-sm font-bold text-gray-900">Recent Activity</h2>
             <button onClick={() => navigate('/mobile/my-transactions', { state: { userId, userEmail } })}
               className="text-xs text-blue-600 font-medium flex items-center gap-1">
@@ -202,16 +202,16 @@ export default function MobileDashboard() {
           </div>
 
           {loadingTxns ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center">
-              <RefreshCw className="w-5 h-5 text-blue-500 animate-spin mb-2" />
+            <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col items-center">
+              <RefreshCw className="w-5 h-5 text-blue-500 animate-spin mb-1.5" />
               <p className="text-xs text-gray-500">Loading transactions...</p>
             </div>
           ) : recentTxns.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 text-center">
-              <Clock className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+              <Clock className="w-7 h-7 text-gray-300 mx-auto mb-1.5" />
               <p className="text-sm text-gray-700 font-medium">No transactions yet</p>
               <button onClick={() => navigate('/mobile/make-payment', { state: { userId, userEmail } })}
-                className="mt-3 px-4 py-2 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-lg text-xs font-medium">Make First Payment</button>
+                className="mt-2 px-4 py-1.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-lg text-xs font-medium">Make First Payment</button>
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
@@ -223,7 +223,7 @@ export default function MobileDashboard() {
                   <div
                     key={txn.id}
                     onClick={() => navigate('/mobile/my-transactions', { state: { userId, userEmail } })}
-                    className="flex items-center gap-3 p-3 active:bg-gray-50 cursor-pointer"
+                    className="flex items-center gap-3 p-2.5 active:bg-gray-50 cursor-pointer"
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       ds === 'completed' ? 'bg-green-50' : ds === 'failed' || ds === 'cancelled' ? 'bg-red-50' :

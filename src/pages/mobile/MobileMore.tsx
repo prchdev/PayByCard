@@ -26,7 +26,7 @@ export default function MobileMore() {
 
   return (
     <MobileLayout userId={userId} userEmail={userEmail} onLogout={handleLogout}>
-      <div className="px-4 py-4 space-y-6">
+      <div className="px-4 py-3 space-y-4">
         {/* Account Section */}
         <div>
           <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Account</h2>
@@ -35,9 +35,9 @@ export default function MobileMore() {
               <button
                 key={item.label}
                 onClick={() => navigate(item.path, { state: { userId, userEmail } })}
-                className="w-full flex items-center gap-3 p-3.5 active:bg-gray-50 transition-colors"
+                className="w-full flex items-center gap-3 p-3 active:bg-gray-50 transition-colors"
               >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${item.color}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${item.color}`}>
                   <item.icon className={`w-4 h-4 ${item.iconColor}`} />
                 </div>
                 <span className="flex-1 text-left text-sm font-medium text-gray-900">{item.label}</span>
@@ -50,14 +50,14 @@ export default function MobileMore() {
         {/* Logout */}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 p-3.5 bg-white rounded-2xl border border-red-200 text-red-600 font-semibold text-sm active:scale-95 transition-transform shadow-sm"
+          className="w-full flex items-center justify-center gap-2 p-3 bg-white rounded-2xl border border-red-200 text-red-600 font-semibold text-sm active:scale-95 transition-transform shadow-sm"
         >
           <LogOut className="w-4 h-4" />
           Log Out
         </button>
 
         {/* App Version */}
-        <div className="text-center pb-4">
+        <div className="text-center pb-2">
           <p className="text-xs text-gray-400">PayByCard Mobile v1.0.0</p>
         </div>
       </div>

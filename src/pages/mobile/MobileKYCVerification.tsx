@@ -145,16 +145,16 @@ export default function MobileKYCVerification() {
       onLogout={handleLogout}
       showBack={true}
     >
-      <div className="px-4 py-5 max-w-md mx-auto">
+      <div className="px-4 py-3 max-w-md mx-auto">
         {/* Header */}
-        <div className="mb-5">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
-              <ShieldCheck className="w-5 h-5 text-white" />
+        <div className="mb-3">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-9 h-9 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+              <ShieldCheck className="w-4.5 h-4.5 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900 leading-tight">My KYC Details</h1>
-              <p className="text-gray-500 text-xs mt-0.5">
+              <p className="text-gray-500 text-xs mt-0">
                 Complete your identity verification to start accepting and making payments.
               </p>
             </div>
@@ -163,9 +163,9 @@ export default function MobileKYCVerification() {
 
         {/* Status banners */}
         {overallStatus === 'verification_pending' && (
-          <div className="mb-4 bg-amber-50 border-2 border-amber-300 rounded-2xl px-4 py-3.5 flex items-start gap-3">
-            <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <CheckCircle className="w-4 h-4 text-amber-600" />
+          <div className="mb-3 bg-amber-50 border-2 border-amber-300 rounded-2xl px-3 py-2.5 flex items-start gap-2.5">
+            <div className="w-7 h-7 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <CheckCircle className="w-3.5 h-3.5 text-amber-600" />
             </div>
             <div>
               <p className="font-semibold text-amber-800 text-sm">Under Review</p>
@@ -178,9 +178,9 @@ export default function MobileKYCVerification() {
         )}
 
         {overallStatus === 'rejected' && (
-          <div className="mb-4 bg-red-50 border-2 border-red-300 rounded-2xl px-4 py-3.5 flex items-start gap-3">
-            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <AlertCircle className="w-4 h-4 text-red-600" />
+          <div className="mb-3 bg-red-50 border-2 border-red-300 rounded-2xl px-3 py-2.5 flex items-start gap-2.5">
+            <div className="w-7 h-7 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <AlertCircle className="w-3.5 h-3.5 text-red-600" />
             </div>
             <div>
               <p className="font-semibold text-red-800 text-sm">Verification Rejected</p>
@@ -193,8 +193,8 @@ export default function MobileKYCVerification() {
         )}
 
         {digilockerDone && (
-          <div className="mb-4 bg-green-50 border-2 border-green-300 rounded-2xl px-4 py-3.5 flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <div className="mb-3 bg-green-50 border-2 border-green-300 rounded-2xl px-3 py-2.5 flex items-start gap-2.5">
+            <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-green-800 text-sm">KYC Auto-Verified via DigiLocker</p>
               <p className="text-xs text-green-700 mt-0.5 leading-relaxed">
@@ -205,7 +205,7 @@ export default function MobileKYCVerification() {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" />
           </div>
         ) : error ? (
@@ -219,7 +219,7 @@ export default function MobileKYCVerification() {
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Personal Details — always visible, above method selector */}
             <PersonalDetailsSection
               userId={userId}
@@ -236,30 +236,30 @@ export default function MobileKYCVerification() {
             {/* KYC Method Selector — shown when a provider is enabled and KYC not yet done */}
             {showDigilockerOption && !digilockerDone && !alreadyVerified && (
               <div className="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
-                <div className="px-4 py-3.5 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-violet-50">
+                <div className="px-3 py-2.5 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-violet-50">
                   <h3 className="font-semibold text-gray-900 text-sm">Select Verification Method</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-gray-500 mt-0">
                     Choose how you'd like to complete your KYC
                   </p>
                 </div>
-                <div className="p-3 space-y-3">
+                <div className="p-2.5 space-y-2">
                   <button
                     onClick={() => setKycMethod('digilocker')}
-                    className={`w-full flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all ${
+                    className={`w-full flex items-start gap-2.5 p-2.5 rounded-xl border-2 text-left transition-all ${
                       effectiveMethod === 'digilocker'
                         ? 'border-[#8c76f0] bg-purple-50'
                         : 'border-gray-200 active:border-[#8c76f0] active:bg-purple-50/40'
                     }`}
                   >
-                    <div className="w-9 h-9 bg-gradient-to-r from-purple-100 to-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <ScanFace className="w-5 h-5 text-[#8c76f0]" />
+                    <div className="w-8 h-8 bg-gradient-to-r from-purple-100 to-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <ScanFace className="w-4 h-4 text-[#8c76f0]" />
                     </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-gray-900 text-sm">{provider.provider_name}</p>
-                      <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                      <p className="text-xs text-gray-500 mt-0 leading-relaxed">
                         Instant, paperless verification using your DigiLocker account
                       </p>
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      <div className="flex flex-wrap gap-1.5 mt-1">
                         <span className="inline-block text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
                           Recommended
                         </span>
@@ -272,21 +272,21 @@ export default function MobileKYCVerification() {
 
                   <button
                     onClick={() => setKycMethod('manual')}
-                    className={`w-full flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all ${
+                    className={`w-full flex items-start gap-2.5 p-2.5 rounded-xl border-2 text-left transition-all ${
                       effectiveMethod === 'manual'
                         ? 'border-[#8c76f0] bg-purple-50'
                         : 'border-gray-200 active:border-[#8c76f0] active:bg-purple-50/40'
                     }`}
                   >
-                    <div className="w-9 h-9 bg-gradient-to-r from-purple-100 to-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-5 h-5 text-[#8c76f0]" />
+                    <div className="w-8 h-8 bg-gradient-to-r from-purple-100 to-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-4 h-4 text-[#8c76f0]" />
                     </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-gray-900 text-sm">Manual Upload</p>
-                      <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                      <p className="text-xs text-gray-500 mt-0 leading-relaxed">
                         Upload PAN card and address proof documents manually
                       </p>
-                      <span className="inline-block mt-1.5 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                      <span className="inline-block mt-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
                         Upto 48 Working Hours for Approval
                       </span>
                     </div>
@@ -316,12 +316,12 @@ export default function MobileKYCVerification() {
             )}
 
             {/* Why KYC is Required */}
-            <div className="bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-[#8c76f0] rounded-xl px-4 py-3.5">
-              <p className="text-sm font-semibold text-[#8c76f0] mb-2 flex items-center gap-1.5">
+            <div className="bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-[#8c76f0] rounded-xl px-3 py-2.5">
+              <p className="text-sm font-semibold text-[#8c76f0] mb-1.5 flex items-center gap-1.5">
                 <Info className="w-4 h-4" />
                 Why KYC is Required
               </p>
-              <ul className="space-y-1.5 text-xs text-gray-700">
+              <ul className="space-y-1 text-xs text-gray-700">
                 <li className="flex items-start gap-2">
                   <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#8c76f0] flex-shrink-0" />
                   Comply with regulatory requirements and prevent fraud

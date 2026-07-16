@@ -57,28 +57,28 @@ export default function MobileChangePassword() {
 
   return (
     <MobileLayout userId={userId} userEmail={userEmail} onLogout={handleLogout} showBack>
-      <div className="px-4 py-4 max-w-sm mx-auto">
-        <h1 className="text-xl font-bold text-gray-900 mb-4">Change Password</h1>
+      <div className="px-4 py-3 max-w-sm mx-auto">
+        <h1 className="text-lg font-bold text-gray-900 mb-3">Change Password</h1>
         {error && (
-          <div className="mb-4 bg-red-50 border border-red-300 rounded-xl p-3 flex items-start gap-2">
+          <div className="mb-3 bg-red-50 border border-red-300 rounded-xl p-2.5 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
             <div><p className="text-sm font-semibold text-red-900">Error</p><p className="text-xs text-red-800 mt-0.5">{error}</p></div>
           </div>
         )}
         {success && (
-          <div className="mb-4 bg-green-50 border border-green-300 rounded-xl p-3 flex items-start gap-2">
+          <div className="mb-3 bg-green-50 border border-green-300 rounded-xl p-2.5 flex items-start gap-2">
             <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
             <div><p className="text-sm font-semibold text-green-900">Success</p><p className="text-xs text-green-800 mt-0.5">Password changed successfully!</p></div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-3">
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">Current Password</label>
             <div className="relative">
               <input type={showCurrent ? 'text' : 'password'} value={formData.currentPassword}
                 onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] text-sm pr-10"
+                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] text-sm pr-10"
                 required minLength={8} maxLength={20} disabled={loading || success} placeholder="Enter current password" />
               <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                 {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -91,7 +91,7 @@ export default function MobileChangePassword() {
             <div className="relative">
               <input type={showNew ? 'text' : 'password'} value={formData.newPassword}
                 onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] text-sm pr-10"
+                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] text-sm pr-10"
                 required minLength={8} maxLength={20} disabled={loading || success} placeholder="Enter new password" />
               <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                 {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -104,7 +104,7 @@ export default function MobileChangePassword() {
             <div className="relative">
               <input type={showConfirm ? 'text' : 'password'} value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] text-sm pr-10"
+                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] text-sm pr-10"
                 required minLength={8} maxLength={20} disabled={loading || success} placeholder="Re-enter new password" />
               <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                 {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -112,8 +112,8 @@ export default function MobileChangePassword() {
             </div>
           </div>
 
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
-            <p className="text-xs text-gray-600 mb-2 font-medium">Password must contain:</p>
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-2.5">
+            <p className="text-xs text-gray-600 mb-1.5 font-medium">Password must contain:</p>
             <ul className="text-xs text-gray-500 space-y-0.5">
               {PASSWORD_REQUIREMENTS.map((req, idx) => (
                 <li key={idx} className="flex items-center gap-1.5">
@@ -123,14 +123,14 @@ export default function MobileChangePassword() {
             </ul>
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => navigate('/mobile/dashboard', { state: { userId, userEmail } })}
               disabled={loading || success}
-              className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl text-sm font-medium active:scale-95 transition-transform disabled:opacity-50">
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl text-sm font-medium active:scale-95 transition-transform disabled:opacity-50">
               Cancel
             </button>
             <button type="submit" disabled={loading || success}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition-transform disabled:opacity-50">
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition-transform disabled:opacity-50">
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Updating...</> : <><Lock className="w-4 h-4" />Change Password</>}
             </button>
           </div>

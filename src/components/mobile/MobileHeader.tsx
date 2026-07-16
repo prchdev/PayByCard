@@ -94,7 +94,7 @@ export default function MobileHeader({ userEmail, userId, onLogout, showBack, ti
             className="flex items-center gap-2 cursor-pointer"
             onClick={() => navigate('/mobile/dashboard')}
           >
-            <img src="/PayByCard.png" alt="Logo" className="w-56 h-28 object-contain" />
+            <img src="/PayByCard.png" alt="Logo" className="w-36 h-9 object-contain" />
           </div>
           {title && (
             <span className="text-base font-bold text-gray-900">{title}</span>

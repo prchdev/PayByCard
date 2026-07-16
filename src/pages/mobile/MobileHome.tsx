@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import {
-  Shield, Landmark, Zap, BadgeIndianRupee, Building2,
+  Shield, Landmark, Zap, BadgeIndianRupee, Building2, Lock,
 } from 'lucide-react';
 
 export default function MobileHome() {
@@ -8,10 +8,11 @@ export default function MobileHome() {
 
   const highlights = [
     { icon: BadgeIndianRupee, label: 'Lowest Fees' },
-    { icon: Shield, label: 'No Hidden MMC Charges' },
+    { icon: Shield, label: 'No Hidden MCC Charges' },
     { icon: Zap, label: 'Fast Settlement' },
     { icon: Building2, label: 'RBI Compliant' },
     { icon: Landmark, label: 'Registered Company' },
+    { icon: Lock, label: '100% Secure' },
   ];
 
   return (
@@ -30,7 +31,7 @@ export default function MobileHome() {
             </span>
           </h1>
           <p className="text-base text-gray-600 max-w-sm mx-auto">
-            Credit Card to Bank Payment
+            Use Credit Card to Pay Any Expenses By Transferring to Beneficiary Bank Account
           </p>
 
           <div className="flex flex-col gap-3 pt-2">
@@ -52,15 +53,17 @@ export default function MobileHome() {
 
       {/* Highlights */}
       <section className="px-4 py-2">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3">
-          <div className="flex flex-wrap gap-2">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+          <div className="grid grid-cols-2 gap-2.5">
             {highlights.map((h) => (
               <div
                 key={h.label}
-                className="flex items-center gap-1.5 bg-[#f3f0fe] rounded-lg px-2.5 py-1.5"
+                className="flex items-center gap-2 bg-gradient-to-br from-[#f3f0fe] to-[#ece5ff] rounded-xl px-3 py-2.5 border border-[#e0d5fb]"
               >
-                <h.icon className="w-3.5 h-3.5 text-[#8c76f0] flex-shrink-0" />
-                <span className="text-xs font-semibold text-gray-800 whitespace-nowrap">{h.label}</span>
+                <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <h.icon className="w-4 h-4 text-[#8c76f0]" />
+                </div>
+                <span className="text-xs font-semibold text-gray-800">{h.label}</span>
               </div>
             ))}
           </div>

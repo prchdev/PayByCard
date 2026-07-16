@@ -1367,7 +1367,7 @@ export default function MobileMakePayment() {
       onLogout={handleLogout}
       showBack={true}
     >
-      <div className="px-4 py-4 pb-28">
+      <div className="px-4 py-4 pb-40">
         <div className="max-w-md mx-auto">
           {/* Page title */}
           <h1 className="text-xl font-bold text-gray-900 mb-4">Make Payment</h1>
@@ -2080,7 +2080,7 @@ export default function MobileMakePayment() {
 
       {/* Sticky bottom navigation bar */}
       {currentStep !== 5 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 z-50">
+        <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 z-40">
           <div className="max-w-md mx-auto flex items-center justify-between gap-3">
             {currentStep > 1 ? (
               <button

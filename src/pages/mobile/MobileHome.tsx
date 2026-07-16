@@ -70,6 +70,15 @@ export default function MobileHome() {
         </div>
       </section>
 
+      {/* Footer */}
+      <footer className="px-4 pb-8 pt-4 text-center">
+        <p className="text-xs text-gray-500 leading-relaxed">
+          &copy; 2026 PayByCard Technologies Pvt. Ltd. All rights reserved.
+          <br />
+          CIN: U62099MH2025PTC462923
+        </p>
+      </footer>
+
     </div>
   );
 }

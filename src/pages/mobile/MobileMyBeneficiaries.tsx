@@ -302,7 +302,7 @@ export default function MobileMyBeneficiaries() {
         throw new Error(data.error || 'Failed to save beneficiary');
       }
 
-      setSuccess('Beneficiary added successfully!');
+      setSuccess('Payee added successfully!');
       resetForm();
 
       setTimeout(() => {
@@ -390,7 +390,6 @@ export default function MobileMyBeneficiaries() {
         userEmail={userEmail}
         onLogout={handleLogout}
         showBack={true}
-        title="My Beneficiaries"
         showBottomNav={false}
       >
         <div className="flex items-center justify-center min-h-[60vh] px-4">
@@ -411,7 +410,6 @@ export default function MobileMyBeneficiaries() {
         userEmail={userEmail}
         onLogout={handleLogout}
         showBack={true}
-        title="My Beneficiaries"
         showBottomNav={false}
       >
         <div className="px-4 py-8">
@@ -450,7 +448,6 @@ export default function MobileMyBeneficiaries() {
         userEmail={userEmail}
         onLogout={handleLogout}
         showBack={true}
-        title="My Beneficiaries"
         showBottomNav={false}
       >
         <div className="px-4 py-8">
@@ -480,7 +477,6 @@ export default function MobileMyBeneficiaries() {
       userEmail={userEmail}
       onLogout={handleLogout}
       showBack={true}
-      title="My Beneficiaries"
     >
       <div className="px-4 py-4">
         {/* Error banner */}
@@ -500,7 +496,7 @@ export default function MobileMyBeneficiaries() {
               <Users className="w-4.5 h-4.5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900 leading-tight">Beneficiaries</h1>
+              <h1 className="text-lg font-bold text-gray-900 leading-tight">My Payees</h1>
               <p className="text-gray-500 text-xs">Manage saved accounts</p>
             </div>
           </div>
@@ -527,16 +523,16 @@ export default function MobileMyBeneficiaries() {
             <div className="w-14 h-14 bg-gradient-to-r from-purple-50 to-violet-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <Users className="w-7 h-7 text-[#8c76f0]" />
             </div>
-            <h3 className="text-base font-semibold text-gray-900 mb-2">No beneficiaries yet</h3>
+            <h3 className="text-base font-semibold text-gray-900 mb-2">No payees yet</h3>
             <p className="text-gray-600 text-sm mb-5 max-w-xs mx-auto">
-              Add your first beneficiary to start sending payments quickly and securely
+              Add your first payee to start sending payments quickly and securely
             </p>
             <button
               onClick={() => setIsModalOpen(true)}
               className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm active:opacity-90 transition-opacity"
             >
               <Plus className="w-4 h-4" />
-              Add Beneficiary
+              Add Payee
             </button>
           </div>
         ) : (
@@ -631,7 +627,7 @@ export default function MobileMyBeneficiaries() {
                             role="switch"
                             aria-checked={isActive}
                             className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                              isActive ? 'bg-green-500' : 'bg-gray-300'
+                              isActive ? 'bg-[#8c76f0]' : 'bg-gray-300'
                             }`}
                           >
                             <span
@@ -666,9 +662,9 @@ export default function MobileMyBeneficiaries() {
           <div className="flex items-start gap-2.5">
             <AlertCircle className="w-4.5 h-4.5 text-[#8c76f0] mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-medium text-gray-900">About Beneficiaries</p>
+              <p className="text-sm font-medium text-gray-900">About Payees</p>
               <p className="text-xs text-gray-700 mt-1 leading-relaxed">
-                Save frequently used bank accounts for quick payments. Only active beneficiaries will be available for transactions.
+                Save frequently used bank accounts for quick payments. Only active payees will be available for transactions.
               </p>
             </div>
           </div>
@@ -697,7 +693,7 @@ export default function MobileMyBeneficiaries() {
                 <div className="w-9 h-9 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-xl flex items-center justify-center">
                   <Plus className="w-4.5 h-4.5 text-white" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">Add Beneficiary</h2>
+                <h2 className="text-lg font-bold text-gray-900">Add Payee</h2>
               </div>
               <button
                 onClick={closeModal}
@@ -708,7 +704,7 @@ export default function MobileMyBeneficiaries() {
             </div>
 
             {/* Scrollable form */}
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 pb-6">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 pb-24">
               {/* Self-transfer error */}
               {error && isSelfTransferError && (
                 <div className="mb-4 bg-red-50 border-2 border-red-400 rounded-xl px-4 py-3">
@@ -753,7 +749,7 @@ export default function MobileMyBeneficiaries() {
               <div className="bg-gray-50 p-4 rounded-xl mb-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <Users className="w-4 h-4" />
-                  Beneficiary Information
+                  Payee Information
                 </h3>
                 <div className="space-y-3.5">
                   <div>
@@ -917,12 +913,12 @@ export default function MobileMyBeneficiaries() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Adding...
+                      Adding Payee...
                     </>
                   ) : (
                     <>
                       <Plus className="w-5 h-5" />
-                      Add
+                      Add Payee
                     </>
                   )}
                 </button>
@@ -943,7 +939,7 @@ export default function MobileMyBeneficiaries() {
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-6 h-6 text-red-600" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 text-center mb-2">Delete Beneficiary?</h3>
+            <h3 className="text-lg font-bold text-gray-900 text-center mb-2">Delete Payee?</h3>
             <p className="text-sm text-gray-600 text-center mb-6">
               Are you sure you want to delete <strong>{deleteTarget.full_name}</strong>? This action cannot be undone.
             </p>

@@ -415,7 +415,7 @@ export default function MobileMyTransactions() {
       {/* Transaction Detail Modal */}
       {selectedTxn && (
         <div
-          className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center"
+          className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center pb-16 sm:pb-0"
           onClick={() => setSelectedTxn(null)}
         >
           <div

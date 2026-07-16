@@ -419,7 +419,7 @@ export default function MobileMyTransactions() {
           onClick={() => setSelectedTxn(null)}
         >
           <div
-            className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-y-auto pb-20"
+            className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             {/* Modal Header */}

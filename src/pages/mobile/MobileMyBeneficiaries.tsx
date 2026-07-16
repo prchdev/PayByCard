@@ -430,7 +430,7 @@ export default function MobileMyBeneficiaries() {
             </p>
             <button
               onClick={() => navigate('/mobile/kyc-verification', { state: { userId, userEmail } })}
-              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium active:opacity-90 transition-opacity"
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium active:opacity-90 transition-opacity"
             >
               Go to KYC Verification
             </button>
@@ -461,7 +461,7 @@ export default function MobileMyBeneficiaries() {
             </p>
             <button
               onClick={() => navigate('/mobile/help-support', { state: { userId, userEmail } })}
-              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium active:opacity-90 transition-opacity"
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium active:opacity-90 transition-opacity"
             >
               Raise Support Ticket
             </button>
@@ -529,7 +529,7 @@ export default function MobileMyBeneficiaries() {
             </p>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm active:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm active:opacity-90 transition-opacity"
             >
               <Plus className="w-4 h-4" />
               Add Payee
@@ -658,7 +658,7 @@ export default function MobileMyBeneficiaries() {
         )}
 
         {/* Info banner */}
-        <div className="mt-5 bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-[#8c76f0] rounded-2xl px-4 py-3.5">
+        <div className="mt-5 bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-[#8c76f0] rounded-2xl px-4 py-2.5">
           <div className="flex items-start gap-2.5">
             <AlertCircle className="w-4.5 h-4.5 text-[#8c76f0] mt-0.5 flex-shrink-0" />
             <div>
@@ -762,7 +762,7 @@ export default function MobileMyBeneficiaries() {
                       maxLength={90}
                       value={formData.full_name}
                       onChange={(e) => setFormData({ ...formData, full_name: e.target.value.replace(/[^A-Za-z ]/g, '') })}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white text-base"
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white text-sm"
                       placeholder="Enter full name"
                     />
                   </div>
@@ -777,7 +777,7 @@ export default function MobileMyBeneficiaries() {
                       maxLength={100}
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value.replace(/[^A-Za-z0-9@_.\-]/g, '') })}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white text-base"
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white text-sm"
                       placeholder="Enter email"
                       autoComplete="email"
                     />
@@ -795,7 +795,7 @@ export default function MobileMyBeneficiaries() {
                       pattern="[0-9]*"
                       value={formData.mobile}
                       onChange={(e) => setFormData({ ...formData, mobile: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white text-base"
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white text-sm"
                       placeholder="Enter 10-digit mobile number"
                       autoComplete="tel"
                     />
@@ -809,7 +809,7 @@ export default function MobileMyBeneficiaries() {
                       type="text"
                       value={formData.pan_number}
                       onChange={(e) => setFormData({ ...formData, pan_number: e.target.value.toUpperCase() })}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white text-base"
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white text-sm"
                       placeholder="Enter PAN number"
                       maxLength={10}
                     />
@@ -834,7 +834,7 @@ export default function MobileMyBeneficiaries() {
                       maxLength={11}
                       value={formData.ifsc}
                       onChange={(e) => handleIFSCChange(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white font-mono tracking-wider text-base"
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white font-mono tracking-wider text-sm"
                       placeholder="Enter IFSC code"
                       autoCapitalize="characters"
                       autoCorrect="off"
@@ -874,7 +874,7 @@ export default function MobileMyBeneficiaries() {
                       maxLength={20}
                       value={formData.bank_account}
                       onChange={(e) => setFormData({ ...formData, bank_account: e.target.value.replace(/[^A-Za-z0-9\- ]/g, '') })}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white font-mono text-base"
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white font-mono text-sm"
                       placeholder="Enter account number"
                     />
                   </div>
@@ -887,7 +887,7 @@ export default function MobileMyBeneficiaries() {
                       required
                       value={formData.account_type}
                       onChange={(e) => setFormData({ ...formData, account_type: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white text-base"
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white text-sm"
                     >
                       <option value="Saving">Saving Account</option>
                       <option value="Current">Current Account</option>
@@ -901,14 +901,14 @@ export default function MobileMyBeneficiaries() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex-1 px-5 py-3.5 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold active:bg-gray-50 transition-all"
+                  className="flex-1 px-5 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold active:bg-gray-50 transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting || isValidatingIFSC || !formData.bank_name}
-                  className="flex-1 px-5 py-3.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-semibold active:opacity-90 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-5 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-semibold active:opacity-90 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <>
@@ -946,13 +946,13 @@ export default function MobileMyBeneficiaries() {
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold active:bg-gray-50 transition-all"
+                className="flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold active:bg-gray-50 transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-semibold active:opacity-90 transition-opacity shadow-md"
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-semibold active:opacity-90 transition-opacity shadow-md"
               >
                 Delete
               </button>

@@ -213,7 +213,7 @@ export default function MobileKYCVerification() {
             <p className="text-red-700 text-sm">{error}</p>
             <button
               onClick={refetch}
-              className="mt-3 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-sm text-sm"
+              className="mt-3 inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-sm text-sm"
             >
               Retry
             </button>

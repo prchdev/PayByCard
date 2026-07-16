@@ -524,7 +524,7 @@ export default function MobileMyBankAccounts() {
           {/* Add button */}
           <button
             onClick={openAddModal}
-            className="w-full flex items-center justify-center gap-2 mb-4 px-5 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity shadow-lg"
+            className="w-full flex items-center justify-center gap-2 mb-4 px-5 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity shadow-lg"
           >
             <Plus className="w-4 h-4" />
             Add New Bank Account
@@ -976,7 +976,7 @@ export default function MobileMyBankAccounts() {
                     setError('');
                     setSuccess('');
                   }}
-                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 hover:border-gray-400 transition-all"
+                  className="flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 hover:border-gray-400 transition-all"
                 >
                   Cancel
                 </button>
@@ -990,7 +990,7 @@ export default function MobileMyBankAccounts() {
                     formData.bank_account_number !== formData.confirm_account_number ||
                     !userProfile
                   }
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <>

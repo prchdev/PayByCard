@@ -239,7 +239,7 @@ export default function CreateTicketModal({ userId, onClose, onSuccess }: Create
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={files.length >= 3}
-              className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#8c76f0] hover:bg-purple-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-gray-600"
+              className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#8c76f0] hover:bg-purple-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-gray-600"
             >
               <Upload className="w-5 h-5" />
               <span className="text-sm font-medium">
@@ -283,14 +283,14 @@ export default function CreateTicketModal({ userId, onClose, onSuccess }: Create
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              className="flex-1 px-6 py-2.5 border-2 border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 px-6 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

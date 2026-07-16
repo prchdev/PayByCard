@@ -263,7 +263,7 @@ export default function TicketDetailsModal({ ticketId, userId, onClose }: Ticket
           <p className="text-center text-gray-900 font-medium">Failed to load ticket details</p>
           <button
             onClick={onClose}
-            className="mt-4 w-full px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
+            className="mt-4 w-full px-6 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
           >
             Close
           </button>

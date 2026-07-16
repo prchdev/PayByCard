@@ -83,7 +83,7 @@ export default function MobileHome() {
                 <button
                   onClick={handleBiometricUnlock}
                   disabled={unlocking}
-                  className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-3 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-purple-500/30 disabled:opacity-50 active:scale-95 transition-transform flex items-center justify-center gap-2"
                 >
                   <Fingerprint className="w-5 h-5" />
                   {unlocking ? 'Authenticating...' : 'Unlock with Biometric'}
@@ -102,13 +102,13 @@ export default function MobileHome() {
             <div className="flex flex-col gap-2 pt-1">
               <button
                 onClick={() => navigate('/mobile/register')}
-                className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-3 rounded-xl shadow-lg shadow-purple-500/30 active:scale-95 transition-transform"
+                className="w-full bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-purple-500/30 active:scale-95 transition-transform"
               >
                 Register
               </button>
               <button
                 onClick={() => navigate('/mobile/login')}
-                className="w-full border-2 border-[#8c76f0] text-[#8c76f0] font-semibold py-3 rounded-xl active:scale-95 transition-transform"
+                className="w-full border-2 border-[#8c76f0] text-[#8c76f0] font-semibold py-2.5 rounded-xl active:scale-95 transition-transform"
               >
                 Login
               </button>

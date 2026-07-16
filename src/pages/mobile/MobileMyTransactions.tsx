@@ -247,9 +247,11 @@ export default function MobileMyTransactions() {
       userEmail={userEmail}
       onLogout={handleLogout}
       showBack={true}
-      title="My Transactions"
     >
       <div className="px-3 py-3">
+        {/* Page heading */}
+        <h1 className="text-lg font-bold text-gray-900 mb-3">Transaction History</h1>
+
         {/* Search */}
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
@@ -413,11 +415,11 @@ export default function MobileMyTransactions() {
       {/* Transaction Detail Modal */}
       {selectedTxn && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center"
+          className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center"
           onClick={() => setSelectedTxn(null)}
         >
           <div
-            className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-y-auto"
+            className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-y-auto pb-20"
             onClick={e => e.stopPropagation()}
           >
             {/* Modal Header */}

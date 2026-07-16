@@ -412,7 +412,6 @@ export default function MobileMyBankAccounts() {
         userEmail={userEmail}
         onLogout={handleLogout}
         showBack={true}
-        title="My Bank Accounts"
         showBottomNav={false}
       >
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -430,7 +429,6 @@ export default function MobileMyBankAccounts() {
         userEmail={userEmail}
         onLogout={handleLogout}
         showBack={true}
-        title="My Bank Accounts"
         showBottomNav={false}
       >
         <div className="px-4 py-6">
@@ -475,7 +473,6 @@ export default function MobileMyBankAccounts() {
         userEmail={userEmail}
         onLogout={handleLogout}
         showBack={true}
-        title="My Bank Accounts"
         showBottomNav={false}
       >
         <div className="px-4 py-6">
@@ -508,7 +505,6 @@ export default function MobileMyBankAccounts() {
       userEmail={userEmail}
       onLogout={handleLogout}
       showBack={true}
-      title="My Bank Accounts"
     >
       <div className="px-4 py-4 pb-28">
         <div className="max-w-md mx-auto">
@@ -718,7 +714,7 @@ export default function MobileMyBankAccounts() {
 
       {/* Add Bank Account Bottom Sheet */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 pb-16">
           <div className="bg-white rounded-t-2xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl animate-slide-up">
             {/* Header */}
             <div className="sticky top-0 bg-gradient-to-r from-[#8c76f0] to-purple-600 px-4 py-4 flex items-center justify-between rounded-t-2xl z-10">

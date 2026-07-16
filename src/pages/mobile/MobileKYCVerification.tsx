@@ -144,7 +144,6 @@ export default function MobileKYCVerification() {
       userEmail={userEmail}
       onLogout={handleLogout}
       showBack={true}
-      title="KYC Verification"
     >
       <div className="px-4 py-5 max-w-md mx-auto">
         {/* Header */}

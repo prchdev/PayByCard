@@ -56,8 +56,9 @@ export default function MobileChangePassword() {
   };
 
   return (
-    <MobileLayout userId={userId} userEmail={userEmail} onLogout={handleLogout} showBack title="Change Password">
+    <MobileLayout userId={userId} userEmail={userEmail} onLogout={handleLogout} showBack>
       <div className="px-4 py-4 max-w-sm mx-auto">
+        <h1 className="text-xl font-bold text-gray-900 mb-4">Change Password</h1>
         {error && (
           <div className="mb-4 bg-red-50 border border-red-300 rounded-xl p-3 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />

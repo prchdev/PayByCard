@@ -155,7 +155,6 @@ export default function MobileHelpSupport() {
       userEmail={userEmail}
       onLogout={handleLogout}
       showBack={true}
-      title="Help & Support"
     >
       <div className="px-4 py-4">
         {/* Header */}

@@ -1,17 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import {
-  CreditCard, Shield, Lock, Landmark, Zap, BadgeIndianRupee, Building2,
+  Shield, Landmark, Zap, BadgeIndianRupee, Building2,
 } from 'lucide-react';
 
 export default function MobileHome() {
   const navigate = useNavigate();
-
-  const features = [
-    { icon: Shield, title: 'RBI Compliant', desc: 'KYC compliance as per RBI guidelines' },
-    { icon: CreditCard, title: 'All Cards', desc: 'Visa, Mastercard & RuPay' },
-    { icon: Landmark, title: 'Any Bank', desc: 'Pay any Indian bank account' },
-    { icon: Lock, title: 'Secure', desc: 'Bank-grade encryption' },
-  ];
 
   const highlights = [
     { icon: BadgeIndianRupee, label: 'Lowest Fees' },
@@ -74,23 +67,6 @@ export default function MobileHome() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="px-4 py-6">
-        <div className="grid grid-cols-2 gap-3">
-          {features.map((f) => (
-            <div
-              key={f.title}
-              className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm"
-            >
-              <div className="w-10 h-10 bg-[#f3f0fe] rounded-xl flex items-center justify-center mb-3">
-                <f.icon className="w-5 h-5 text-[#8c76f0]" />
-              </div>
-              <h3 className="font-bold text-gray-900 text-sm mb-1">{f.title}</h3>
-              <p className="text-xs text-gray-500">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

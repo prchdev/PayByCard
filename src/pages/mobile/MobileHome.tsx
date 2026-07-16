@@ -94,6 +94,3 @@ export default function MobileHome() {
     </div>
   );
 }
-
-
-export default MobileHome

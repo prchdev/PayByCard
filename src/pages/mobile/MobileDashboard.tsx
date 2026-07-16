@@ -93,12 +93,9 @@ export default function MobileDashboard() {
     <MobileLayout userId={userId} userEmail={userEmail} onLogout={handleLogout}>
       <div className="px-4 py-4 space-y-4">
         {/* Welcome */}
-        <div className="flex items-center gap-3">
-          <img src="/PayByCard-Logo.png" alt="PayByCard" className="w-20 h-10 object-contain" />
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Welcome back!</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Here's your account overview</p>
-          </div>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Welcome back!</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Here's your account overview</p>
         </div>
 
         {/* KYC Banner */}

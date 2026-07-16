@@ -143,11 +143,7 @@ export default function MobileForgotPassword() {
         </button>
 
         <div className="text-center mb-5">
-          <div className="w-14 h-14 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-purple-500/30">
-            {step === 'email' && <Mail className="w-7 h-7 text-white" />}
-            {step === 'otp' && <ShieldCheck className="w-7 h-7 text-white" />}
-            {step === 'password' && <Lock className="w-7 h-7 text-white" />}
-          </div>
+          <img src="/PayByCard-Logo.png" alt="PayByCard" className="w-28 h-28 object-contain mx-auto mb-3" />
           <h1 className="text-2xl font-bold text-gray-900">
             {step === 'email' && 'Forgot Password'}
             {step === 'otp' && 'Verify OTPs'}

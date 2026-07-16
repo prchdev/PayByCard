@@ -112,9 +112,7 @@ export default function MobileVerifyOTP() {
     <div className="min-h-screen bg-gray-50 px-4 pt-20 pb-8">
       <div className="max-w-sm w-full mx-auto">
         <div className="text-center mb-5">
-          <div className="w-14 h-14 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-purple-500/30">
-            <ShieldCheck className="w-7 h-7 text-white" />
-          </div>
+          <img src="/PayByCard-Logo.png" alt="PayByCard" className="w-28 h-28 object-contain mx-auto mb-3" />
           <h1 className="text-2xl font-bold text-gray-900">Verify Your Account</h1>
           <p className="text-sm text-gray-500 mt-1">
             {fromLogin ? 'Verify your mobile and email to continue' : 'Codes sent to your mobile and email'}

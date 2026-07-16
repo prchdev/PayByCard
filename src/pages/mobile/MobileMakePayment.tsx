@@ -825,17 +825,41 @@ export default function MobileMakePayment() {
     }
   };
 
-  const loadScript = (src: string): Promise<boolean> => {
+  const loadScript = (src: string, retries = 2): Promise<boolean> => {
     return new Promise((resolve, reject) => {
-      if (document.querySelector(`script[src="${src}"]`)) {
-        resolve(true);
+      const existing = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null;
+      if (existing) {
+        if (existing.dataset.loaded === 'true') {
+          resolve(true);
+          return;
+        }
+        existing.addEventListener('load', () => resolve(true), { once: true });
+        existing.addEventListener('error', () => reject(new Error(`Failed to load SDK script from ${src}`)), { once: true });
         return;
       }
-      const script = document.createElement('script');
-      script.src = src;
-      script.onload = () => resolve(true);
-      script.onerror = () => reject(new Error(`Failed to load SDK script from ${src}`));
-      document.body.appendChild(script);
+
+      let attempts = 0;
+      const tryLoad = () => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = () => {
+          script.dataset.loaded = 'true';
+          resolve(true);
+        };
+        script.onerror = () => {
+          script.remove();
+          attempts++;
+          if (attempts <= retries) {
+            console.warn(`SDK load attempt ${attempts} failed for ${src}, retrying...`);
+            setTimeout(tryLoad, 500 * attempts);
+          } else {
+            reject(new Error(`Failed to load SDK script from ${src} after ${retries + 1} attempts. Please check your internet connection and try again.`));
+          }
+        };
+        document.body.appendChild(script);
+      };
+      tryLoad();
     });
   };
 
@@ -1231,7 +1255,6 @@ export default function MobileMakePayment() {
         userEmail={userEmail}
         onLogout={handleLogout}
         showBack={true}
-        title="Make Payment"
         showBottomNav={false}
       >
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -1249,7 +1272,6 @@ export default function MobileMakePayment() {
         userEmail={userEmail}
         onLogout={handleLogout}
         showBack={true}
-        title="Make Payment"
         showBottomNav={false}
       >
         <div className="px-4 py-6">
@@ -1295,7 +1317,6 @@ export default function MobileMakePayment() {
         userEmail={userEmail}
         onLogout={handleLogout}
         showBack={true}
-        title="Make Payment"
         showBottomNav={false}
       >
         <div className="px-4 py-6">
@@ -1329,7 +1350,6 @@ export default function MobileMakePayment() {
         userEmail={userEmail}
         onLogout={handleLogout}
         showBack={true}
-        title="Make Payment"
         showBottomNav={false}
       >
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -1346,11 +1366,12 @@ export default function MobileMakePayment() {
       userEmail={userEmail}
       onLogout={handleLogout}
       showBack={true}
-      title="Make Payment"
-      showBottomNav={false}
     >
       <div className="px-4 py-4 pb-28">
         <div className="max-w-md mx-auto">
+          {/* Page title */}
+          <h1 className="text-xl font-bold text-gray-900 mb-4">Make Payment</h1>
+
           {/* Compact step indicator */}
           <div className="mb-5">
             <div className="flex items-center justify-between">

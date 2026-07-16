@@ -829,41 +829,17 @@ export default function MakePayment() {
     }
   };
 
-  const loadScript = (src: string, retries = 2): Promise<boolean> => {
+  const loadScript = (src: string): Promise<boolean> => {
     return new Promise((resolve, reject) => {
-      const existing = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null;
-      if (existing) {
-        if (existing.dataset.loaded === 'true') {
-          resolve(true);
-          return;
-        }
-        existing.addEventListener('load', () => resolve(true), { once: true });
-        existing.addEventListener('error', () => reject(new Error(`Failed to load SDK script from ${src}`)), { once: true });
+      if (document.querySelector(`script[src="${src}"]`)) {
+        resolve(true);
         return;
       }
-
-      let attempts = 0;
-      const tryLoad = () => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = true;
-        script.onload = () => {
-          script.dataset.loaded = 'true';
-          resolve(true);
-        };
-        script.onerror = () => {
-          script.remove();
-          attempts++;
-          if (attempts <= retries) {
-            console.warn(`SDK load attempt ${attempts} failed for ${src}, retrying...`);
-            setTimeout(tryLoad, 500 * attempts);
-          } else {
-            reject(new Error(`Failed to load SDK script from ${src} after ${retries + 1} attempts. Please check your internet connection and try again.`));
-          }
-        };
-        document.body.appendChild(script);
-      };
-      tryLoad();
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = () => resolve(true);
+      script.onerror = () => reject(new Error(`Failed to load SDK script from ${src}`));
+      document.body.appendChild(script);
     });
   };
 

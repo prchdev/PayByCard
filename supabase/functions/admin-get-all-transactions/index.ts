@@ -82,11 +82,16 @@ Deno.serve(async (req: Request) => {
       query = query.lte("created_at", dateToEnd);
     }
 
-    // DB-level text search on payment_reference and beneficiary JSONB name
+    // DB-level text search on payment_reference, beneficiary name, and invoice number
     if (search && search.trim().length > 0) {
       const term = search.trim().replace(/[%_]/g, "\\$&");
+      // Support searching by formatted invoice "PAY-YYYY-NNNN" or bare number
+      const invoiceNumMatch = term.match(/^(?:PAY-\d{4}-)?(?:\d+)$/i);
+      const invoiceFilter = invoiceNumMatch
+        ? `,invoice_number.eq.${parseInt(term.split("-").pop() ?? term, 10)}`
+        : "";
       query = query.or(
-        `payment_reference.ilike.%${term}%,beneficiary_details->>full_name.ilike.%${term}%`
+        `payment_reference.ilike.%${term}%,beneficiary_details->>full_name.ilike.%${term}%${invoiceFilter}`
       );
     }
 

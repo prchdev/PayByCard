@@ -1330,7 +1330,7 @@ export default function AdminReports() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Reference, name..."
+              placeholder="Reference, name, invoice no..."
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
@@ -1413,6 +1413,11 @@ export default function AdminReports() {
                       <tr key={r.id} className="hover:bg-purple-50/30 transition-colors">
                         <td className="px-4 py-3">
                           <span className="font-mono text-xs font-semibold text-[#8c76f0]">{r.payment_reference}</span>
+                          {r.invoice_number && (
+                            <p className="text-xs text-emerald-600 font-mono font-semibold mt-0.5">
+                              PAY-{new Date(r.created_at).getFullYear()}-{r.invoice_number}
+                            </p>
+                          )}
                           {r.gateway_transaction_id && (
                             <p className="text-xs text-gray-400 font-mono mt-0.5 max-w-[100px] truncate">{r.gateway_transaction_id}</p>
                           )}

@@ -196,9 +196,15 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Check name match — beneficiary full name vs logged-in user's name
+    const nameMatch = userFullName && bName && userFullName === bName;
+
     // Block if any individual identity field matches the logged-in user
-    if (emailMatch || mobileMatch || panMatch) {
-      const matchedField = panMatch ? 'PAN number' : emailMatch ? 'email address' : 'mobile number';
+    if (emailMatch || mobileMatch || panMatch || nameMatch) {
+      const matchedField = panMatch ? 'PAN number'
+        : nameMatch ? 'name'
+        : emailMatch ? 'email address'
+        : 'mobile number';
       return new Response(
         JSON.stringify({
           error:

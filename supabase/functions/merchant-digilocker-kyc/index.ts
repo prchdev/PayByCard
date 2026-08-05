@@ -891,6 +891,70 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      // ── Self-transfer check: merchant must not be the same person as the sender ──
+      const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const merchantFullName = normalize(kycData.full_name || record.full_name || '');
+      const merchantPan = normalizePan(kycData.pan_number);
+      const merchantEmail = normalize(record.email || '');
+      const merchantMobile = (record.mobile || '').replace(/\D/g, '').slice(-10);
+
+      let senderUser: { full_name: string | null; first_name: string | null; last_name: string | null; email: string | null; mobile_number: string | null } | null = null;
+      let senderUserId: string | null = null;
+      if (record.payment_id) {
+        const { data: payment } = await supabase
+          .from('payments')
+          .select('user_id')
+          .eq('id', record.payment_id)
+          .maybeSingle();
+        if (payment?.user_id) {
+          senderUserId = payment.user_id;
+          const { data: sender } = await supabase
+            .from('users')
+            .select('full_name, first_name, last_name, email, mobile_number')
+            .eq('id', payment.user_id)
+            .maybeSingle();
+          senderUser = sender;
+        }
+      }
+
+      let senderPan: string | null = null;
+      if (senderUserId) {
+        const { data: senderKyc } = await supabase
+          .from('kyc_pan_verification')
+          .select('pan_number')
+          .eq('user_id', senderUserId)
+          .maybeSingle();
+        senderPan = senderKyc?.pan_number || null;
+      }
+
+      const senderFullName = senderUser
+        ? normalize(senderUser.full_name || `${senderUser.first_name || ''} ${senderUser.last_name || ''}`.trim())
+        : normalize(record.sender_name || '');
+      const senderEmail = senderUser ? normalize(senderUser.email || '') : '';
+      const senderMobile = senderUser ? (senderUser.mobile_number || '').replace(/\D/g, '').slice(-10) : '';
+      const senderPanNorm = senderPan ? senderPan.trim().toUpperCase() : '';
+
+      const nameMatch = merchantFullName && senderFullName && merchantFullName === senderFullName;
+      const emailMatch = senderEmail && merchantEmail && senderEmail === merchantEmail;
+      const mobileMatch = senderMobile && merchantMobile && senderMobile === merchantMobile;
+      const panMatch = senderPanNorm && merchantPan && senderPanNorm === merchantPan;
+
+      if (nameMatch || emailMatch || mobileMatch || panMatch) {
+        const matchedField = panMatch ? 'PAN number'
+          : nameMatch ? 'name'
+          : emailMatch ? 'email address'
+          : 'mobile number';
+        if (record.mobile) await sendSms(supabaseUrl, supabaseKey, record.mobile, 'kyc_rejected');
+        return new Response(
+          JSON.stringify({
+            success: false, autoApproved: false,
+            error: `Self-funds transfer is not allowed. The merchant ${matchedField} matches the sender's details. You cannot send money to yourself.`,
+            self_transfer: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const ipAddress =
         req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
         req.headers.get('x-real-ip') ||

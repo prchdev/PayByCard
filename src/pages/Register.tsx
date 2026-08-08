@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, UserPlus, AlertCircle, X, FileText, Shield } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, AlertCircle, X, FileText, Shield, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { validatePassword, PASSWORD_REQUIREMENTS } from '../utils/passwordValidation';
 import TermsOfService from './TermsOfService';
@@ -180,6 +180,19 @@ export default function Register() {
           </div>
 
           <div className="bg-white rounded-2xl border-2 border-gray-300 shadow-xl p-8">
+            <div className="mb-6 border-2 border-blue-500 bg-blue-50 rounded-xl px-6 py-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 bg-blue-600">
+                  <Info className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-blue-900">Payment System Upgrade Notice</p>
+                  <p className="text-sm mt-1 text-blue-800 leading-relaxed">
+                    We are currently upgrading our payment system to support our mobile application and enhance the overall user experience. During this upgrade, our Payment Transfer Service will remain temporarily unavailable. We aim to complete the upgrade by 12 August 2026 and resume services as soon as possible. We sincerely appreciate your patience and understanding while we work to provide better and more reliable services.
+                  </p>
+                </div>
+              </div>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-6">
               {errors.general && (
                 <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">

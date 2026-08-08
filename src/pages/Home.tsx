@@ -46,6 +46,13 @@ function HowItWorksSection() {
   const [activeStep, setActiveStep] = useState(0);
 
   useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveStep((prev) => (prev + 1) % steps.length);
+    }, 7000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {

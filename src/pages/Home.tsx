@@ -162,6 +162,7 @@ function PaymentCategoriesSection() {
 function HowItWorksSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -179,72 +180,170 @@ function HowItWorksSection() {
 
   const steps = [
     {
-      icon: UserCheck,
-      title: 'User Login & KYC',
-      description: 'The user logs in to PayByCard and completes the required KYC verification.',
-    },
-    {
       icon: CreditCard,
-      title: 'User Initiates Payment',
-      description: 'The user enters the beneficiary/merchant details and initiates the payment through PayByCard.',
+      title: 'Customer',
+      subtitle: 'Pays with Credit Card',
+      description: 'Customer pays using a credit card — Visa, Mastercard, RuPay, or Amex — through a secure checkout form.',
     },
     {
-      icon: Lock,
-      title: 'Payment Gateway Processes Credit Card Payment',
-      description: 'The payment gateway partner securely processes the user\u2019s credit card payment.',
+      icon: RefreshCw,
+      title: 'Payment Aggregator',
+      subtitle: 'Processes Gateway Transaction',
+      description: 'The payment aggregator authenticates and processes the payment gateway transaction, validating card details and triggering bank authorization.',
     },
     {
-      icon: FileCheck,
-      title: 'PayByCard Verifies Merchant Onboarding',
-      description: 'PayByCard verifies the beneficiary/merchant onboarding and completes the necessary validation before processing the payment.',
-    },
-    {
-      icon: Landmark,
-      title: 'Payment Gateway Partner Settles Funds',
-      description: 'The payment gateway partner settles the successfully processed payment amount into PayByCard\u2019s designated nodal account.',
+      icon: Building2,
+      title: 'Payout Processing',
+      subtitle: 'Aggregator Initiates Payout',
+      description: 'The payment aggregator processes the payout transaction, verifying beneficiary details and initiating the bank transfer.',
     },
     {
       icon: Banknote,
-      title: 'PayByCard Pays the Beneficiary/Merchant',
-      description: 'After receiving the settled funds, PayByCard transfers the applicable payment amount to the verified beneficiary/merchant bank account.',
+      title: 'Beneficiary',
+      subtitle: 'Funds Settled to Bank',
+      description: "Funds are settled directly to the beneficiary's bank account — fast, secure, and fully traceable.",
     },
+  ];
+
+  const trustBadges = [
+    { icon: Shield, title: 'RBI Compliant', description: 'Fully regulated and compliant with RBI guidelines' },
+    { icon: Lock, title: '256-bit Encryption', description: 'Bank-grade SSL encryption on every transaction' },
+    { icon: UserCheck, title: 'KYC Verified', description: 'All users undergo mandatory KYC verification' },
   ];
 
   return (
     <section ref={sectionRef} className="py-20 px-4">
       <div className="max-w-7xl mx-auto">
         <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-900 mb-4">
-          How <span className="text-[#8c76f0]">PayByCard</span> Processes Payment
+          How PayByCard <span className="text-[#8c76f0]">Processes Payment</span>
         </h2>
-        <p className="text-center text-gray-600 text-xl mb-16">A simple, secure process from login to settlement</p>
-        <div className="relative">
-          <div className="hidden lg:block absolute left-12 right-12 top-10 h-0.5 bg-[#8c76f0]/15 overflow-hidden">
-            {visible && <div className="h-full bg-[#8c76f0] animate-draw-line" style={{ animationDelay: '500ms' }} />}
-          </div>
-          <div className="relative flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory lg:grid lg:grid-cols-6 lg:gap-4 lg:overflow-visible">
+        <p className="text-center text-gray-600 text-xl mb-16">A secure, transparent 4-step flow — from your card to the beneficiary's bank account</p>
+
+        {/* Desktop layout */}
+        <div className="hidden lg:block">
+          <div className="flex items-start justify-between mb-10">
             {steps.map((step, index) => (
-              <div
-                key={step.title}
-                className={`group relative min-w-[300px] snap-start bg-white rounded-3xl p-7 border-2 border-gray-300 hover:border-[#8c76f0] transition-all duration-300 hover:-translate-y-2 shadow-lg hover:shadow-xl ${visible ? 'animate-slide-bottom' : 'opacity-0'}`}
-                style={{ animationDelay: `${500 + index * 180}ms` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-violet-50/50 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="relative">
-                  <div className="relative z-10 w-16 h-16 mb-6 rounded-2xl bg-[#f3f0fe] flex items-center justify-center shadow-md animate-pulse-glow">
-                    <step.icon className="w-7 h-7 text-[#8c76f0]" />
-                    <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-gradient-to-r from-[#8c76f0] to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md">
+              <div key={step.title} className="flex items-start flex-1 min-w-0">
+                <div
+                  className={`relative flex flex-col items-center flex-1 min-w-0 transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+                  style={{ transitionDelay: `${index * 120}ms` }}
+                >
+                  <div
+                    onClick={() => setActiveStep(index)}
+                    className={`group relative w-24 h-24 rounded-3xl flex items-center justify-center mb-4 transition-all duration-500 shadow-lg border-2 cursor-pointer ${
+                      activeStep === index
+                        ? 'bg-gradient-to-br from-purple-50 to-violet-100 border-[#8c76f0] scale-110 shadow-xl'
+                        : 'bg-white border-gray-200 hover:border-[#8c76f0] hover:scale-105'
+                    }`}
+                  >
+                    {activeStep === index && (
+                      <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-purple-50/60 to-violet-100/60 animate-pulse" />
+                    )}
+                    <step.icon className={`w-11 h-11 transition-colors duration-300 ${activeStep === index ? 'text-[#8c76f0]' : 'text-gray-400 group-hover:text-[#8c76f0]'}`} />
+                    <div className={`absolute -top-3 -right-3 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg transition-all duration-300 ${activeStep === index ? 'bg-[#8c76f0] scale-110' : 'bg-gray-400'}`}>
                       {index + 1}
                     </div>
+                    {activeStep === index && (
+                      <div className="absolute -inset-1 rounded-3xl border-2 border-[#8c76f0] animate-ping opacity-20" />
+                    )}
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-3 leading-snug">{step.title}</h3>
-                  <p className="text-gray-600 leading-relaxed text-sm">{step.description}</p>
-                  {index < steps.length - 1 && (
-                    <ArrowRight className="hidden lg:block absolute -right-7 top-7 w-5 h-5 text-[#8c76f0] opacity-50" />
-                  )}
+                  <h3 className={`text-sm font-bold text-center mb-1 transition-colors duration-300 px-1 ${activeStep === index ? 'text-gray-900' : 'text-gray-600'}`}>{step.title}</h3>
+                  <p className={`text-xs text-center font-medium transition-colors duration-300 px-1 leading-tight ${activeStep === index ? 'text-[#8c76f0]' : 'text-gray-400'}`}>{step.subtitle}</p>
                 </div>
+                {index < steps.length - 1 && (
+                  <div className="flex items-center flex-shrink-0 mt-11 mx-0.5">
+                    <div className="h-0.5 w-8 transition-all duration-700 bg-gray-200" />
+                    <ArrowRight className="w-4 h-4 flex-shrink-0 transition-colors duration-500 text-gray-300" />
+                  </div>
+                )}
               </div>
             ))}
           </div>
+
+          {/* Detail panel */}
+          <div
+            className={`transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+            style={{ transitionDelay: '620ms' }}
+          >
+            <div className="relative bg-white rounded-3xl p-8 border-2 border-[#8c76f0] shadow-lg">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-violet-50/40 rounded-3xl" />
+              <div className="relative flex items-center gap-5">
+                <div className="relative flex-shrink-0 w-16 h-16 rounded-2xl bg-purple-50 border-2 border-[#8c76f0]/30 flex items-center justify-center">
+                  {(() => { const Icon = steps[activeStep].icon; return <Icon className="w-9 h-9 text-[#8c76f0]" />; })()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xl font-bold text-gray-900 mb-1">Step {activeStep + 1}: {steps[activeStep].title}</p>
+                  <p className="text-gray-600 leading-relaxed text-sm">{steps[activeStep].description}</p>
+                </div>
+                <div className="ml-auto flex gap-2 flex-shrink-0">
+                  {steps.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveStep(i)}
+                      className={`rounded-full transition-all duration-300 ${i === activeStep ? 'w-6 h-3 bg-[#8c76f0]' : 'w-3 h-3 bg-gray-300 hover:bg-[#8c76f0]/50'}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile layout */}
+        <div className="lg:hidden space-y-4">
+          {steps.map((step, index) => (
+            <div
+              key={step.title}
+              className={`transition-all duration-700 ${visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'}`}
+              style={{ transitionDelay: `${index * 120}ms` }}
+            >
+              <div className={`relative bg-white rounded-3xl p-5 border-2 shadow-lg transition-all duration-500 ${
+                index === 0 ? 'border-[#8c76f0] shadow-xl' : 'border-gray-200 hover:border-[#8c76f0] hover:shadow-xl'
+              }`}>
+                {index === 0 && <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-violet-50/50 rounded-3xl pointer-events-none" />}
+                <div className="relative flex items-start gap-4">
+                  <div className="relative flex-shrink-0">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${index === 0 ? 'bg-purple-50' : 'bg-gray-50'}`}>
+                      <step.icon className={`w-6 h-6 transition-colors duration-300 ${index === 0 ? 'text-[#8c76f0]' : 'text-gray-400'}`} />
+                    </div>
+                    <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold shadow ${index === 0 ? 'bg-[#8c76f0]' : 'bg-gray-400'}`}>
+                      {index + 1}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900 mb-0.5">{step.title}</h3>
+                    <p className={`text-xs font-semibold mb-1 ${index === 0 ? 'text-[#8c76f0]' : 'text-gray-400'}`}>{step.subtitle}</p>
+                    <p className="text-sm text-gray-600 leading-relaxed">{step.description}</p>
+                  </div>
+                </div>
+              </div>
+              {index < steps.length - 1 && (
+                <div className="flex justify-center py-1.5">
+                  <ArrowRight className="w-4 h-4 rotate-90 transition-colors duration-300 text-gray-300" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Trust badges */}
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+          {trustBadges.map((badge, index) => (
+            <div
+              key={badge.title}
+              className={`group relative bg-white rounded-3xl p-6 border-2 border-gray-200 shadow-lg hover:border-[#8c76f0] hover:shadow-xl transition-all duration-500 flex items-center gap-4 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+              style={{ transitionDelay: `${900 + index * 120}ms` }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-50/0 to-violet-50/0 group-hover:from-purple-50/40 group-hover:to-violet-50/40 rounded-3xl transition-all duration-500" />
+              <div className="relative flex-shrink-0 w-14 h-14 rounded-2xl bg-gray-50 border-2 border-gray-200 group-hover:border-[#8c76f0] group-hover:bg-purple-50 flex items-center justify-center transition-all duration-300">
+                <badge.icon className="w-7 h-7 text-gray-400 group-hover:text-[#8c76f0] transition-colors duration-300" />
+              </div>
+              <div className="relative">
+                <p className="text-lg font-bold text-gray-900">{badge.title}</p>
+                <p className="text-sm text-gray-500">{badge.description}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>

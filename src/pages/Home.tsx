@@ -1,132 +1,20 @@
 import {
   CreditCard, Shield, Building2, TrendingUp, Lock, FileCheck, Clock, CheckCircle,
   Landmark, ArrowRight, Banknote, RefreshCw, UserCheck, Briefcase, Home as HomeIcon,
-  Zap, GraduationCap, Bus, Users, Heart, ShoppingBag, Wrench, Plane, Music,
-  Stethoscope, Baby, Dog, Leaf, Truck, Gamepad2, Camera, Coffee, BookOpen,
-  MonitorSmartphone, Wifi, Flame, Droplets, Building, Car, Scissors, Package,
-  Globe, Star, DollarSign, Receipt, Loader2
+  Zap, GraduationCap, Bus, Users
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-const CATEGORY_ICON_MAP: Record<string, React.ElementType> = {
-  'business': Briefcase,
-  'vendor': Briefcase,
-  'professional': Briefcase,
-  'service': Wrench,
-  'housing': HomeIcon,
-  'rent': HomeIcon,
-  'maintenance': Wrench,
-  'utilities': Zap,
-  'tax': Receipt,
-  'administrative': Building,
-  'education': GraduationCap,
-  'academic': GraduationCap,
-  'school': GraduationCap,
-  'college': GraduationCap,
-  'university': GraduationCap,
-  'transportation': Bus,
-  'travel': Plane,
-  'student': Bus,
-  'membership': Users,
-  'club': Users,
-  'subscription': Star,
-  'health': Stethoscope,
-  'medical': Stethoscope,
-  'insurance': Shield,
-  'grocery': ShoppingBag,
-  'shopping': ShoppingBag,
-  'entertainment': Music,
-  'gaming': Gamepad2,
-  'food': Coffee,
-  'restaurant': Coffee,
-  'telecom': Wifi,
-  'internet': Wifi,
-  'mobile': MonitorSmartphone,
-  'electricity': Flame,
-  'water': Droplets,
-  'gas': Flame,
-  'vehicle': Car,
-  'automobile': Car,
-  'salon': Scissors,
-  'beauty': Scissors,
-  'logistics': Truck,
-  'courier': Truck,
-  'charity': Heart,
-  'donation': Heart,
-  'child': Baby,
-  'pet': Dog,
-  'environment': Leaf,
-  'photography': Camera,
-  'books': BookOpen,
-  'import': Globe,
-  'export': Globe,
-  'foreign': Globe,
-};
-
-const CATEGORY_COLORS = [
-  'from-blue-500 to-cyan-500',
-  'from-green-500 to-teal-500',
-  'from-amber-500 to-orange-500',
-  'from-rose-500 to-pink-500',
-  'from-sky-500 to-blue-500',
-  'from-violet-500 to-purple-500',
-  'from-emerald-500 to-green-500',
-  'from-red-500 to-rose-500',
-  'from-indigo-500 to-blue-500',
-  'from-yellow-500 to-amber-500',
+const PAYMENT_CATEGORIES = [
+  { name: 'Business, Vendor & Professional Service Payments', icon: Briefcase, color: 'from-blue-500 to-cyan-500' },
+  { name: 'Housing, Rent & Maintenance Payments', icon: HomeIcon, color: 'from-green-500 to-teal-500' },
+  { name: 'Utilities, Tax & Administrative Payments', icon: Zap, color: 'from-amber-500 to-orange-500' },
+  { name: 'Education & Academic Payments', icon: GraduationCap, color: 'from-rose-500 to-pink-500' },
+  { name: 'Transportation & Student Travel Payments', icon: Bus, color: 'from-sky-500 to-blue-500' },
+  { name: 'Memberships, Clubs & Subscriptions', icon: Users, color: 'from-violet-500 to-purple-500' },
 ];
 
-function getCategoryIcon(categoryName: string): React.ElementType {
-  const lower = categoryName.toLowerCase();
-  for (const [keyword, Icon] of Object.entries(CATEGORY_ICON_MAP)) {
-    if (lower.includes(keyword)) return Icon;
-  }
-  return DollarSign;
-}
-
 function PaymentCategoriesSection() {
-  const [categories, setCategories] = useState<{ id: string; category_name: string }[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-categories-list`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({}),
-          }
-        );
-        const data = await res.json();
-        if (res.ok && data.categories) {
-          setCategories(data.categories);
-        }
-      } catch {
-        // silently fail — section simply won't render
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCategories();
-  }, []);
-
-  if (loading) {
-    return (
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto flex justify-center">
-          <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" />
-        </div>
-      </section>
-    );
-  }
-
-  if (!categories.length) return null;
-
   return (
     <section className="py-20 px-4">
       <div className="max-w-7xl mx-auto">
@@ -135,24 +23,17 @@ function PaymentCategoriesSection() {
         </h2>
         <p className="text-center text-gray-600 text-xl mb-16">Choose from multiple payment types</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {categories.map((category, index) => {
-            const Icon = getCategoryIcon(category.category_name);
-            const color = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
-            return (
-              <div
-                key={category.id}
-                className="group relative"
-              >
-                <div className={`absolute inset-0 bg-gradient-to-r ${color} rounded-2xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity`} />
-                <div className="relative bg-white rounded-2xl p-6 border-2 border-gray-300 hover:border-[#8c76f0] transition-all hover:scale-105 cursor-pointer text-center shadow-lg hover:shadow-xl flex flex-col items-center justify-center gap-4 py-8">
-                  <div className="w-14 h-14 rounded-2xl bg-[#f3f0fe] flex items-center justify-center shadow-md">
-                    <Icon className="w-7 h-7 text-[#8c76f0] flex-shrink-0" />
-                  </div>
-                  <p className="text-gray-900 font-semibold text-sm leading-snug">{category.category_name}</p>
+          {PAYMENT_CATEGORIES.map((category, index) => (
+            <div key={category.name} className="group relative" style={{ animationDelay: `${index * 100}ms` }}>
+              <div className={`absolute inset-0 bg-gradient-to-r ${category.color} rounded-2xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity`} />
+              <div className="relative bg-white rounded-2xl p-6 border-2 border-gray-300 hover:border-[#8c76f0] transition-all hover:scale-105 cursor-pointer text-center shadow-lg hover:shadow-xl flex flex-col items-center justify-center gap-4 py-8">
+                <div className="w-14 h-14 rounded-2xl bg-[#f3f0fe] flex items-center justify-center shadow-md">
+                  <category.icon className="w-7 h-7 text-[#8c76f0] flex-shrink-0" />
                 </div>
+                <p className="text-gray-900 font-semibold text-sm leading-snug">{category.name}</p>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -522,25 +403,6 @@ export default function Home() {
       </section>
 
       <HowItWorksSection />
-
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-            {features.map((feature, index) => (
-              <div
-                key={feature.title}
-                className="group relative bg-white rounded-3xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all hover:scale-105 shadow-lg hover:shadow-xl"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-violet-50/50 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <feature.icon className="w-16 h-16 text-[#8c76f0] mb-6" />
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">{feature.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       <PaymentCategoriesSection />
 

@@ -180,28 +180,40 @@ function HowItWorksSection() {
 
   const steps = [
     {
+      icon: UserCheck,
+      title: 'User Login & KYC',
+      subtitle: 'Login & Verification',
+      description: 'The user logs in to PayByCard and completes the required KYC verification.',
+    },
+    {
       icon: CreditCard,
-      title: 'Customer',
-      subtitle: 'Pays with Credit Card',
-      description: 'Customer pays using a credit card — Visa, Mastercard, RuPay, or Amex — through a secure checkout form.',
+      title: 'User Initiates Payment',
+      subtitle: 'Enter Beneficiary Details',
+      description: 'The user enters the beneficiary/merchant details and initiates the payment through PayByCard.',
     },
     {
-      icon: RefreshCw,
-      title: 'Payment Aggregator',
-      subtitle: 'Processes Gateway Transaction',
-      description: 'The payment aggregator authenticates and processes the payment gateway transaction, validating card details and triggering bank authorization.',
+      icon: Lock,
+      title: 'Gateway Processes Card Payment',
+      subtitle: 'Secure Card Processing',
+      description: 'The payment gateway partner securely processes the user\u2019s credit card payment.',
     },
     {
-      icon: Building2,
-      title: 'Payout Processing',
-      subtitle: 'Aggregator Initiates Payout',
-      description: 'The payment aggregator processes the payout transaction, verifying beneficiary details and initiating the bank transfer.',
+      icon: FileCheck,
+      title: 'PayByCard Verifies Onboarding',
+      subtitle: 'Merchant Validation',
+      description: 'PayByCard verifies the beneficiary/merchant onboarding and completes the necessary validation before processing the payment.',
+    },
+    {
+      icon: Landmark,
+      title: 'Gateway Settles Funds',
+      subtitle: 'Nodal Account Settlement',
+      description: 'The payment gateway partner settles the successfully processed payment amount into PayByCard\u2019s designated nodal account.',
     },
     {
       icon: Banknote,
-      title: 'Beneficiary',
-      subtitle: 'Funds Settled to Bank',
-      description: "Funds are settled directly to the beneficiary's bank account — fast, secure, and fully traceable.",
+      title: 'PayByCard Pays Beneficiary',
+      subtitle: 'Bank Transfer',
+      description: 'After receiving the settled funds, PayByCard transfers the applicable payment amount to the verified beneficiary/merchant bank account.',
     },
   ];
 
@@ -215,9 +227,9 @@ function HowItWorksSection() {
     <section ref={sectionRef} className="py-20 px-4">
       <div className="max-w-7xl mx-auto">
         <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-900 mb-4">
-          How PayByCard <span className="text-[#8c76f0]">Processes Payment</span>
+          How <span className="text-[#8c76f0]">PayByCard</span> Works
         </h2>
-        <p className="text-center text-gray-600 text-xl mb-16">A secure, transparent 4-step flow — from your card to the beneficiary's bank account</p>
+        <p className="text-center text-gray-600 text-xl mb-16">A secure, transparent 6-step flow — from login to settlement</p>
 
         {/* Desktop layout */}
         <div className="hidden lg:block">
@@ -230,7 +242,7 @@ function HowItWorksSection() {
                 >
                   <div
                     onClick={() => setActiveStep(index)}
-                    className={`group relative w-24 h-24 rounded-3xl flex items-center justify-center mb-4 transition-all duration-500 shadow-lg border-2 cursor-pointer ${
+                    className={`group relative w-20 h-20 rounded-3xl flex items-center justify-center mb-4 transition-all duration-500 shadow-lg border-2 cursor-pointer ${
                       activeStep === index
                         ? 'bg-gradient-to-br from-purple-50 to-violet-100 border-[#8c76f0] scale-110 shadow-xl'
                         : 'bg-white border-gray-200 hover:border-[#8c76f0] hover:scale-105'
@@ -239,21 +251,21 @@ function HowItWorksSection() {
                     {activeStep === index && (
                       <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-purple-50/60 to-violet-100/60 animate-pulse" />
                     )}
-                    <step.icon className={`w-11 h-11 transition-colors duration-300 ${activeStep === index ? 'text-[#8c76f0]' : 'text-gray-400 group-hover:text-[#8c76f0]'}`} />
-                    <div className={`absolute -top-3 -right-3 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg transition-all duration-300 ${activeStep === index ? 'bg-[#8c76f0] scale-110' : 'bg-gray-400'}`}>
+                    <step.icon className={`w-9 h-9 transition-colors duration-300 ${activeStep === index ? 'text-[#8c76f0]' : 'text-gray-400 group-hover:text-[#8c76f0]'}`} />
+                    <div className={`absolute -top-2.5 -right-2.5 w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-lg transition-all duration-300 ${activeStep === index ? 'bg-[#8c76f0] scale-110' : 'bg-gray-400'}`}>
                       {index + 1}
                     </div>
                     {activeStep === index && (
                       <div className="absolute -inset-1 rounded-3xl border-2 border-[#8c76f0] animate-ping opacity-20" />
                     )}
                   </div>
-                  <h3 className={`text-sm font-bold text-center mb-1 transition-colors duration-300 px-1 ${activeStep === index ? 'text-gray-900' : 'text-gray-600'}`}>{step.title}</h3>
-                  <p className={`text-xs text-center font-medium transition-colors duration-300 px-1 leading-tight ${activeStep === index ? 'text-[#8c76f0]' : 'text-gray-400'}`}>{step.subtitle}</p>
+                  <h3 className={`text-xs font-bold text-center mb-1 transition-colors duration-300 px-1 ${activeStep === index ? 'text-gray-900' : 'text-gray-600'}`}>{step.title}</h3>
+                  <p className={`text-[11px] text-center font-medium transition-colors duration-300 px-1 leading-tight ${activeStep === index ? 'text-[#8c76f0]' : 'text-gray-400'}`}>{step.subtitle}</p>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className="flex items-center flex-shrink-0 mt-11 mx-0.5">
-                    <div className="h-0.5 w-8 transition-all duration-700 bg-gray-200" />
-                    <ArrowRight className="w-4 h-4 flex-shrink-0 transition-colors duration-500 text-gray-300" />
+                  <div className="flex items-center flex-shrink-0 mt-9 mx-0.5">
+                    <div className="h-0.5 w-6 transition-all duration-700 bg-gray-200" />
+                    <ArrowRight className="w-3.5 h-3.5 flex-shrink-0 transition-colors duration-500 text-gray-300" />
                   </div>
                 )}
               </div>
@@ -268,8 +280,8 @@ function HowItWorksSection() {
             <div className="relative bg-white rounded-3xl p-8 border-2 border-[#8c76f0] shadow-lg">
               <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-violet-50/40 rounded-3xl" />
               <div className="relative flex items-center gap-5">
-                <div className="relative flex-shrink-0 w-16 h-16 rounded-2xl bg-purple-50 border-2 border-[#8c76f0]/30 flex items-center justify-center">
-                  {(() => { const Icon = steps[activeStep].icon; return <Icon className="w-9 h-9 text-[#8c76f0]" />; })()}
+                <div className="relative flex-shrink-0 w-14 h-14 rounded-2xl bg-purple-50 border-2 border-[#8c76f0]/30 flex items-center justify-center">
+                  {(() => { const Icon = steps[activeStep].icon; return <Icon className="w-8 h-8 text-[#8c76f0]" />; })()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xl font-bold text-gray-900 mb-1">Step {activeStep + 1}: {steps[activeStep].title}</p>

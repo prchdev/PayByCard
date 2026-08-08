@@ -313,7 +313,7 @@ export default function Home() {
     {
       icon: CheckCircle,
       title: 'Surpass Non-Acceptance',
-      description: "Pay anyone, anywhere - even vendors who don't accept cards",
+      description: "Pay for vendors who don't accept cards",
     },
     {
       icon: Shield,

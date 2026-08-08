@@ -214,36 +214,37 @@ function HowItWorksSection() {
     <section ref={sectionRef} className="py-20 px-4">
       <div className="max-w-7xl mx-auto">
         <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-900 mb-4">
-          How <span className="text-[#8c76f0]">PayByCard</span> Works
+          How <span className="text-[#8c76f0]">PayByCard</span> Processes Payment
         </h2>
         <p className="text-center text-gray-600 text-xl mb-16">A simple, secure process from login to settlement</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {steps.map((step, index) => (
-            <div
-              key={step.title}
-              className={`group relative bg-white rounded-3xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all hover:scale-105 shadow-lg hover:shadow-xl ${visible ? 'animate-fade-in' : 'opacity-0'}`}
-              style={{ animationDelay: `${index * 150}ms` }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-violet-50/50 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative">
-                <div className="flex items-center gap-4 mb-5">
-                  <div className="relative">
-                    <div className="w-14 h-14 rounded-2xl bg-[#f3f0fe] flex items-center justify-center shadow-md">
-                      <step.icon className="w-7 h-7 text-[#8c76f0]" />
-                    </div>
-                    <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-gradient-to-r from-[#8c76f0] to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md">
+        <div className="relative">
+          <div className="hidden lg:block absolute left-12 right-12 top-10 h-0.5 bg-[#8c76f0]/15 overflow-hidden">
+            {visible && <div className="h-full bg-[#8c76f0] animate-draw-line" style={{ animationDelay: '500ms' }} />}
+          </div>
+          <div className="relative flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory lg:grid lg:grid-cols-6 lg:gap-4 lg:overflow-visible">
+            {steps.map((step, index) => (
+              <div
+                key={step.title}
+                className={`group relative min-w-[300px] snap-start bg-white rounded-3xl p-7 border-2 border-gray-300 hover:border-[#8c76f0] transition-all duration-300 hover:-translate-y-2 shadow-lg hover:shadow-xl ${visible ? 'animate-slide-bottom' : 'opacity-0'}`}
+                style={{ animationDelay: `${500 + index * 180}ms` }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-violet-50/50 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative">
+                  <div className="relative z-10 w-16 h-16 mb-6 rounded-2xl bg-[#f3f0fe] flex items-center justify-center shadow-md animate-pulse-glow">
+                    <step.icon className="w-7 h-7 text-[#8c76f0]" />
+                    <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-gradient-to-r from-[#8c76f0] to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md">
                       {index + 1}
                     </div>
                   </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-3 leading-snug">{step.title}</h3>
+                  <p className="text-gray-600 leading-relaxed text-sm">{step.description}</p>
                   {index < steps.length - 1 && (
-                    <ArrowRight className="w-6 h-6 text-[#8c76f0] opacity-30 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                    <ArrowRight className="hidden lg:block absolute -right-7 top-7 w-5 h-5 text-[#8c76f0] opacity-50" />
                   )}
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-3 leading-snug">{step.title}</h3>
-                <p className="text-gray-600 leading-relaxed text-sm">{step.description}</p>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>

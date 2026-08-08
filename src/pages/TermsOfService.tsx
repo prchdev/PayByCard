@@ -113,6 +113,7 @@ export default function TermsOfService() {
                   You agree not to use the Services for any purpose that is unlawful, fraudulent, or prohibited under these Terms or applicable laws. Prohibited activities include (but are not limited to):
                 </p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
+                  <li>PayByCard is not a cash withdrawal or credit-card-to-bank-account cash conversion service. Payments are intended only for genuine underlying transactions to verified recipients and are subject to applicable card-network, payment-partner and regulatory requirements.</li>
                   <li>Making payments for illegal goods, services, or purposes.</li>
                   <li>Providing false, inaccurate, or misleading information.</li>
                   <li>Attempting to circumvent security measures, fees, or transaction limits.</li>

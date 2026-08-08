@@ -337,6 +337,65 @@ export default function Home() {
         </div>
       </section>
 
+      {/* How PayByCard Processes Payments */}
+      <section className="py-20 px-4 bg-gradient-to-b from-transparent via-purple-50/40 to-transparent">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-900 mb-4">
+            How PayByCard <span className="text-[#8c76f0]">Processes Payments</span>
+          </h2>
+          <p className="text-center text-gray-600 text-xl mb-16">A simple, secure journey from card to beneficiary in four steps</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative">
+            {/* connecting line */}
+            <div className="hidden lg:block absolute top-16 left-[12.5%] right-[12.5%] h-0.5 bg-gradient-to-r from-[#8c76f0]/20 via-[#8c76f0]/40 to-[#8c76f0]/20" />
+
+            {[
+              {
+                icon: CreditCard,
+                step: '01',
+                title: 'Enter Payment Details',
+                description: 'Choose your payment category and enter the beneficiary\u2019s bank account number and IFSC code.',
+              },
+              {
+                icon: Lock,
+                step: '02',
+                title: 'Secure Card Payment',
+                description: 'Pay securely with your credit card through our RBI-authorized payment gateway. Your card data is never stored.',
+              },
+              {
+                icon: UserCheck,
+                step: '03',
+                title: 'Beneficiary KYC',
+                description: 'The beneficiary completes a quick KYC verification \u2014 via DigiLocker for instant approval or manual document upload.',
+              },
+              {
+                icon: Banknote,
+                step: '04',
+                title: 'Instant Settlement',
+                description: 'Once verified, funds are settled directly to the beneficiary\u2019s bank account with a GST-compliant invoice.',
+              },
+            ].map((item, index) => (
+              <div
+                key={item.step}
+                className="group relative bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all hover:scale-105 shadow-lg hover:shadow-xl"
+                style={{ animationDelay: `${index * 150}ms` }}
+              >
+                <div className="absolute -top-4 -right-4 w-12 h-12 bg-gradient-to-br from-[#8c76f0] to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-purple-500/30">
+                  {item.step}
+                </div>
+                <div className="relative inline-block mb-6">
+                  <div className="w-14 h-14 bg-[#f3f0fe] rounded-2xl flex items-center justify-center shadow-md">
+                    <item.icon className="w-7 h-7 text-[#8c76f0]" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{item.title}</h3>
+                <p className="text-gray-600 leading-relaxed text-sm">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <PaymentCategoriesSection />
 
       <section className="py-20 px-4 bg-gradient-to-b from-transparent via-purple-50 to-transparent">

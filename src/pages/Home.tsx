@@ -159,6 +159,97 @@ function PaymentCategoriesSection() {
   );
 }
 
+function HowItWorksSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 }
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const steps = [
+    {
+      icon: UserCheck,
+      title: 'User Login & KYC',
+      description: 'The user logs in to PayByCard and completes the required KYC verification.',
+    },
+    {
+      icon: CreditCard,
+      title: 'User Initiates Payment',
+      description: 'The user enters the beneficiary/merchant details and initiates the payment through PayByCard.',
+    },
+    {
+      icon: Lock,
+      title: 'Payment Gateway Processes Credit Card Payment',
+      description: 'The payment gateway partner securely processes the user\u2019s credit card payment.',
+    },
+    {
+      icon: FileCheck,
+      title: 'PayByCard Verifies Merchant Onboarding',
+      description: 'PayByCard verifies the beneficiary/merchant onboarding and completes the necessary validation before processing the payment.',
+    },
+    {
+      icon: Landmark,
+      title: 'Payment Gateway Partner Settles Funds',
+      description: 'The payment gateway partner settles the successfully processed payment amount into PayByCard\u2019s designated nodal account.',
+    },
+    {
+      icon: Banknote,
+      title: 'PayByCard Pays the Beneficiary/Merchant',
+      description: 'After receiving the settled funds, PayByCard transfers the applicable payment amount to the verified beneficiary/merchant bank account.',
+    },
+  ];
+
+  return (
+    <section ref={sectionRef} className="py-20 px-4">
+      <div className="max-w-7xl mx-auto">
+        <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-900 mb-4">
+          How <span className="text-[#8c76f0]">PayByCard</span> Works
+        </h2>
+        <p className="text-center text-gray-600 text-xl mb-16">A simple, secure process from login to settlement</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {steps.map((step, index) => (
+            <div
+              key={step.title}
+              className={`group relative bg-white rounded-3xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all hover:scale-105 shadow-lg hover:shadow-xl ${visible ? 'animate-fade-in' : 'opacity-0'}`}
+              style={{ animationDelay: `${index * 150}ms` }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-violet-50/50 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <div className="relative">
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-2xl bg-[#f3f0fe] flex items-center justify-center shadow-md">
+                      <step.icon className="w-7 h-7 text-[#8c76f0]" />
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-gradient-to-r from-[#8c76f0] to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md">
+                      {index + 1}
+                    </div>
+                  </div>
+                  {index < steps.length - 1 && (
+                    <ArrowRight className="w-6 h-6 text-[#8c76f0] opacity-30 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                  )}
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-3 leading-snug">{step.title}</h3>
+                <p className="text-gray-600 leading-relaxed text-sm">{step.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Home() {
   const VisaLogo = () => (
     <div className="flex items-center justify-center w-32 h-32">
@@ -317,6 +408,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <HowItWorksSection />
 
       <section className="py-20 px-4">
         <div className="max-w-7xl mx-auto">

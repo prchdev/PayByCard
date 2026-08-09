@@ -190,40 +190,75 @@ function HowItWorksSection() {
         </div>
 
         {/* Mobile layout */}
-        <div className="lg:hidden space-y-4">
-          {steps.map((step, index) => (
-            <div
-              key={step.title}
-              className={`transition-all duration-700 ${visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'}`}
-              style={{ transitionDelay: `${index * 120}ms` }}
-            >
-              <div className={`relative bg-white rounded-3xl p-5 border-2 shadow-lg transition-all duration-500 ${
-                index === 0 ? 'border-[#8c76f0] shadow-xl' : 'border-gray-200 hover:border-[#8c76f0] hover:shadow-xl'
-              }`}>
-                {index === 0 && <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-violet-50/50 rounded-3xl pointer-events-none" />}
-                <div className="relative flex items-start gap-4">
-                  <div className="relative flex-shrink-0">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${index === 0 ? 'bg-purple-50' : 'bg-gray-50'}`}>
-                      <step.icon className={`w-6 h-6 transition-colors duration-300 ${index === 0 ? 'text-[#8c76f0]' : 'text-gray-400'}`} />
-                    </div>
-                    <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold shadow ${index === 0 ? 'bg-[#8c76f0]' : 'bg-gray-400'}`}>
+        <div className="lg:hidden">
+          {/* Step indicator row */}
+          <div
+            className={`flex items-center justify-between mb-6 transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+          >
+            {steps.map((step, index) => (
+              <div key={step.title} className="flex items-center flex-1 last:flex-none">
+                <button
+                  onClick={() => setActiveStep(index)}
+                  className="flex flex-col items-center"
+                >
+                  <div
+                    className={`relative w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-md border-2 ${
+                      activeStep === index
+                        ? 'bg-gradient-to-br from-purple-50 to-violet-100 border-[#8c76f0] scale-110 shadow-lg'
+                        : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    {activeStep === index && (
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-purple-50/60 to-violet-100/60 animate-pulse" />
+                    )}
+                    <step.icon className={`w-6 h-6 transition-colors duration-300 ${activeStep === index ? 'text-[#8c76f0]' : 'text-gray-400'}`} />
+                    <div className={`absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow transition-all duration-300 ${activeStep === index ? 'bg-[#8c76f0] scale-110' : 'bg-gray-400'}`}>
                       {index + 1}
                     </div>
+                    {activeStep === index && (
+                      <div className="absolute -inset-1 rounded-2xl border-2 border-[#8c76f0] animate-ping opacity-20" />
+                    )}
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold text-gray-900 mb-0.5">{step.title}</h3>
-                    <p className={`text-xs font-semibold mb-1 ${index === 0 ? 'text-[#8c76f0]' : 'text-gray-400'}`}>{step.subtitle}</p>
-                    <p className="text-sm text-gray-600 leading-relaxed">{step.description}</p>
+                </button>
+                {index < steps.length - 1 && (
+                  <div className="flex items-center flex-1 mx-1">
+                    <div className={`h-0.5 w-full transition-all duration-500 ${activeStep > index ? 'bg-[#8c76f0]' : 'bg-gray-200'}`} />
                   </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Active step detail card */}
+          <div
+            key={activeStep}
+            className={`transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+            style={{ animation: 'fadeInUp 0.5s ease-out' }}
+          >
+            <div className="relative bg-white rounded-3xl p-6 border-2 border-[#8c76f0] shadow-lg">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-violet-50/40 rounded-3xl pointer-events-none" />
+              <div className="relative flex items-start gap-4">
+                <div className="relative flex-shrink-0 w-14 h-14 rounded-2xl bg-purple-50 border-2 border-[#8c76f0]/30 flex items-center justify-center">
+                  {(() => { const Icon = steps[activeStep].icon; return <Icon className="w-7 h-7 text-[#8c76f0]" />; })()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-lg font-bold text-gray-900 mb-1">Step {activeStep + 1}: {steps[activeStep].title}</p>
+                  <p className="text-xs font-semibold text-[#8c76f0] mb-2">{steps[activeStep].subtitle}</p>
+                  <p className="text-sm text-gray-600 leading-relaxed">{steps[activeStep].description}</p>
                 </div>
               </div>
-              {index < steps.length - 1 && (
-                <div className="flex justify-center py-1.5">
-                  <ArrowRight className="w-4 h-4 rotate-90 transition-colors duration-300 text-gray-300" />
-                </div>
-              )}
+              {/* Progress dots */}
+              <div className="relative flex justify-center gap-2 mt-5">
+                {steps.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveStep(i)}
+                    className={`rounded-full transition-all duration-300 ${i === activeStep ? 'w-6 h-3 bg-[#8c76f0]' : 'w-3 h-3 bg-gray-300'}`}
+                  />
+                ))}
+              </div>
             </div>
-          ))}
+          </div>
         </div>
 
         {/* Trust badges */}

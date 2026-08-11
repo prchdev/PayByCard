@@ -129,6 +129,7 @@ export default function TermsOfService() {
                   Users must never share their card number, expiry date, CVV/CVC, PIN, OTP, passwords, or other confidential payment credentials with any person claiming to represent PayByCard or any third party. Users should provide such credentials only through the secure payment interface provided for completing an authorized transaction.
                 </p>
                 <p>
+                  If a user receives a suspicious request for confidential payment credentials, the user should not disclose the information and should immediately contact PayByCard through its official support channels.
                 </p>
               </div>
             </div>

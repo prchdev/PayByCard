@@ -147,7 +147,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
+            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <AlertTriangle className="w-7 h-7 text-[#8c76f0] mr-3" />
                 8. Prohibited Conduct

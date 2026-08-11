@@ -114,7 +114,7 @@ export default function TermsOfService() {
                   For security, fraud prevention, regulatory compliance, and transaction monitoring purposes, PayByCard, its payment gateway partners, banking partners, or other authorized service providers may contact users to verify the authenticity, nature, purpose, or other relevant details of a transaction.
                 </p>
                 <p>
-                  Our fees are non-refundable except in limited cases explicitly mentioned in the Refund Policy. We may revise fees with prior notice on the Platform.
+                  Users are required to reasonably cooperate with such verification requests and provide accurate and relevant information or supporting documents when requested. Failure to provide the required information or cooperate with a verification request may result in the transaction being held, declined, cancelled, or refunded, as applicable.
                 </p>
               </div>
             </div>

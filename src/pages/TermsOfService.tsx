@@ -100,6 +100,8 @@ export default function TermsOfService() {
                 <p>
                   Completion of the required KYC verification is mandatory for users before they can initiate or make payments through the Platform. Similarly, the beneficiary/merchant must complete the applicable onboarding and KYC requirements within the timeline specified by PayByCard or its payment/banking partners.
                 </p>
+                <p>
+                </p>
               </div>
             </div>
 

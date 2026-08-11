@@ -91,6 +91,18 @@ export default function TermsOfService() {
               </div>
             </div>
 
+            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">4. Mandatory KYC and Merchant Onboarding</h3>
+              <div className="space-y-3 text-gray-700 leading-relaxed">
+                <p>
+                  As required under applicable laws, regulations, and guidelines, including applicable RBI requirements, PayByCard may be required to verify the identity and KYC details of both the payer/sender and the beneficiary/merchant/recipient before processing a payment.
+                </p>
+                <p>
+                  Completion of the required KYC verification is mandatory for users before they can initiate or make payments through the Platform. Similarly, the beneficiary/merchant must complete the applicable onboarding and KYC requirements within the timeline specified by PayByCard or its payment/banking partners.
+                </p>
+              </div>
+            </div>
+
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">4. Fees and Charges</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">

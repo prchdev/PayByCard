@@ -111,7 +111,7 @@ export default function TermsOfService() {
               <h3 className="text-2xl font-bold text-gray-900 mb-4">5. Transaction Verification and Cooperation</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
-                  All applicable convenience fees, processing charges, GST, and other costs are clearly displayed before you confirm any transaction. By proceeding, you agree to pay these charges.
+                  For security, fraud prevention, regulatory compliance, and transaction monitoring purposes, PayByCard, its payment gateway partners, banking partners, or other authorized service providers may contact users to verify the authenticity, nature, purpose, or other relevant details of a transaction.
                 </p>
                 <p>
                   Our fees are non-refundable except in limited cases explicitly mentioned in the Refund Policy. We may revise fees with prior notice on the Platform.

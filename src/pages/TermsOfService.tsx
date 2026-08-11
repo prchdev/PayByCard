@@ -119,6 +119,18 @@ export default function TermsOfService() {
               </div>
             </div>
 
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">5. Protection of Card and Payment Credentials</h3>
+              <div className="space-y-3 text-gray-700 leading-relaxed">
+                <p>
+                  PayByCard, its employees, payment gateway partners, and banking partners will not require users to disclose their complete card number, card expiry date, CVV/CVC, PIN, OTP, or other confidential authentication credentials through unsolicited calls, messages, emails, or other communication channels.
+                </p>
+                <p>
+                  Users are required to reasonably cooperate with such verification requests and provide accurate and relevant information or supporting documents when requested. Failure to provide the required information or cooperate with a verification request may result in the transaction being held, declined, cancelled, or refunded, as applicable.
+                </p>
+              </div>
+            </div>
+
             
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">4. Fees and Charges</h3>

@@ -174,7 +174,7 @@ export default function TermsOfService() {
             </div>
 
             <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">6. Intellectual Property Rights</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">9. Intellectual Property Rights</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
                   All content, logos, trademarks, designs, software, and technology on the Platform are owned by or licensed to PayByCard. You are granted a limited, revocable, non-exclusive, non-transferable license to access and use the Services for personal or authorized business purposes only.
@@ -188,7 +188,7 @@ export default function TermsOfService() {
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <Shield className="w-7 h-7 text-[#8c76f0] mr-3" />
-                7. Privacy and Data Protection
+                10. Privacy and Data Protection
               </h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
@@ -201,7 +201,7 @@ export default function TermsOfService() {
             </div>
 
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">8. Disclaimers</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">11. Disclaimers</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
                   The Platform and Services are provided on an "as is" and "as available" basis without any warranties, express or implied.
@@ -219,7 +219,7 @@ export default function TermsOfService() {
             </div>
 
             <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">9. Limitation of Liability</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">12. Limitation of Liability</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
                   To the maximum extent permitted by law, PayByCard, its directors, officers, employees, and affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Services.
@@ -231,7 +231,7 @@ export default function TermsOfService() {
             </div>
 
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">10. Indemnification</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">13. Indemnification</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
                   You agree to indemnify, defend, and hold harmless PayByCard and its affiliates from and against any claims, damages, losses, liabilities, costs, and expenses (including reasonable legal fees) arising out of or relating to:
@@ -245,7 +245,7 @@ export default function TermsOfService() {
             </div>
 
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">11. Termination</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">14. Termination</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
                   We may suspend or terminate your access to the Services at any time, with or without notice, for breach of these Terms, suspected fraud, or regulatory requirements.
@@ -257,7 +257,7 @@ export default function TermsOfService() {
             </div>
 
             <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">12. Amendments</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">15. Amendments</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
                   We reserve the right to modify these Terms at any time. We will post the updated Terms on the Platform with a new effective date. Your continued use of the Services after such changes constitutes your acceptance of the revised Terms.
@@ -268,7 +268,7 @@ export default function TermsOfService() {
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <Gavel className="w-7 h-7 text-[#8c76f0] mr-3" />
-                13. Governing Law and Dispute Resolution
+                16. Governing Law and Dispute Resolution
               </h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
@@ -286,7 +286,7 @@ export default function TermsOfService() {
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <Globe className="w-7 h-7 text-[#8c76f0] mr-3" />
-                14. Miscellaneous
+                17. Miscellaneous
               </h3>
               <div className="space-y-4 text-gray-700 leading-relaxed">
                 <div>

@@ -126,7 +126,7 @@ export default function TermsOfService() {
                   PayByCard, its employees, payment gateway partners, and banking partners will not require users to disclose their complete card number, card expiry date, CVV/CVC, PIN, OTP, or other confidential authentication credentials through unsolicited calls, messages, emails, or other communication channels.
                 </p>
                 <p>
-                  Users are required to reasonably cooperate with such verification requests and provide accurate and relevant information or supporting documents when requested. Failure to provide the required information or cooperate with a verification request may result in the transaction being held, declined, cancelled, or refunded, as applicable.
+                  Users must never share their card number, expiry date, CVV/CVC, PIN, OTP, passwords, or other confidential payment credentials with any person claiming to represent PayByCard or any third party. Users should provide such credentials only through the secure payment interface provided for completing an authorized transaction.
                 </p>
               </div>
             </div>

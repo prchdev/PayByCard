@@ -60,7 +60,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <UserCheck className="w-7 h-7 text-[#8c76f0] mr-3" />
                 2. Eligibility
@@ -74,7 +74,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
+            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">3. User Account and Security</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
@@ -119,7 +119,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">6. Protection of Card and Payment Credentials</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
@@ -147,7 +147,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <AlertTriangle className="w-7 h-7 text-[#8c76f0] mr-3" />
                 8. Prohibited Conduct
@@ -173,7 +173,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
+            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">9. Intellectual Property Rights</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
@@ -185,7 +185,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <Shield className="w-7 h-7 text-[#8c76f0] mr-3" />
                 10. Privacy and Data Protection
@@ -244,7 +244,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">14. Termination</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
@@ -256,7 +256,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
+            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">15. Amendments</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
@@ -265,7 +265,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <Gavel className="w-7 h-7 text-[#8c76f0] mr-3" />
                 16. Governing Law and Dispute Resolution

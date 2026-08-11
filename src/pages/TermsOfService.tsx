@@ -106,6 +106,20 @@ export default function TermsOfService() {
               </div>
             </div>
 
+
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">4. Fees and Charges</h3>
+              <div className="space-y-3 text-gray-700 leading-relaxed">
+                <p>
+                  All applicable convenience fees, processing charges, GST, and other costs are clearly displayed before you confirm any transaction. By proceeding, you agree to pay these charges.
+                </p>
+                <p>
+                  Our fees are non-refundable except in limited cases explicitly mentioned in the Refund Policy. We may revise fees with prior notice on the Platform.
+                </p>
+              </div>
+            </div>
+
+            
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">4. Fees and Charges</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">

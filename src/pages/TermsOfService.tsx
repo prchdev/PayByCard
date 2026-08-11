@@ -101,6 +101,7 @@ export default function TermsOfService() {
                   Completion of the required KYC verification is mandatory for users before they can initiate or make payments through the Platform. Similarly, the beneficiary/merchant must complete the applicable onboarding and KYC requirements within the timeline specified by PayByCard or its payment/banking partners.
                 </p>
                 <p>
+                  PayByCard reserves the right to decline, hold, suspend, or refund a transaction where the required KYC or merchant onboarding is incomplete, unsuccessful, expired, or not completed within the prescribed timeline. Any refund will be processed in accordance with the applicable refund policy and the procedures of the relevant payment gateway and banking partners.
                 </p>
               </div>
             </div>

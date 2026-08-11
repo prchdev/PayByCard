@@ -58,6 +58,11 @@ Deno.serve(async (req: Request) => {
         .maybeSingle(),
     ]);
 
+    const queryError = panResult.error || addressResult.error || businessResult.error || userResult.error;
+    if (queryError) {
+      throw queryError;
+    }
+
     return new Response(
       JSON.stringify({
         pan: panResult.data,

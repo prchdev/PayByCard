@@ -4,9 +4,11 @@ import {
   RefreshCw, Users, Clock, XCircle, CheckCircle, Search,
   ChevronLeft, ChevronRight, ShieldCheck, X, ZoomIn, Eye,
   AlertCircle, Loader2, FileCode2, Globe, CalendarCheck, ScanFace, CreditCard,
+  Download,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
+import { downloadCsv } from '../../utils/csvExport';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -620,6 +622,36 @@ export default function AdminMerchantKyc() {
   const startIndex = (currentPage - 1) * recordsPerPage;
   const paginated = filtered.slice(startIndex, startIndex + recordsPerPage);
 
+  const handleDownloadCsv = () => {
+    const headers = [
+      'Full Name', 'Email', 'Mobile Number', 'Joined Date',
+      'PAN Number', 'Payment Reference', 'Category', 'Sender Name',
+      'Amount', 'Bank Account Number', 'Bank IFSC', 'Bank Name',
+      'KYC Method', 'Status', 'Expires At', 'Verified At', 'Rejection Reason',
+    ];
+    const rows = filtered.map((r) => [
+      r.full_name,
+      r.email,
+      r.mobile,
+      new Date(r.created_at).toLocaleDateString('en-IN'),
+      r.pan_number ?? '',
+      r.payment_reference ?? '',
+      r.category_name ?? '',
+      r.sender_name ?? '',
+      r.amount != null ? Number(r.amount).toFixed(2) : '',
+      r.bank_account_number ?? '',
+      r.bank_ifsc ?? '',
+      r.bank_name ?? '',
+      r.kyc_method ?? '',
+      r.status,
+      r.expires_at ? new Date(r.expires_at).toLocaleDateString('en-IN') : '',
+      r.verified_at ? new Date(r.verified_at).toLocaleDateString('en-IN') : '',
+      r.rejection_reason ?? '',
+    ]);
+    const dateStr = new Date().toISOString().split('T')[0];
+    downloadCsv(`merchant-kyc-report-${dateStr}.csv`, headers, rows);
+  };
+
   if (permLoading) return null;
 
   return (
@@ -708,6 +740,15 @@ export default function AdminMerchantKyc() {
                   className="w-full sm:w-56 pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8c76f0]"
                 />
               </div>
+              <button
+                onClick={handleDownloadCsv}
+                disabled={filtered.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Download CSV report"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Download Report CSV</span>
+              </button>
               <button
                 onClick={fetchRecords}
                 disabled={loading}

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, Users, Clock, XCircle, CheckCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, Users, Clock, XCircle, CheckCircle, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminKyc } from './useAdminKyc';
 import { KycUserEntry, KycStatus } from './types';
 import KycStatusBadge from './KycStatusBadge';
 import ReviewModal from './ReviewModal';
 import { useAdminPermission } from './useAdminPermission';
+import { downloadCsv } from '../../utils/csvExport';
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'All Users' },
@@ -132,6 +133,33 @@ export default function AdminKycVerification() {
     pending: entries.filter((e) => getOverallStatus(e) === 'pending').length,
   };
 
+  const handleDownloadCsv = () => {
+    const headers = [
+      'First Name', 'Last Name', 'Email', 'Mobile Number', 'Joined Date',
+      'PAN Number', 'PAN Status', 'Address Proof Type', 'Address Status',
+      'Business Name', 'Business PAN', 'GST Number', 'Business Status',
+      'Overall Status',
+    ];
+    const rows = filtered.map((e) => [
+      e.user.first_name,
+      e.user.last_name,
+      e.user.email,
+      e.user.mobile_number,
+      new Date(e.user.created_at).toLocaleDateString('en-IN'),
+      e.pan?.pan_number ?? '',
+      e.pan?.status ?? '',
+      e.address?.proof_type ?? '',
+      e.address?.status ?? '',
+      e.business?.business_name ?? '',
+      e.business?.business_pan ?? '',
+      e.business?.gst_number ?? '',
+      e.business?.status ?? '',
+      getOverallStatus(e),
+    ]);
+    const dateStr = new Date().toISOString().split('T')[0];
+    downloadCsv(`kyc-verification-report-${dateStr}.csv`, headers, rows);
+  };
+
   if (permLoading || !adminId) return null;
 
   return (
@@ -218,6 +246,15 @@ export default function AdminKycVerification() {
                   className="w-full sm:w-56 pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8c76f0]"
                 />
               </div>
+              <button
+                onClick={handleDownloadCsv}
+                disabled={filtered.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Download CSV report"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Download Report CSV</span>
+              </button>
               <button
                 onClick={() => fetchList(statusFilter)}
                 disabled={loading}

@@ -478,9 +478,9 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Notify merchant via SMS
+      // Notify merchant via SMS (non-blocking)
       if (record.mobile) {
-        await sendSms(supabaseUrl, supabaseKey, record.mobile, "kyc_rejected", {});
+        EdgeRuntime.waitUntil(sendSms(supabaseUrl, supabaseKey, record.mobile, "kyc_rejected", {}));
       }
 
       return new Response(
@@ -505,7 +505,7 @@ Deno.serve(async (req: Request) => {
       .eq("id", recordId);
 
     if (record.mobile) {
-      await sendSms(supabaseUrl, supabaseKey, record.mobile, "kyc_approved", {});
+      EdgeRuntime.waitUntil(sendSms(supabaseUrl, supabaseKey, record.mobile, "kyc_approved", {}));
     }
 
     if (record.beneficiary_id) {

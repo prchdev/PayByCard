@@ -221,47 +221,49 @@ Deno.serve(async (req: Request) => {
       .update({ kyc_completed: kycCompleted })
       .eq("id", userId);
 
-    // Send email + SMS notifications to user
+    // Send email + SMS notifications to user in the background (non-blocking)
     const documentType = TABLE_LABELS[table] || table;
 
-    if (userEmail) {
-      if (action === "verified") {
-        await sendKycEmail(
-          supabaseUrl,
-          supabaseServiceKey,
-          userEmail,
-          `KYC ${documentType} Approved`,
-          buildApprovalEmailBody(documentType)
-        );
-      } else if (action === "rejected") {
-        await sendKycEmail(
-          supabaseUrl,
-          supabaseServiceKey,
-          userEmail,
-          `KYC ${documentType} Rejected`,
-          buildRejectionEmailBody(documentType, rejectionReason || "")
-        );
+    EdgeRuntime.waitUntil((async () => {
+      if (userEmail) {
+        if (action === "verified") {
+          await sendKycEmail(
+            supabaseUrl,
+            supabaseServiceKey,
+            userEmail,
+            `KYC ${documentType} Approved`,
+            buildApprovalEmailBody(documentType)
+          );
+        } else if (action === "rejected") {
+          await sendKycEmail(
+            supabaseUrl,
+            supabaseServiceKey,
+            userEmail,
+            `KYC ${documentType} Rejected`,
+            buildRejectionEmailBody(documentType, rejectionReason || "")
+          );
+        }
+
+        // If all KYC is now complete, send the account-ready email
+        if (kycCompleted) {
+          await sendKycEmail(
+            supabaseUrl,
+            supabaseServiceKey,
+            userEmail,
+            "KYC Fully Approved - Account Ready",
+            buildFullKycApprovedBody()
+          );
+        }
       }
 
-      // If all KYC is now complete, send the account-ready email
-      if (kycCompleted) {
-        await sendKycEmail(
-          supabaseUrl,
-          supabaseServiceKey,
-          userEmail,
-          "KYC Fully Approved - Account Ready",
-          buildFullKycApprovedBody()
-        );
+      if (userMobile) {
+        if (action === "verified") {
+          await sendSms(supabaseUrl, supabaseServiceKey, userMobile, "kyc_approved", {});
+        } else if (action === "rejected") {
+          await sendSms(supabaseUrl, supabaseServiceKey, userMobile, "kyc_rejected", {});
+        }
       }
-    }
-
-    if (userMobile) {
-      if (action === "verified") {
-        await sendSms(supabaseUrl, supabaseServiceKey, userMobile, "kyc_approved", {});
-      } else if (action === "rejected") {
-        await sendSms(supabaseUrl, supabaseServiceKey, userMobile, "kyc_rejected", {});
-      }
-    }
+    })());
 
     return new Response(
       JSON.stringify({

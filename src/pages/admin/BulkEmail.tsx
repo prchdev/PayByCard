@@ -415,19 +415,20 @@ export default function BulkEmail() {
   };
 
   const switchToCode = () => {
-    const editor = editorRef.current;
-    if (editor) setCodeView(editor.innerHTML);
+    setCodeView(formData.body_html || '');
     setViewMode('code');
   };
 
   const switchToVisual = () => {
-    const editor = editorRef.current;
-    if (editor) {
-      editor.innerHTML = codeView || formData.body_html || '';
-      setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
-    }
+    setFormData((prev) => ({ ...prev, body_html: codeView || prev.body_html || '' }));
     setViewMode('visual');
   };
+
+  useEffect(() => {
+    if (viewMode === 'visual' && editorRef.current) {
+      editorRef.current.innerHTML = formData.body_html || '';
+    }
+  }, [viewMode, formData.body_html]);
 
   const handleSave = async (newStatus: string) => {
     if (!formData.campaign_name || !formData.subject) {
@@ -808,7 +809,7 @@ export default function BulkEmail() {
                     onClick={handleEditorClick}
                     onMouseUp={saveSelection}
                     onKeyUp={saveSelection}
-                    className="min-h-[200px] max-h-[400px] overflow-y-auto px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all prose prose-sm max-w-none"
+                    className="min-h-[200px] max-h-[400px] overflow-y-auto px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all email-editor-content max-w-none"
                     style={{ lineHeight: '1.6' }}
                     data-placeholder="Compose your email here..."
                     suppressContentEditableWarning

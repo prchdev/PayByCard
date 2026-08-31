@@ -101,9 +101,28 @@ export default function BulkEmail() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const savedRangeRef = useRef<Range | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [linkModal, setLinkModal] = useState<{ open: boolean; url: string }>({ open: false, url: '' });
   const [imageModal, setImageModal] = useState<{ open: boolean; src: string; align: string; width: string }>({ open: false, src: '', align: 'none', width: '' });
+
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  };
+
+  const restoreSelection = () => {
+    const editor = editorRef.current;
+    if (!editor || !savedRangeRef.current) return;
+    editor.focus();
+    const sel = window.getSelection();
+    if (sel) {
+      sel.removeAllRanges();
+      sel.addRange(savedRangeRef.current);
+    }
+  };
 
   // Report view state
   const [reportCampaign, setReportCampaign] = useState<BulkEmailCampaign | null>(null);
@@ -706,12 +725,13 @@ export default function BulkEmail() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email Body</label>
               <div className="flex flex-wrap items-center gap-1 mb-2 p-2 bg-gray-50 border-2 border-gray-200 rounded-xl">
-                <button type="button" onClick={() => execCommand('bold')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Bold"><Bold className="w-4 h-4" /></button>
-                <button type="button" onClick={() => execCommand('italic')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Italic"><Italic className="w-4 h-4" /></button>
-                <button type="button" onClick={() => execCommand('underline')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Underline"><Underline className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('bold'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Bold"><Bold className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('italic'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Italic"><Italic className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('underline'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Underline"><Underline className="w-4 h-4" /></button>
                 <div className="w-px bg-gray-300 mx-1" />
                 <select
-                  onChange={(e) => { setFontSize(e.target.value); e.target.selectedIndex = 0; }}
+                  onMouseDown={saveSelection}
+                  onChange={(e) => { restoreSelection(); setFontSize(e.target.value); e.target.selectedIndex = 0; }}
                   className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-white text-gray-700 outline-none focus:border-[#8c76f0]"
                   title="Font Size"
                   defaultValue=""
@@ -722,23 +742,23 @@ export default function BulkEmail() {
                   <option value="5">Large</option>
                   <option value="7">X-Large</option>
                 </select>
-                <button type="button" onClick={() => execCommand('formatBlock', '<h2>')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Heading"><Type className="w-4 h-4" /></button>
-                <button type="button" onClick={() => execCommand('insertUnorderedList')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Bullet List"><List className="w-4 h-4" /></button>
-                <button type="button" onClick={() => execCommand('insertOrderedList')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Numbered List"><ListOrdered className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('formatBlock', '<h2>'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Heading"><Type className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('insertUnorderedList'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Bullet List"><List className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('insertOrderedList'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Numbered List"><ListOrdered className="w-4 h-4" /></button>
                 <div className="w-px bg-gray-300 mx-1" />
-                <button type="button" onClick={() => setAlignment('left')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Left"><AlignLeft className="w-4 h-4" /></button>
-                <button type="button" onClick={() => setAlignment('center')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Center"><AlignCenter className="w-4 h-4" /></button>
-                <button type="button" onClick={() => setAlignment('right')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Right"><AlignRight className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); setAlignment('left'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Left"><AlignLeft className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); setAlignment('center'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Center"><AlignCenter className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); setAlignment('right'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Right"><AlignRight className="w-4 h-4" /></button>
                 <div className="w-px bg-gray-300 mx-1" />
-                <button type="button" onClick={handleLinkClick} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Convert selected text to link"><Link2 className="w-4 h-4" /></button>
-                <button type="button" onClick={removeLink} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Remove Link"><Link2Off className="w-4 h-4" /></button>
-                <button type="button" onClick={handleImageUploadClick} disabled={imageLoading} className="p-2 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50" title="Upload Image(s)">
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleLinkClick(); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Convert selected text to link"><Link2 className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); removeLink(); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Remove Link"><Link2Off className="w-4 h-4" /></button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleImageUploadClick(); }} disabled={imageLoading} className="p-2 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50" title="Upload Image(s)">
                   {imageLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
                 </button>
                 <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
                 <div className="w-px bg-gray-300 mx-1" />
                 {PARAMETER_FIELDS.map((p) => (
-                  <button key={p} type="button" onClick={() => insertParameter(p)} className="px-3 py-2 text-xs font-medium bg-purple-50 text-[#8c76f0] border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors">
+                  <button key={p} type="button" onMouseDown={(ev) => { ev.preventDefault(); insertParameter(p); }} className="px-3 py-2 text-xs font-medium bg-purple-50 text-[#8c76f0] border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors">
                     {p}
                   </button>
                 ))}

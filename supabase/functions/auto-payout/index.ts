@@ -167,6 +167,51 @@ async function verifyCashfreeSettlement(
   }
 }
 
+async function verifyPhonePeSettlement(
+  gateway: any,
+  env: string,
+  paymentReference: string,
+): Promise<SettlementResult> {
+  const { apiKey, apiSecret } = getCredentials(gateway, env);
+  if (!apiKey || !apiSecret) {
+    return { settled: false, reason: "Missing PhonePe credentials", gatewayStatus: "check_failed" };
+  }
+  const base = (env ?? "production").toLowerCase() === "test"
+    ? "https://api-preprod.phonepe.com/apis/hermes"
+    : "https://api.phonepe.com/apis/hermes";
+
+  const apiEndpoint = `/pg/v1/status/${apiKey}/${paymentReference}`;
+  const hashInput = apiEndpoint + apiSecret;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+  const xVerify = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+
+  try {
+    const res = await fetch(`${base}${apiEndpoint}`, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-VERIFY": xVerify,
+        "X-MERCHANT-ID": apiKey,
+      },
+    });
+    if (!res.ok) {
+      return { settled: false, reason: `PhonePe status fetch failed (HTTP ${res.status})`, gatewayStatus: "check_failed" };
+    }
+    const data = await res.json();
+    if (!data.success) {
+      return { settled: false, reason: `PhonePe status check unsuccessful: ${data.message ?? ""}`, gatewayStatus: "check_failed" };
+    }
+    const state = (data.data?.state ?? "").toUpperCase();
+    if (state !== "PAYMENT_SUCCESS" && state !== "COMPLETED") {
+      return { settled: false, reason: `Payment not successful (state: ${state})`, gatewayStatus: "not_paid" };
+    }
+    // PhonePe does not expose a separate settlement status via the status API.
+    // A successful payment is considered settled for payout purposes.
+    return { settled: true, reason: `Payment ${state} — considered settled`, gatewayStatus: "settled" };
+  } catch (e: any) {
+    return { settled: false, reason: `PhonePe settlement check error: ${e?.message}`, gatewayStatus: "check_failed" };
+  }
+}
+
 async function verifyGatewaySettlement(
   gateway: any,
   env: string,
@@ -178,6 +223,9 @@ async function verifyGatewaySettlement(
   }
   if (name.includes("cashfree")) {
     return verifyCashfreeSettlement(gateway, env, payment.payment_reference);
+  }
+  if (name.includes("phonepe")) {
+    return verifyPhonePeSettlement(gateway, env, payment.payment_reference);
   }
   return { settled: true, reason: "unsupported_gateway_skip_check", gatewayStatus: "not_applicable" };
 }
@@ -266,10 +314,39 @@ async function getCashfreeBalance(gateway: any, env: string): Promise<{ balance:
   }
 }
 
+async function getPhonePeBalance(gateway: any, env: string): Promise<{ balance: number | null; error?: string }> {
+  const isTest = (env ?? "production").toLowerCase() === "test";
+  const merchantId = isTest
+    ? ((gateway.test_payout_client_id || "").trim() || (gateway.test_api_key || "").trim())
+    : ((gateway.production_payout_client_id || "").trim() || (gateway.production_api_key || "").trim());
+  const saltKey = isTest
+    ? ((gateway.test_payout_client_secret || "").trim() || (gateway.test_api_secret || "").trim())
+    : ((gateway.production_payout_client_secret || "").trim() || (gateway.production_api_secret || "").trim());
+  if (!merchantId || !saltKey) return { balance: null, error: "PhonePe payout credentials missing" };
+  const base = isTest ? "https://api-preprod.phonepe.com/apis/hermes" : "https://api.phonepe.com/apis/hermes";
+  const apiEndpoint = `/pg/v1/payout/balance/${merchantId}`;
+  const hashInput = apiEndpoint + saltKey;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+  const xVerify = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+  try {
+    const res = await fetch(`${base}${apiEndpoint}`, { headers: { "X-VERIFY": xVerify, "X-MERCHANT-ID": merchantId } });
+    const bodyText = await res.text();
+    if (!res.ok) return { balance: null, error: `PhonePe API ${res.status}: ${bodyText.slice(0, 300)}` };
+    let data: any;
+    try { data = JSON.parse(bodyText); } catch { return { balance: null, error: `Non-JSON: ${bodyText.slice(0, 200)}` }; }
+    if (!data.success) return { balance: null, error: data.message ?? "PhonePe balance check failed" };
+    const bal = data.data?.availableBalance ?? data.data?.balance;
+    return bal != null ? { balance: parseFloat(String(bal)) / 100 } : { balance: null, error: "balance field missing" };
+  } catch (e: any) {
+    return { balance: null, error: `Exception: ${e?.message}` };
+  }
+}
+
 async function getGatewayBalance(gateway: any, env: string): Promise<{ balance: number | null; error?: string }> {
   const name = (gateway.gateway_name ?? "").toLowerCase();
   if (name.includes("razorpay")) return getRazorpayBalance(gateway, env);
   if (name.includes("cashfree")) return getCashfreeBalance(gateway, env);
+  if (name.includes("phonepe")) return getPhonePeBalance(gateway, env);
   return { balance: null, error: `Balance check not supported for gateway: ${gateway.gateway_name}` };
 }
 
@@ -591,6 +668,40 @@ async function checkCashfreePayoutStatus(
   }
 }
 
+async function checkPhonePePayoutStatus(
+  gateway: any,
+  env: string,
+  transferId: string,
+): Promise<PayoutStatusResult> {
+  const isTest = (env ?? "production").toLowerCase() === "test";
+  const merchantId = isTest
+    ? ((gateway.test_payout_client_id || "").trim() || (gateway.test_api_key || "").trim())
+    : ((gateway.production_payout_client_id || "").trim() || (gateway.production_api_key || "").trim());
+  const saltKey = isTest
+    ? ((gateway.test_payout_client_secret || "").trim() || (gateway.test_api_secret || "").trim())
+    : ((gateway.production_payout_client_secret || "").trim() || (gateway.production_api_secret || "").trim());
+  if (!merchantId || !saltKey) return { status: "unknown", utr: null };
+  const base = isTest ? "https://api-preprod.phonepe.com/apis/hermes" : "https://api.phonepe.com/apis/hermes";
+  try {
+    const apiEndpoint = `/pg/v1/payout/status/${merchantId}/${transferId}`;
+    const hashInput = apiEndpoint + saltKey;
+    const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+    const xVerify = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+    const res = await fetch(`${base}${apiEndpoint}`, { headers: { "X-VERIFY": xVerify, "X-MERCHANT-ID": merchantId } });
+    const data = await res.json();
+    if (!data.success) return { status: "unknown", utr: null };
+    const state = (data.data?.state ?? data.data?.status ?? "").toUpperCase();
+    const status: PayoutStatusResult["status"] =
+      state === "SUCCESS" || state === "PAYOUT_SUCCESS" || state === "COMPLETED" ? "processed"
+      : state === "FAILED" || state === "PAYOUT_FAILED" || state === "REJECTED" ? "failed"
+      : state === "PENDING" || state === "ACCEPTED" || state === "PROCESSING" ? "processing"
+      : "unknown";
+    return { status, utr: data.data?.utr ?? null };
+  } catch {
+    return { status: "unknown", utr: null };
+  }
+}
+
 async function checkGatewayPayoutStatus(
   gateway: any,
   env: string,
@@ -599,6 +710,7 @@ async function checkGatewayPayoutStatus(
   const name = (gateway.gateway_name ?? "").toLowerCase();
   if (name.includes("razorpay")) return checkRazorpayPayoutStatus(gateway, env, payoutId);
   if (name.includes("cashfree")) return checkCashfreePayoutStatus(gateway, env, payoutId);
+  if (name.includes("phonepe")) return checkPhonePePayoutStatus(gateway, env, payoutId);
   return { status: "unknown", utr: null };
 }
 
@@ -823,6 +935,76 @@ async function executeCashfreePayout(
   };
 }
 
+async function executePhonePePayout(
+  _supabase: ReturnType<typeof createClient>,
+  payment: any,
+  gateway: any,
+  beneficiary: any,
+  payoutRef: string,
+): Promise<{ success: boolean; gateway_tx_id: string | null; utr: string | null; response: any }> {
+  const env = (payment.gateway_environment ?? "production").toLowerCase();
+  const isTest = env === "test";
+  const merchantId = isTest
+    ? ((gateway.test_payout_client_id || "").trim() || (gateway.test_api_key || "").trim())
+    : ((gateway.production_payout_client_id || "").trim() || (gateway.production_api_key || "").trim());
+  const saltKey = isTest
+    ? ((gateway.test_payout_client_secret || "").trim() || (gateway.test_api_secret || "").trim())
+    : ((gateway.production_payout_client_secret || "").trim() || (gateway.production_api_secret || "").trim());
+  if (!merchantId || !saltKey) throw new Error("PhonePe payout credentials not configured");
+
+  const base = isTest ? "https://api-preprod.phonepe.com/apis/hermes" : "https://api.phonepe.com/apis/hermes";
+  const transferId = `AUTO-${payoutRef}`;
+  const amountInPaise = Math.round(parseFloat(payment.amount) * 100);
+
+  const payload = {
+    merchantId,
+    transferId,
+    amount: amountInPaise,
+    transferMode: "IMPS",
+    beneficiary: {
+      accountNumber: beneficiary.bank_account,
+      ifsc: beneficiary.ifsc,
+      name: beneficiary.full_name,
+    },
+  };
+
+  const payloadBase64 = btoa(JSON.stringify(payload));
+  const apiEndpoint = "/pg/v1/payout";
+  const hashInput = payloadBase64 + apiEndpoint + saltKey;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+  const xVerify = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+
+  const res = await fetch(`${base}${apiEndpoint}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-VERIFY": xVerify, "X-MERCHANT-ID": merchantId },
+    body: JSON.stringify({ request: payloadBase64 }),
+  });
+  const data = await res.json();
+
+  if (res.status === 409) {
+    // Duplicate transfer — check status
+    const statusEndpoint = `/pg/v1/payout/status/${merchantId}/${transferId}`;
+    const statusHashInput = statusEndpoint + saltKey;
+    const statusHashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(statusHashInput));
+    const statusXVerify = Array.from(new Uint8Array(statusHashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+    const statusRes = await fetch(`${base}${statusEndpoint}`, { headers: { "X-VERIFY": statusXVerify, "X-MERCHANT-ID": merchantId } });
+    const statusData = await statusRes.json();
+    if (statusData.success && statusData.data?.state?.toUpperCase() !== "FAILED") {
+      return { success: true, gateway_tx_id: transferId, utr: statusData.data?.utr ?? null, response: statusData };
+    }
+    throw new Error(`Auto-payout failed: PhonePe transfer ${transferId} has permanently failed. Admin manual payout required.`);
+  }
+
+  const state = (data?.data?.state ?? data?.data?.status ?? "").toUpperCase();
+  const success = res.ok && data.success && ["SUCCESS", "PAYOUT_SUCCESS", "PENDING", "ACCEPTED", "PROCESSING"].includes(state);
+  return {
+    success,
+    gateway_tx_id: transferId,
+    utr: data?.data?.utr ?? null,
+    response: data,
+  };
+}
+
 async function executePayout(
   supabase: ReturnType<typeof createClient>,
   payment: any,
@@ -837,6 +1019,9 @@ async function executePayout(
   }
   if (name.includes("cashfree")) {
     return executeCashfreePayout(supabase, payment, gateway, beneficiary, payoutRef, userKyc);
+  }
+  if (name.includes("phonepe")) {
+    return executePhonePePayout(supabase, payment, gateway, beneficiary, payoutRef);
   }
   throw new Error(`Gateway ${gateway.gateway_name} does not support auto payout`);
 }

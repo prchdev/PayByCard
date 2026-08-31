@@ -273,6 +273,13 @@ function determineAllowedCards(cardType: string): string[] {
   return ["visa", "mastercard", "rupay", "amex", "diners"];
 }
 
+async function generatePhonePeChecksum(base64Payload: string, apiEndpoint: string, saltKey: string): Promise<string> {
+  const data = base64Payload + apiEndpoint + saltKey;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(data));
+  const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return hashHex + "###" + 1;
+}
+
 async function createGatewayPaymentConfig(
   gatewaySettings: any,
   payment: any,
@@ -546,6 +553,73 @@ async function createGatewayPaymentConfig(
           allowedCardNetworks: allowedCards
         }
       };
+
+    case "phonepe": {
+      const merchantId = isTestMode ? gatewaySettings.test_api_key : gatewaySettings.production_api_key;
+      const saltKey = isTestMode ? gatewaySettings.test_api_secret : gatewaySettings.production_api_secret;
+
+      if (!merchantId || !saltKey) {
+        throw new Error("PhonePe credentials not configured");
+      }
+
+      const phonepeBaseUrl = isTestMode
+        ? "https://api-preprod.phonepe.com/apis/hermes"
+        : "https://api.phonepe.com/apis/hermes";
+
+      const merchantOrderId = payment.payment_reference;
+      const amountInPaise = Math.round(payment.total_amount * 100);
+      const redirectUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-gateway-webhook?gateway=phonepe`;
+      const callbackUrlFull = callbackUrl;
+
+      // PhonePe Standard Checkout: initiate a PG transaction
+      const payload = {
+        merchantId,
+        merchantOrderId,
+        amount: amountInPaise,
+        redirectUrl,
+        redirectMode: "REDIRECT",
+        callbackUrl: callbackUrlFull,
+        paymentInstrument: {
+          type: "PAY_PAGE",
+        },
+      };
+
+      const payloadBase64 = btoa(JSON.stringify(payload));
+      const xVerify = await generatePhonePeChecksum(payloadBase64, "/pg/v1/pay", saltKey);
+
+      const initiateResponse = await fetch(`${phonepeBaseUrl}/pg/v1/pay`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-VERIFY": xVerify,
+        },
+        body: JSON.stringify({ request: payloadBase64 }),
+      });
+
+      if (!initiateResponse.ok) {
+        const errorData = await initiateResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to create PhonePe order");
+      }
+
+      const orderData = await initiateResponse.json();
+
+      return {
+        ...config,
+        merchantId,
+        sdkUrl: "https://phonepe.merchant.sdk/v1/phonepe-checkout.js",
+        environment: isTestMode ? "test" : "production",
+        options: {
+          merchantId,
+          merchantOrderId,
+          amount: amountInPaise,
+          redirectUrl,
+          redirectMode: "REDIRECT",
+          token: orderData.data?.token ?? orderData.data?.merchantTransactionId,
+          checkoutUrl: orderData.data?.redirectUrl ?? orderData.data?.instrumentResponse?.redirectInfo?.url,
+          cardType: payment.card_type,
+        }
+      };
+    }
 
     default:
       throw new Error(`Gateway ${gatewayName} not supported`);

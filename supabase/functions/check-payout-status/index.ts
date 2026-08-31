@@ -130,12 +130,63 @@ async function checkEaseBuzzPayoutStatus(payout: any, gateway: any, isTestMode: 
   };
 }
 
+async function checkPhonePePayoutStatus(payout: any, gateway: any, isTestMode: boolean) {
+  const merchantId = isTestMode
+    ? ((gateway.test_payout_client_id || "").trim() || (gateway.test_api_key || "").trim())
+    : ((gateway.production_payout_client_id || "").trim() || (gateway.production_api_key || "").trim());
+  const saltKey = isTestMode
+    ? ((gateway.test_payout_client_secret || "").trim() || (gateway.test_api_secret || "").trim())
+    : ((gateway.production_payout_client_secret || "").trim() || (gateway.production_api_secret || "").trim());
+
+  if (!merchantId || !saltKey) {
+    return { status: payout.status, transaction_id: null, utr: null, gateway_response: { error: "PhonePe payout credentials not configured" } };
+  }
+
+  const baseUrl = isTestMode
+    ? "https://api-preprod.phonepe.com/apis/hermes"
+    : "https://api.phonepe.com/apis/hermes";
+
+  const transferId = payout.payout_reference;
+  const apiEndpoint = `/pg/v1/payout/status/${merchantId}/${transferId}`;
+  const hashInput = apiEndpoint + saltKey;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+  const xVerify = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+
+  const response = await fetch(`${baseUrl}${apiEndpoint}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "X-VERIFY": xVerify,
+      "X-MERCHANT-ID": merchantId,
+    },
+  });
+
+  const result = await response.json();
+
+  if (!result.success) {
+    return { status: "processing", transaction_id: null, utr: null, gateway_response: result };
+  }
+
+  const state = (result.data?.state || result.data?.status || "").toUpperCase();
+  const status = state === "SUCCESS" || state === "PAYOUT_SUCCESS" || state === "COMPLETED" ? "completed"
+    : state === "FAILED" || state === "PAYOUT_FAILED" || state === "REJECTED" ? "failed"
+    : "processing";
+
+  return {
+    status,
+    transaction_id: result.data?.payoutId || result.data?.referenceId || null,
+    utr: result.data?.utr || result.data?.rrn || null,
+    gateway_response: result,
+  };
+}
+
 async function checkGatewayStatus(payout: any, gateway: any, isTestMode: boolean) {
   const name = (gateway.gateway_name ?? "").toLowerCase();
   if (name.includes("razorpay")) return checkRazorPayPayoutStatus(payout, gateway, isTestMode);
   if (name.includes("cashfree")) return checkCashFreePayoutStatus(payout, gateway, isTestMode);
   if (name.includes("payu")) return checkPayUPayoutStatus(payout, gateway, isTestMode);
   if (name.includes("easebuzz")) return checkEaseBuzzPayoutStatus(payout, gateway, isTestMode);
+  if (name.includes("phonepe")) return checkPhonePePayoutStatus(payout, gateway, isTestMode);
   return {
     status: payout.status,
     transaction_id: payout.gateway_transaction_id,

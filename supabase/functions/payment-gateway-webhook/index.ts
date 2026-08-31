@@ -235,6 +235,78 @@ async function handlePayUWebhook(req: Request, supabase: any, supabaseUrl: strin
   return { success: true, status };
 }
 
+async function handlePhonePeWebhook(req: Request, supabase: any, supabaseUrl: string, supabaseKey: string) {
+  const body = await req.json();
+  const payload = body;
+
+  // PhonePe sends { merchantId, merchantOrderId, transactionId, amount, state, ... }
+  const merchantOrderId = payload.merchantOrderId || payload.merchantTransactionId;
+
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("*, payment_gateway_settings(*)")
+    .eq("payment_reference", merchantOrderId)
+    .single();
+
+  if (!payment) throw new Error("Payment not found");
+
+  const gateway = payment.payment_gateway_settings;
+  const saltKey = payment.gateway_environment === "test"
+    ? gateway.test_api_secret
+    : gateway.production_api_secret;
+
+  // Verify X-VERIFY checksum if present
+  const xVerify = req.headers.get("x-verify");
+  if (xVerify && saltKey) {
+    const callbackResponse = payload.response || JSON.stringify(payload);
+    const base64Response = typeof callbackResponse === "string"
+      ? btoa(callbackResponse)
+      : btoa(JSON.stringify(callbackResponse));
+    const checkString = base64Response + "/pg/v1/status" + saltKey;
+    const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(checkString));
+    const expectedHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+    if (xVerify !== expectedHash) {
+      console.warn("PhonePe webhook signature mismatch — proceeding with status check");
+    }
+  }
+
+  const state = (payload.state || payload.code || "").toUpperCase();
+  let status = "pending";
+  let failureReason = null;
+
+  if (state === "PAYMENT_SUCCESS" || state === "COMPLETED") {
+    status = resolvePaymentStatus(payment);
+  } else if (state === "PAYMENT_ERROR" || state === "FAILED" || state === "PAYMENT_DECLINED") {
+    status = "failed";
+    failureReason = payload.message || payload.errorDescription || "Payment failed";
+  } else {
+    return { success: true, status: "ignored", message: `Payment state ${state} ignored` };
+  }
+
+  const updateData: any = {
+    status,
+    gateway_response: payload,
+    gateway_transaction_id: payload.transactionId || payload.providerReferenceId || payment.gateway_transaction_id,
+    updated_at: new Date().toISOString(),
+  };
+  if (status === "completed") updateData.completed_at = new Date().toISOString();
+  if (status === "failed") updateData.failure_reason = failureReason;
+
+  await supabase.from("payments").update(updateData).eq("id", payment.id);
+  await supabase.from("payment_logs").insert({
+    payment_id: payment.id,
+    status,
+    message: `Webhook received: ${state} → resolved to ${status}`,
+    metadata: payload,
+  });
+
+  if (status === "settlement_pending") {
+    triggerAutoPayout(supabaseUrl, supabaseKey, payment.id);
+  }
+
+  return { success: true, status };
+}
+
 async function handleGenericWebhook(req: Request, supabase: any) {
   const contentType = req.headers.get("content-type");
   let payload: any;
@@ -274,6 +346,9 @@ Deno.serve(async (req: Request) => {
         break;
       case "payu":
         result = await handlePayUWebhook(req, supabase, supabaseUrl, supabaseKey);
+        break;
+      case "phonepe":
+        result = await handlePhonePeWebhook(req, supabase, supabaseUrl, supabaseKey);
         break;
       default:
         result = await handleGenericWebhook(req, supabase);

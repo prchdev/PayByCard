@@ -39,8 +39,8 @@ interface PaymentGateway {
   production_cashfree_2fa_public_key: string;
 }
 
-const ALLOWED_GATEWAYS = ['RazorPay', 'CashFree', 'PayU'];
-const PAYOUT_GATEWAYS = ['RazorPay', 'CashFree', 'PayU'];
+const ALLOWED_GATEWAYS = ['RazorPay', 'CashFree', 'PayU', 'PhonePe'];
+const PAYOUT_GATEWAYS = ['RazorPay', 'CashFree', 'PayU', 'PhonePe'];
 
 export default function PaymentGatewaySettings() {
   const navigate = useNavigate();
@@ -405,6 +405,8 @@ export default function PaymentGatewaySettings() {
                         ? 'Cashfree Payout API uses separate credentials from the Payment Gateway API.'
                         : gateway.gateway_name === 'RazorPay'
                         ? 'RazorPay X Payout API credentials and source account number for fund transfers.'
+                        : gateway.gateway_name === 'PhonePe'
+                        ? 'PhonePe Business Payout API uses separate credentials from the Payment Gateway API.'
                         : 'Payout API credentials for fund transfer operations.'}
                     </p>
 

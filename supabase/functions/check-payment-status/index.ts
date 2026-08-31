@@ -141,6 +141,51 @@ async function checkEaseBuzzStatus(payment: any, gateway: any, isTestMode: boole
   return { status, transaction_id: result.easepayid, gateway_response: result };
 }
 
+async function checkPhonePeStatus(payment: any, gateway: any, isTestMode: boolean) {
+  const merchantId = isTestMode ? gateway.test_api_key : gateway.production_api_key;
+  const saltKey = isTestMode ? gateway.test_api_secret : gateway.production_api_secret;
+
+  if (!merchantId || !saltKey) {
+    return { status: "pending", transaction_id: null, gateway_response: { error: "PhonePe credentials not configured" } };
+  }
+
+  const baseUrl = isTestMode
+    ? "https://api-preprod.phonepe.com/apis/hermes"
+    : "https://api.phonepe.com/apis/hermes";
+
+  const apiEndpoint = `/pg/v1/status/${merchantId}/${payment.payment_reference}`;
+  const hashInput = apiEndpoint + saltKey;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+  const xVerify = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+
+  const response = await fetch(`${baseUrl}${apiEndpoint}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "X-VERIFY": xVerify,
+      "X-MERCHANT-ID": merchantId,
+    },
+  });
+
+  const result = await response.json();
+
+  if (!result.success) {
+    return { status: "pending", transaction_id: null, gateway_response: result };
+  }
+
+  const state = (result.data?.state || result.data?.state || "").toUpperCase();
+  const status = state === "PAYMENT_SUCCESS" || state === "COMPLETED" ? "completed"
+    : state === "PAYMENT_ERROR" || state === "FAILED" || state === "PAYMENT_DECLINED" ? "failed"
+    : state === "PENDING" || state === "PAYMENT_INITIATED" ? "processing"
+    : "pending";
+
+  return {
+    status,
+    transaction_id: result.data?.transactionId || result.data?.providerReferenceId || null,
+    gateway_response: result,
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -203,6 +248,9 @@ Deno.serve(async (req: Request) => {
             break;
           case "easebuzz":
             statusResult = await checkEaseBuzzStatus(payment, gateway, isTestMode);
+            break;
+          case "phonepe":
+            statusResult = await checkPhonePeStatus(payment, gateway, isTestMode);
             break;
         }
 

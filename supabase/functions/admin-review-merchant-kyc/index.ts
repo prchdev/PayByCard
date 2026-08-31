@@ -270,6 +270,46 @@ async function processGatewayRefund(
       return { success: false, error: data.message ?? "EnKash refund failed" };
     }
 
+    // ── PhonePe ──────────────────────────────────────────────────────────
+    if (name.includes("phonepe")) {
+      const merchantId = isTest ? gateway.test_api_key : gateway.production_api_key;
+      const saltKey     = isTest ? gateway.test_api_secret : gateway.production_api_secret;
+      if (!merchantId || !saltKey) return { success: false, error: "PhonePe credentials not configured" };
+
+      const baseUrl = isTest
+        ? "https://api-preprod.phonepe.com/apis/hermes"
+        : "https://api.phonepe.com/apis/hermes";
+
+      const originalOrderId = (payment.gateway_request as any)?.merchantOrderId ?? txnId;
+      const refundId = `refund_${payment.payment_reference ?? payment.id}`;
+      const amountInPaise = Math.round(refundAmount * 100);
+
+      const payload = {
+        merchantId,
+        merchantOrderId: originalOrderId,
+        transactionId: txnId,
+        amount: amountInPaise,
+        callbackUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-gateway-webhook?gateway=phonepe`,
+      };
+
+      const payloadBase64 = btoa(JSON.stringify(payload));
+      const apiEndpoint = "/pg/v1/refund";
+      const hashInput = payloadBase64 + apiEndpoint + saltKey;
+      const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+      const xVerify = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+
+      const res = await fetch(`${baseUrl}${apiEndpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-VERIFY": xVerify },
+        body: JSON.stringify({ request: payloadBase64 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        return { success: true, refund_id: data.data?.refundId ?? refundId };
+      }
+      return { success: false, error: data.message ?? "PhonePe refund failed" };
+    }
+
     return { success: false, error: `Unsupported gateway for automated refund: ${gatewayName}` };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Refund call threw an exception" };

@@ -905,6 +905,9 @@ export default function MakePayment() {
           if (!sdkReady) throw new Error('ZaakPay SDK failed to initialize');
           openZaakPayCheckout(gatewayConfig, paymentInfo);
           break;
+        case 'phonepe':
+          await openPhonePeCheckout(gatewayConfig, paymentInfo);
+          break;
         case 'enkash':
           sdkReady = await waitForSDKReady(() => typeof (window as any).EnkashCheckout !== 'undefined', 'Enkash');
           if (!sdkReady) throw new Error('Enkash SDK failed to initialize');
@@ -1072,6 +1075,22 @@ export default function MakePayment() {
     } catch (error) {
       console.error('Enkash checkout error:', error);
       throw error;
+    }
+  };
+
+  const openPhonePeCheckout = async (config: any, payment: any) => {
+    try {
+      setProcessing(true);
+      // PhonePe uses redirect-based checkout — redirect to the checkout URL
+      // returned by the initiate-payment edge function.
+      const checkoutUrl = config.options?.checkoutUrl;
+      if (!checkoutUrl) {
+        throw new Error('PhonePe checkout URL not available');
+      }
+      window.location.href = checkoutUrl;
+    } catch (error: any) {
+      console.error('PhonePe checkout error:', error);
+      handlePaymentFailure(error.message || 'PhonePe checkout failed');
     }
   };
 

@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import bcrypt from "npm:bcryptjs@2.4.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,16 +8,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
-async function hashPassword(password: string): Promise<string> {
+// F18: Legacy admin passwords are stored as unsalted SHA-256 (64 hex chars).
+// New/changed passwords use bcrypt. On next successful login with a legacy hash,
+// we transparently upgrade to bcrypt.
+function isLegacySha256(hash: string): boolean {
+  return /^[0-9a-f]{64}$/i.test(hash);
+}
+
+async function verifyLegacySha256(password: string, hash: string): Promise<boolean> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  const computed = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  return computed === hash;
 }
 
+// F19: Use crypto.getRandomValues instead of Math.random for security-critical codes.
 function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return (100000 + (arr[0] % 900000)).toString();
 }
 
 Deno.serve(async (req: Request) => {
@@ -39,21 +51,41 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const passwordHash = await hashPassword(password);
-
-    const { data: admin, error } = await supabase
+    // F18: Fetch the stored hash and verify with bcrypt or legacy SHA-256.
+    const { data: adminRow, error: lookupError } = await supabase
       .from("admin_users")
-      .select("id, email, full_name, role, is_active")
+      .select("id, email, full_name, role, is_active, password_hash")
       .eq("email", email)
-      .eq("password_hash", passwordHash)
       .maybeSingle();
 
-    if (error || !admin) {
+    if (lookupError || !adminRow) {
       return new Response(
         JSON.stringify({ error: "Invalid credentials" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const storedHash = adminRow.password_hash;
+    let passwordValid = false;
+    if (isLegacySha256(storedHash)) {
+      passwordValid = await verifyLegacySha256(password, storedHash);
+      // Transparent upgrade to bcrypt
+      if (passwordValid) {
+        const newHash = bcrypt.hashSync(password, 10);
+        await supabase.from("admin_users").update({ password_hash: newHash }).eq("id", adminRow.id);
+      }
+    } else {
+      passwordValid = bcrypt.compareSync(password, storedHash);
+    }
+
+    if (!passwordValid) {
+      return new Response(
+        JSON.stringify({ error: "Invalid credentials" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const admin = adminRow;
 
     if (!admin.is_active) {
       return new Response(
@@ -158,3 +190,4 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+modified

@@ -72,7 +72,7 @@ export async function readSessionToken(
 }
 
 // Internal function-to-function calls carry the service-role key and are trusted.
-function isInternalCall(req: Request): boolean {
+export function isInternalCall(req: Request): boolean {
   const auth = req.headers.get("Authorization") || "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
   if (!serviceKey) return false;

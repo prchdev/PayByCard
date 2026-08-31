@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { configureSessionInvalidHandler } from './utils/secureFetch';
+import { clearAdminSessionToken, clearUserSessionToken } from './utils/session';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -113,11 +115,34 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function SessionGuard() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { logout } = useAuth();
+
+  useEffect(() => {
+    configureSessionInvalidHandler(() => {
+      const isAdmin = location.pathname.startsWith('/admin');
+      if (isAdmin) {
+        clearAdminSessionToken();
+        navigate('/admin/login', { replace: true });
+      } else {
+        clearUserSessionToken();
+        logout();
+        navigate('/login', { replace: true });
+      }
+    });
+  }, [location.pathname, navigate, logout]);
+
+  return null;
+}
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <ScrollToTop />
+        <SessionGuard />
         <Routes>
           <Route path="/" element={<MainLayout><Home /></MainLayout>} />
           <Route path="/about" element={<MainLayout><About /></MainLayout>} />

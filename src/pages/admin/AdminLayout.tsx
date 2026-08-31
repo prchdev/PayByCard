@@ -4,6 +4,7 @@ import { LogOut, Menu, X, Lock, Shield, Home, FileCheck, Users, Mail, MessageSqu
 import Footer from '../../components/Footer';
 import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import SessionTimeoutModal from '../../components/SessionTimeoutModal';
+import { clearAdminSessionToken } from '../../utils/session';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -124,6 +125,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     sessionStorage.removeItem('adminName');
     localStorage.removeItem('adminId');
     localStorage.removeItem('adminRole');
+    clearAdminSessionToken();
     navigate('/admin/login');
   };
 

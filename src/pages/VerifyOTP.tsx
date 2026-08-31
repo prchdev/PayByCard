@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Mail, Smartphone, RefreshCw, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { setUserSessionToken } from '../utils/session';
 
 export default function VerifyOTP() {
   const location = useLocation();
@@ -171,7 +172,7 @@ export default function VerifyOTP() {
         throw new Error(data.error || 'OTP verification failed');
       }
 
-      login(userId, email);
+      login(userId, email, data.sessionToken);
       navigate('/kyc-verification', { state: { userId, userEmail: email } });
     } catch (error) {
       setError(error instanceof Error ? error.message : 'OTP verification failed. Please try again.');

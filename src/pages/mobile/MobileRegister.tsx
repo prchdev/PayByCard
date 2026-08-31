@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, AlertCircle, X, FileText, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { validatePassword, PASSWORD_REQUIREMENTS } from '../../utils/passwordValidation';
+import { setUserSessionToken } from '../../utils/session';
 import TermsOfService from '../TermsOfService';
 import Privacy from '../Privacy';
 
@@ -73,6 +74,7 @@ export default function MobileRegister() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registration failed');
+      setUserSessionToken(data.sessionToken);
       navigate('/mobile/verify-otp', {
         state: { userId: data.userId, email: formData.email, mobileNumber: `+91${formData.mobileNumber}` },
       });

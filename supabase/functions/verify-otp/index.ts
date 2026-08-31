@@ -57,6 +57,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // F20: Reject after 5 failed attempts.
+    if (otpRecord.attempts >= 5) {
+      return new Response(
+        JSON.stringify({ error: 'Too many incorrect attempts. Please request a new OTP.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const now = new Date();
     const mobileExpiry = new Date(otpRecord.mobile_otp_expires_at);
     const emailExpiry = new Date(otpRecord.email_otp_expires_at);
@@ -82,6 +90,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (otpRecord.mobile_otp !== mobileOTP) {
+      await supabase.from('otp_verification').update({ attempts: otpRecord.attempts + 1 }).eq('id', otpRecord.id);
       return new Response(
         JSON.stringify({ error: 'Invalid mobile OTP' }),
         {
@@ -92,6 +101,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (otpRecord.email_otp !== emailOTP) {
+      await supabase.from('otp_verification').update({ attempts: otpRecord.attempts + 1 }).eq('id', otpRecord.id);
       return new Response(
         JSON.stringify({ error: 'Invalid email OTP' }),
         {
@@ -156,3 +166,4 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+

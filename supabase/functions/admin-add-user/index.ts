@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { validatePassword } from '../_shared/passwordValidation.ts';
 import { withAdminSession } from "../_shared/session.ts";
+import bcrypt from "npm:bcryptjs@2.4.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,12 +10,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+function hashPassword(password: string): string {
+  return bcrypt.hashSync(password, 10);
 }
 
 const __pbcHandler = (async (req: Request) => {
@@ -101,7 +98,7 @@ const __pbcHandler = (async (req: Request) => {
     }
 
     // Hash password
-    const passwordHash = await hashPassword(password);
+    const passwordHash = hashPassword(password);
 
     // Create new admin user
     const { data: newAdmin, error: insertError } = await supabase
@@ -157,3 +154,4 @@ const __pbcHandler = (async (req: Request) => {
 });
 
 Deno.serve(withAdminSession(__pbcHandler as (req: Request) => Promise<Response>));
+modified

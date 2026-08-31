@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { setUserSessionToken } from '../../utils/session';
 
 export default function MobileLogin() {
   const navigate = useNavigate();
@@ -45,11 +46,12 @@ export default function MobileLogin() {
         throw new Error(data.error || 'Login failed');
       }
       if (data.needsVerification) {
+        setUserSessionToken(data.sessionToken);
         navigate('/mobile/verify-otp', {
           state: { userId: data.userId, email: data.email, mobileNumber: data.mobileNumber, fromLogin: true },
         });
       } else {
-        login(data.userId, data.email);
+        login(data.userId, data.email, data.sessionToken);
         if (data.isRestricted) sessionStorage.setItem('isRestricted', 'true');
         else sessionStorage.removeItem('isRestricted');
         if (!data.kycCompleted) {

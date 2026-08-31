@@ -1,6 +1,20 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { validatePassword } from '../_shared/passwordValidation.ts';
 import { withAdminSession } from "../_shared/session.ts";
+import bcrypt from "npm:bcryptjs@2.4.3";
+
+function isLegacySha256(hash: string): boolean {
+  return /^[0-9a-f]{64}$/i.test(hash);
+}
+
+async function verifyLegacySha256(password: string, hash: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const computed = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  return computed === hash;
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -67,13 +81,13 @@ const __pbcHandler = (async (req: Request) => {
       );
     }
 
-    const encoder = new TextEncoder();
-    const currentPasswordData = encoder.encode(current_password);
-    const currentPasswordHash = await crypto.subtle.digest('SHA-256', currentPasswordData);
-    const currentPasswordHashArray = Array.from(new Uint8Array(currentPasswordHash));
-    const currentPasswordHashHex = currentPasswordHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    // F18: Verify current password with bcrypt or legacy SHA-256, then store new as bcrypt.
+    const storedHash = admin.password_hash;
+    const currentPasswordValid = isLegacySha256(storedHash)
+      ? await verifyLegacySha256(current_password, storedHash)
+      : bcrypt.compareSync(current_password, storedHash);
 
-    if (currentPasswordHashHex !== admin.password_hash) {
+    if (!currentPasswordValid) {
       return new Response(
         JSON.stringify({ error: 'Current password is incorrect' }),
         {
@@ -83,15 +97,12 @@ const __pbcHandler = (async (req: Request) => {
       );
     }
 
-    const newPasswordData = encoder.encode(new_password);
-    const newPasswordHash = await crypto.subtle.digest('SHA-256', newPasswordData);
-    const newPasswordHashArray = Array.from(new Uint8Array(newPasswordHash));
-    const newPasswordHashHex = newPasswordHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const newPasswordHash = bcrypt.hashSync(new_password, 10);
 
     const { error: updateError } = await supabase
       .from('admin_users')
       .update({
-        password_hash: newPasswordHashHex,
+        password_hash: newPasswordHash,
         updated_at: new Date().toISOString(),
       })
       .eq('id', admin_id);

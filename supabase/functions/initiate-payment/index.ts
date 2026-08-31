@@ -64,19 +64,9 @@ const __pbcHandler = (async (req: Request) => {
 
     // ── Input validation ──────────────────────────────────────────────────────
     const parsedAmount = parseFloat(amount);
-    const parsedTotal  = parseFloat(totalAmount);
     if (isNaN(parsedAmount) || parsedAmount < MIN_AMOUNT || parsedAmount > MAX_AMOUNT) {
       return err(`Amount must be between ₹${MIN_AMOUNT} and ₹${MAX_AMOUNT}`);
     }
-    if (isNaN(parsedTotal) || parsedTotal < MIN_AMOUNT || parsedTotal > MAX_AMOUNT * 1.5) {
-      return err("Invalid total amount");
-    }
-    const parsedCharges = parseFloat(charges || 0);
-    const parsedGst = parseFloat(gst || 0);
-    const parsedDiscount = parseFloat(discount || 0);
-    if (isNaN(parsedCharges) || parsedCharges < 0) return err("Charges must be a non-negative number");
-    if (isNaN(parsedGst) || parsedGst < 0) return err("GST must be a non-negative number");
-    if (isNaN(parsedDiscount) || parsedDiscount < 0) return err("Discount must be a non-negative number");
     if (billFileUrl && typeof billFileUrl === "string" && billFileUrl.length > MAX_STR) {
       return err("billFileUrl too long");
     }
@@ -86,6 +76,28 @@ const __pbcHandler = (async (req: Request) => {
         return err(`Invalid ${key}`);
       }
     }
+
+    // F4: Recompute charges, GST, discount and total server-side — never trust the browser.
+    const chargesRes = await fetch(`${supabaseUrl}/functions/v1/calculate-payment-charges`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount: parsedAmount,
+        payment_option_id: paymentOptionId,
+        business_category_id: businessCategoryId || null,
+      }),
+    });
+    if (!chargesRes.ok) {
+      return err("Failed to calculate payment charges");
+    }
+    const chargesData = await chargesRes.json();
+    const parsedCharges = parseFloat(chargesData.charges || 0);
+    const parsedGst = parseFloat(chargesData.gst || 0);
+    const parsedDiscount = parseFloat(chargesData.discount || 0);
+    const parsedTotal = parsedAmount + parsedCharges + parsedGst - parsedDiscount;
 
     // ── Duplicate payment guard ───────────────────────────────────────────────
     // Detects double-submit within 30 s: same user + beneficiary + amount.
@@ -131,11 +143,11 @@ const __pbcHandler = (async (req: Request) => {
 
     const transactionSummary = {
       payment_reference: paymentReference,
-      amount: parseFloat(amount),
-      charges: parseFloat(charges || 0),
-      gst: parseFloat(gst || 0),
-      discount: parseFloat(discount || 0),
-      total_amount: parseFloat(totalAmount),
+      amount: parsedAmount,
+      charges: parsedCharges,
+      gst: parsedGst,
+      discount: parsedDiscount,
+      total_amount: parsedTotal,
       card_type: cardType,
       gateway_name: gatewaySettings.gateway_name,
       environment: gatewaySettings.environment,
@@ -161,11 +173,11 @@ const __pbcHandler = (async (req: Request) => {
         card_type: validCardType,
         allowed_cards: allowedCards,
         gateway_environment: normalizedEnvironment,
-        amount: parseFloat(amount),
-        charges: parseFloat(charges || 0),
-        gst: parseFloat(gst || 0),
-        discount: parseFloat(discount || 0),
-        total_amount: parseFloat(totalAmount),
+        amount: parsedAmount,
+        charges: parsedCharges,
+        gst: parsedGst,
+        discount: parsedDiscount,
+        total_amount: parsedTotal,
         payment_reference: paymentReference,
         bill_file_url: billFileUrl || null,
         status: "pending",
@@ -654,3 +666,4 @@ async function generatePaymentReference(supabase: any): Promise<string> {
 }
 
 Deno.serve(withUserSession(__pbcHandler as (req: Request) => Promise<Response>));
+

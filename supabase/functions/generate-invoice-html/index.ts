@@ -22,6 +22,17 @@ function fmt(v: string | number | null | undefined): string {
   });
 }
 
+// F23: Escape untrusted beneficiary data before interpolating into invoice HTML.
+function escHtml(s: string | null | undefined): string {
+  if (!s) return "";
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function statusStyle(s: string): { color: string; bg: string; label: string } {
   const map: Record<string, { color: string; bg: string; label: string }> = {
     completed:          { color: "#16a34a", bg: "#dcfce7", label: "Completed" },
@@ -253,11 +264,11 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
       <td style="vertical-align:top;padding-left:16px;border-left:1px solid #e2e8f0;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Beneficiary Details</div>
         <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
-          ${row("Name", bene.full_name || "&#8212;", false, true)}
+          ${row("Name", escHtml(bene.full_name) || "&#8212;", false, true)}
           ${row("PAN Number", receiverPan || "&#8212;", true)}
-          ${row("Bank", bene.bank_name || "&#8212;")}
-          ${row("Account No.", bene.bank_account || "&#8212;", true)}
-          ${row("IFSC Code", bene.ifsc || "&#8212;", true)}
+          ${row("Bank", escHtml(bene.bank_name) || "&#8212;")}
+          ${row("Account No.", escHtml(String(bene.bank_account || "")) || "&#8212;", true)}
+          ${row("IFSC Code", escHtml(String(bene.ifsc || "")) || "&#8212;", true)}
           ${bene.city ? row("City", bene.city) : ""}
         </table>
       </td>
@@ -278,7 +289,7 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
         <tr>
           <td style="padding:7px 8px;font-size:12px;border-bottom:1px solid #e2e8f0;">
             Platform Fees &#8212; ${categoryName} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
-            <span style="font-size:10.5px;color:#64748b;">To: ${bene.full_name || "&#8212;"} &middot; ${bene.bank_account || ""} &middot; ${bene.ifsc || ""}</span><br/>
+            <span style="font-size:10.5px;color:#64748b;">To: ${escHtml(bene.full_name) || "&#8212;"} &middot; ${escHtml(String(bene.bank_account || ""))} &middot; ${escHtml(String(bene.ifsc || ""))}</span><br/>
             <span style="font-size:10.5px;color:#64748b;">Amount: &#8377;${fmt(baseAmt)}</span>
           </td>
           <td style="padding:7px 8px;text-align:right;font-size:12px;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(charges)}</td>

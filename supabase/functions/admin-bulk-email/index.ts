@@ -40,7 +40,7 @@ const __pbcHandler = (async (req: Request) => {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
+        return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -70,7 +70,7 @@ const __pbcHandler = (async (req: Request) => {
         .order("created_at", { ascending: true })
         .range(offset, offset + perPage - 1);
       if (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
+        return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -105,7 +105,7 @@ const __pbcHandler = (async (req: Request) => {
           })
           .select().single();
         if (error) {
-          return new Response(JSON.stringify({ error: error.message }), {
+          return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
             status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
@@ -130,7 +130,7 @@ const __pbcHandler = (async (req: Request) => {
           .eq("id", campaign_id)
           .select().single();
         if (error) {
-          return new Response(JSON.stringify({ error: error.message }), {
+          return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
             status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
@@ -147,7 +147,7 @@ const __pbcHandler = (async (req: Request) => {
         .update({ status: "cancelled", updated_at: new Date().toISOString() })
         .eq("id", campaign_id);
       if (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
+        return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -161,7 +161,7 @@ const __pbcHandler = (async (req: Request) => {
       await supabase.from("bulk_campaign_recipients").delete().eq("campaign_id", campaign_id);
       const { error } = await supabase.from("bulk_email_campaigns").delete().eq("id", campaign_id);
       if (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
+        return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -174,7 +174,7 @@ const __pbcHandler = (async (req: Request) => {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Internal server error" }), {
+    return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -237,3 +237,4 @@ async function insertRecipientRecords(supabase: any, campaignType: string, campa
 }
 
 Deno.serve(withAdminSession(__pbcHandler as (req: Request) => Promise<Response>));
+modified

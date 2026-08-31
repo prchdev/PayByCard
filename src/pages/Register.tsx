@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, UserPlus, AlertCircle, X, FileText, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { validatePassword, PASSWORD_REQUIREMENTS } from '../utils/passwordValidation';
+import { setUserSessionToken } from '../utils/session';
 import TermsOfService from './TermsOfService';
 import Privacy from './Privacy';
 
@@ -149,6 +150,7 @@ export default function Register() {
         throw new Error(data.error || 'Registration failed');
       }
 
+      setUserSessionToken(data.sessionToken);
       navigate('/verify-otp', {
         state: {
           userId: data.userId,

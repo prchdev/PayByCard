@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ShieldCheck, AlertCircle, Mail, RefreshCw } from 'lucide-react';
+import { setAdminSessionToken } from '../../utils/session';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -89,6 +90,7 @@ export default function AdminLogin() {
       sessionStorage.setItem('adminRole', data.role);
       localStorage.setItem('adminId', data.adminId);
       localStorage.setItem('adminRole', data.role);
+      setAdminSessionToken(data.sessionToken);
 
       navigate('/admin/dashboard');
     } catch {

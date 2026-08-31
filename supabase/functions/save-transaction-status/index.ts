@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { withUserSession } from "../_shared/session.ts";
+import { withUserSession, isInternalCall } from "../_shared/session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -593,7 +593,15 @@ const __pbcHandler = (async (req: Request) => {
 
     // Map incoming status to DB status
     // For gateway success: determine kyc_pending vs settlement_pending after fetching payment
+    // F3: Only internal (server-to-server) callers may assert success/completed.
+    //     A browser client sending success is redirected to check-payment-status instead.
     const isGatewaySuccess = status === "success" || status === "completed";
+    if (isGatewaySuccess && !isInternalCall(req)) {
+      return new Response(
+        JSON.stringify({ error: "Payment confirmation must go through the payment status verification endpoint." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const rawDbStatus = isGatewaySuccess ? "completed" // temporary, overridden below
       : status === "failed" ? "failed"
       : status === "cancelled" ? "cancelled"
@@ -774,10 +782,11 @@ const __pbcHandler = (async (req: Request) => {
   } catch (error) {
     console.error("Exception in save-transaction-status:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Internal server error" }),
+      JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
 
 Deno.serve(withUserSession(__pbcHandler as (req: Request) => Promise<Response>));
+

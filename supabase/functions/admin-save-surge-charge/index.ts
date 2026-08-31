@@ -60,7 +60,7 @@ const __pbcHandler = (async (req: Request) => {
 
     if (error) {
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -78,3 +78,4 @@ const __pbcHandler = (async (req: Request) => {
 });
 
 Deno.serve(withAdminSession(__pbcHandler as (req: Request) => Promise<Response>));
+modified

@@ -71,8 +71,11 @@ async function handleCashFreeWebhook(req: Request, supabase: any, supabaseUrl: s
     ? gateway.test_api_secret
     : gateway.production_api_secret;
 
-  if (signature && timestamp && !verifyCashFreeSignature(payload, signature, timestamp, clientSecret)) {
-    throw new Error("Invalid signature");
+  if (!signature || !timestamp) {
+    throw new Error("Missing CashFree webhook signature");
+  }
+  if (!verifyCashFreeSignature(payload, signature, timestamp, clientSecret)) {
+    throw new Error("Invalid CashFree webhook signature");
   }
 
   const orderStatus = data.data.order.order_status;
@@ -136,10 +139,11 @@ async function handleRazorPayWebhook(req: Request, supabase: any, supabaseUrl: s
     ? gateway.test_api_secret
     : gateway.production_api_secret;
 
-  if (signature) {
-    const expectedSignature = createHmac("sha256", keySecret).update(payload).digest("hex");
-    if (signature !== expectedSignature) throw new Error("Invalid signature");
+  if (!signature) {
+    throw new Error("Missing Razorpay webhook signature");
   }
+  const expectedSignature = createHmac("sha256", keySecret).update(payload).digest("hex");
+  if (signature !== expectedSignature) throw new Error("Invalid Razorpay webhook signature");
 
   let status = "pending";
   let failureReason = null;
@@ -255,19 +259,20 @@ async function handlePhonePeWebhook(req: Request, supabase: any, supabaseUrl: st
     ? gateway.test_api_secret
     : gateway.production_api_secret;
 
-  // Verify X-VERIFY checksum if present
+  // F7: PhonePe X-VERIFY checksum is mandatory — reject if missing or mismatched.
   const xVerify = req.headers.get("x-verify");
-  if (xVerify && saltKey) {
-    const callbackResponse = payload.response || JSON.stringify(payload);
-    const base64Response = typeof callbackResponse === "string"
-      ? btoa(callbackResponse)
-      : btoa(JSON.stringify(callbackResponse));
-    const checkString = base64Response + "/pg/v1/status" + saltKey;
-    const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(checkString));
-    const expectedHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
-    if (xVerify !== expectedHash) {
-      console.warn("PhonePe webhook signature mismatch — proceeding with status check");
-    }
+  if (!xVerify || !saltKey) {
+    throw new Error("Missing PhonePe webhook signature");
+  }
+  const callbackResponse = payload.response || JSON.stringify(payload);
+  const base64Response = typeof callbackResponse === "string"
+    ? btoa(callbackResponse)
+    : btoa(JSON.stringify(callbackResponse));
+  const checkString = base64Response + "/pg/v1/status" + saltKey;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(checkString));
+  const expectedHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+  if (xVerify !== expectedHash) {
+    throw new Error("Invalid PhonePe webhook signature");
   }
 
   const state = (payload.state || payload.code || "").toUpperCase();
@@ -366,3 +371,4 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+

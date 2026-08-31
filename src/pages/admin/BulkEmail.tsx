@@ -424,10 +424,12 @@ export default function BulkEmail() {
     setViewMode('visual');
   };
 
+  const prevViewMode = useRef<'visual' | 'code'>('visual');
   useEffect(() => {
-    if (viewMode === 'visual' && editorRef.current) {
+    if (viewMode === 'visual' && prevViewMode.current === 'code' && editorRef.current) {
       editorRef.current.innerHTML = formData.body_html || '';
     }
+    prevViewMode.current = viewMode;
   }, [viewMode, formData.body_html]);
 
   const handleSave = async (newStatus: string) => {

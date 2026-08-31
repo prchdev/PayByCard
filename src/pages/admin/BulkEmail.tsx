@@ -5,6 +5,7 @@ import {
   Send, Calendar, Clock, Users, Eye, Trash2, Ban, Bold, Italic,
   Underline, Link2, Image as ImageIcon, List, ListOrdered, Type,
   ArrowLeft, ChevronLeft, ChevronRight, FileText,
+  AlignLeft, AlignCenter, AlignRight, Link2Off, ZoomIn,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -99,6 +100,10 @@ export default function BulkEmail() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [linkModal, setLinkModal] = useState<{ open: boolean; url: string }>({ open: false, url: '' });
+  const [imageModal, setImageModal] = useState<{ open: boolean; src: string; align: string; width: string }>({ open: false, src: '', align: 'none', width: '' });
 
   // Report view state
   const [reportCampaign, setReportCampaign] = useState<BulkEmailCampaign | null>(null);
@@ -233,18 +238,140 @@ export default function BulkEmail() {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
-    if (command === 'createLink') {
-      const url = window.prompt('Enter URL:', 'https://');
-      if (url) document.execCommand('createLink', false, url);
-    } else if (command === 'insertImage') {
-      const url = window.prompt('Enter image URL:', 'https://');
-      if (url) document.execCommand('insertImage', false, url);
-    } else if (command === 'formatBlock') {
+    if (command === 'formatBlock') {
       document.execCommand('formatBlock', false, value);
     } else {
       document.execCommand(command, false, value);
     }
     setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
+  };
+
+  const handleImageUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setImageLoading(true);
+    const editor = editorRef.current;
+    if (!editor) { setImageLoading(false); return; }
+    editor.focus();
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith('image/')) continue;
+      const dataUrl = await readFileAsDataURL(file);
+      const img = `<img src="${dataUrl}" alt="${file.name}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0;" />`;
+      document.execCommand('insertHTML', false, img);
+    }
+    setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
+    setImageLoading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleLinkClick = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.toString().trim() === '') {
+      setMessage({ type: 'error', text: 'Select some text in the editor first, then click the link button' });
+      return;
+    }
+    setLinkModal({ open: true, url: '' });
+  };
+
+  const applyLink = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    const url = linkModal.url.trim();
+    if (!url) { setLinkModal({ open: false, url: '' }); return; }
+    const fullUrl = url.match(/^https?:\/\//) ? url : `https://${url}`;
+    document.execCommand('createLink', false, fullUrl);
+    setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
+    setLinkModal({ open: false, url: '' });
+  };
+
+  const removeLink = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    document.execCommand('unlink', false);
+    setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
+  };
+
+  const setAlignment = (align: 'left' | 'center' | 'right') => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    if (align === 'left') document.execCommand('justifyLeft', false);
+    else if (align === 'center') document.execCommand('justifyCenter', false);
+    else if (align === 'right') document.execCommand('justifyRight', false);
+    setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
+  };
+
+  const setFontSize = (size: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    document.execCommand('fontSize', false, size);
+    setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
+  };
+
+  const openImageModal = (img: HTMLImageElement) => {
+    setImageModal({
+      open: true,
+      src: img.src,
+      align: img.style.display === 'block' && img.style.marginLeft === 'auto' && img.style.marginRight === 'auto' ? 'center' : img.style.float === 'left' ? 'left' : img.style.float === 'right' ? 'right' : 'none',
+      width: img.style.width || (img.style.maxWidth ? img.style.maxWidth : ''),
+    });
+  };
+
+  const applyImageProperties = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const imgs = editor.querySelectorAll('img');
+    for (const img of imgs) {
+      if (img.src === imageModal.src) {
+        img.style.float = '';
+        img.style.display = '';
+        img.style.marginLeft = '';
+        img.style.marginRight = '';
+        if (imageModal.align === 'center') {
+          img.style.display = 'block';
+          img.style.marginLeft = 'auto';
+          img.style.marginRight = 'auto';
+        } else if (imageModal.align === 'left') {
+          img.style.float = 'left';
+          img.style.marginRight = '12px';
+        } else if (imageModal.align === 'right') {
+          img.style.float = 'right';
+          img.style.marginLeft = '12px';
+        }
+        if (imageModal.width) {
+          img.style.width = imageModal.width;
+          img.style.maxWidth = imageModal.width;
+          img.style.height = 'auto';
+        }
+        break;
+      }
+    }
+    setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
+    setImageModal({ open: false, src: '', align: 'none', width: '' });
+  };
+
+  const handleEditorClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'IMG') {
+      openImageModal(target as HTMLImageElement);
+    }
+  };
+
+  const readFileAsDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleEditorInput = () => {
@@ -578,17 +705,37 @@ export default function BulkEmail() {
             {/* Rich Text Editor */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email Body</label>
-              <div className="flex flex-wrap gap-1 mb-2 p-2 bg-gray-50 border-2 border-gray-200 rounded-xl">
+              <div className="flex flex-wrap items-center gap-1 mb-2 p-2 bg-gray-50 border-2 border-gray-200 rounded-xl">
                 <button type="button" onClick={() => execCommand('bold')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Bold"><Bold className="w-4 h-4" /></button>
                 <button type="button" onClick={() => execCommand('italic')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Italic"><Italic className="w-4 h-4" /></button>
                 <button type="button" onClick={() => execCommand('underline')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Underline"><Underline className="w-4 h-4" /></button>
                 <div className="w-px bg-gray-300 mx-1" />
+                <select
+                  onChange={(e) => { setFontSize(e.target.value); e.target.selectedIndex = 0; }}
+                  className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-white text-gray-700 outline-none focus:border-[#8c76f0]"
+                  title="Font Size"
+                  defaultValue=""
+                >
+                  <option value="" disabled>Size</option>
+                  <option value="1">Small</option>
+                  <option value="3">Normal</option>
+                  <option value="5">Large</option>
+                  <option value="7">X-Large</option>
+                </select>
                 <button type="button" onClick={() => execCommand('formatBlock', '<h2>')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Heading"><Type className="w-4 h-4" /></button>
                 <button type="button" onClick={() => execCommand('insertUnorderedList')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Bullet List"><List className="w-4 h-4" /></button>
                 <button type="button" onClick={() => execCommand('insertOrderedList')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Numbered List"><ListOrdered className="w-4 h-4" /></button>
                 <div className="w-px bg-gray-300 mx-1" />
-                <button type="button" onClick={() => execCommand('createLink')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Insert Link"><Link2 className="w-4 h-4" /></button>
-                <button type="button" onClick={() => execCommand('insertImage')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Insert Image"><ImageIcon className="w-4 h-4" /></button>
+                <button type="button" onClick={() => setAlignment('left')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Left"><AlignLeft className="w-4 h-4" /></button>
+                <button type="button" onClick={() => setAlignment('center')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Center"><AlignCenter className="w-4 h-4" /></button>
+                <button type="button" onClick={() => setAlignment('right')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Right"><AlignRight className="w-4 h-4" /></button>
+                <div className="w-px bg-gray-300 mx-1" />
+                <button type="button" onClick={handleLinkClick} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Convert selected text to link"><Link2 className="w-4 h-4" /></button>
+                <button type="button" onClick={removeLink} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Remove Link"><Link2Off className="w-4 h-4" /></button>
+                <button type="button" onClick={handleImageUploadClick} disabled={imageLoading} className="p-2 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50" title="Upload Image(s)">
+                  {imageLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                </button>
+                <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
                 <div className="w-px bg-gray-300 mx-1" />
                 {PARAMETER_FIELDS.map((p) => (
                   <button key={p} type="button" onClick={() => insertParameter(p)} className="px-3 py-2 text-xs font-medium bg-purple-50 text-[#8c76f0] border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors">
@@ -596,10 +743,12 @@ export default function BulkEmail() {
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-gray-400 mb-1">Tip: Click on an image in the editor to adjust its alignment and size.</p>
               <div
                 ref={editorRef}
                 contentEditable
                 onInput={handleEditorInput}
+                onClick={handleEditorClick}
                 className="min-h-[200px] max-h-[400px] overflow-y-auto px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all prose prose-sm max-w-none"
                 style={{ lineHeight: '1.6' }}
                 data-placeholder="Compose your email here..."
@@ -767,6 +916,70 @@ export default function BulkEmail() {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* Hyperlink modal */}
+        {linkModal.open && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
+                  <Link2 className="w-5 h-5 text-[#8c76f0]" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Insert Hyperlink</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">Enter the URL to convert the selected text into a clickable link.</p>
+              <input
+                type="text"
+                value={linkModal.url}
+                autoFocus
+                onChange={(e) => setLinkModal({ ...linkModal, url: e.target.value })}
+                onKeyDown={(e) => { if (e.key === 'Enter') applyLink(); if (e.key === 'Escape') setLinkModal({ open: false, url: '' }); }}
+                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all mb-4"
+                placeholder="https://example.com"
+              />
+              <div className="flex gap-3">
+                <button onClick={applyLink} className="flex-1 px-4 py-2.5 bg-[#8c76f0] text-white rounded-xl font-medium hover:bg-purple-700 transition-colors">Apply Link</button>
+                <button onClick={() => setLinkModal({ open: false, url: '' })} className="flex-1 px-4 py-2.5 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:border-gray-400 transition-all">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Image properties modal */}
+        {imageModal.open && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
+                  <ZoomIn className="w-5 h-5 text-[#8c76f0]" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Image Properties</h3>
+              </div>
+              <div className="mb-4">
+                <img src={imageModal.src} alt="preview" className="max-h-32 rounded-xl border border-gray-200 mb-4" />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Alignment</label>
+                <div className="flex gap-2 mb-4">
+                  <button type="button" onClick={() => setImageModal({ ...imageModal, align: 'none' })} className={`px-3 py-1.5 text-xs font-medium rounded-lg border-2 transition-colors ${imageModal.align === 'none' ? 'border-[#8c76f0] bg-purple-50 text-[#8c76f0]' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>Inline</button>
+                  <button type="button" onClick={() => setImageModal({ ...imageModal, align: 'left' })} className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border-2 transition-colors ${imageModal.align === 'left' ? 'border-[#8c76f0] bg-purple-50 text-[#8c76f0]' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}><AlignLeft className="w-3.5 h-3.5" /> Left</button>
+                  <button type="button" onClick={() => setImageModal({ ...imageModal, align: 'center' })} className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border-2 transition-colors ${imageModal.align === 'center' ? 'border-[#8c76f0] bg-purple-50 text-[#8c76f0]' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}><AlignCenter className="w-3.5 h-3.5" /> Center</button>
+                  <button type="button" onClick={() => setImageModal({ ...imageModal, align: 'right' })} className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border-2 transition-colors ${imageModal.align === 'right' ? 'border-[#8c76f0] bg-purple-50 text-[#8c76f0]' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}><AlignRight className="w-3.5 h-3.5" /> Right</button>
+                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Width (e.g. 300px, 50%, 100%)</label>
+                <input
+                  type="text"
+                  value={imageModal.width}
+                  onChange={(e) => setImageModal({ ...imageModal, width: e.target.value })}
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                  placeholder="e.g. 300px or 50%"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button onClick={applyImageProperties} className="flex-1 px-4 py-2.5 bg-[#8c76f0] text-white rounded-xl font-medium hover:bg-purple-700 transition-colors">Apply</button>
+                <button onClick={() => setImageModal({ open: false, src: '', align: 'none', width: '' })} className="flex-1 px-4 py-2.5 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:border-gray-400 transition-all">Cancel</button>
+              </div>
+            </div>
           </div>
         )}
 

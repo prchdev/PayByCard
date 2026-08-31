@@ -56,6 +56,28 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (action === "get_recipients") {
+      const { campaign_id, page, per_page } = body;
+      const pageNum = page || 1;
+      const perPage = per_page || 50;
+      const offset = (pageNum - 1) * perPage;
+      const { data: recipients, error, count } = await supabase
+        .from("bulk_campaign_recipients")
+        .select("id, email_or_phone, status, sent_at, error_message", { count: "exact" })
+        .eq("campaign_type", "email")
+        .eq("campaign_id", campaign_id)
+        .order("created_at", { ascending: true })
+        .range(offset, offset + perPage - 1);
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ recipients: recipients || [], total: count || 0, page: pageNum, per_page: perPage }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "create" || action === "update") {
       const { campaign_name, subject, body_html, recipient_filter, filter_days, hourly_rate, scheduled_at, status, campaign_id } = body;
 

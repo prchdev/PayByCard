@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare, Plus, Save, X, AlertCircle, CheckCircle, Loader2,
-  Send, Calendar, Clock, Users, Trash2, Ban,
+  Send, Calendar, Clock, Users, Trash2, Ban, ArrowLeft, ChevronLeft, ChevronRight, FileText,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -22,6 +22,7 @@ interface BulkSMSCampaign {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  dlt_template_id: string;
 }
 
 interface CampaignForm {
@@ -32,6 +33,15 @@ interface CampaignForm {
   hourly_rate: number;
   scheduled_at: string;
   send_now: boolean;
+  dlt_template_id: string;
+}
+
+interface RecipientRecord {
+  id: string;
+  email_or_phone: string;
+  status: string;
+  sent_at: string | null;
+  error_message: string | null;
 }
 
 const RECIPIENT_FILTERS = [
@@ -51,6 +61,12 @@ const STATUS_STYLES: Record<string, string> = {
   cancelled: 'bg-gray-100 text-gray-500 border-gray-300',
 };
 
+const RECIPIENT_STATUS_STYLES: Record<string, string> = {
+  pending: 'bg-gray-100 text-gray-600',
+  sent: 'bg-green-50 text-green-700',
+  failed: 'bg-red-50 text-red-700',
+};
+
 const PARAMETER_FIELDS = ['{first_name}', '{middle_name}', '{last_name}'];
 
 const emptyForm: CampaignForm = {
@@ -61,7 +77,10 @@ const emptyForm: CampaignForm = {
   hourly_rate: 100,
   scheduled_at: '',
   send_now: false,
+  dlt_template_id: '',
 };
+
+const PER_PAGE = 50;
 
 export default function BulkSMS() {
   const navigate = useNavigate();
@@ -77,6 +96,14 @@ export default function BulkSMS() {
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  // Report view state
+  const [reportCampaign, setReportCampaign] = useState<BulkSMSCampaign | null>(null);
+  const [recipients, setRecipients] = useState<RecipientRecord[]>([]);
+  const [recipientTotal, setRecipientTotal] = useState(0);
+  const [recipientPage, setRecipientPage] = useState(1);
+  const [recipientLoading, setRecipientLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     if (!adminId) navigate('/admin/login');
@@ -148,6 +175,45 @@ export default function BulkSMS() {
     }
   }, [formData.recipient_filter, formData.filter_days]);
 
+  const fetchRecipients = useCallback(async (campaignId: string, page: number) => {
+    setRecipientLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-bulk-sms`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ admin_id: adminId, action: 'get_recipients', campaign_id: campaignId, page, per_page: PER_PAGE }),
+        }
+      );
+      const data = await response.json();
+      if (response.ok) {
+        setRecipients(data.recipients || []);
+        setRecipientTotal(data.total || 0);
+      }
+    } catch {
+      setRecipients([]);
+    } finally {
+      setRecipientLoading(false);
+    }
+  }, [adminId]);
+
+  const openReport = (c: BulkSMSCampaign) => {
+    setReportCampaign(c);
+    setRecipientPage(1);
+    setStatusFilter('all');
+    fetchRecipients(c.id, 1);
+  };
+
+  useEffect(() => {
+    if (reportCampaign) {
+      fetchRecipients(reportCampaign.id, recipientPage);
+    }
+  }, [recipientPage, reportCampaign, fetchRecipients]);
+
   const insertParameter = (param: string) => {
     setFormData((prev) => ({ ...prev, message: prev.message + param }));
   };
@@ -178,6 +244,7 @@ export default function BulkSMS() {
             hourly_rate: formData.hourly_rate,
             scheduled_at: formData.send_now ? null : (formData.scheduled_at || null),
             status: newStatus,
+            dlt_template_id: formData.dlt_template_id,
           }),
         }
       );
@@ -248,8 +315,163 @@ export default function BulkSMS() {
     return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
+  const filteredRecipients = statusFilter === 'all'
+    ? recipients
+    : recipients.filter((r) => r.status === statusFilter);
+
+  const totalPages = Math.ceil(recipientTotal / PER_PAGE);
+
   if (permLoading) return null;
 
+  // ── Report View ──
+  if (reportCampaign) {
+    const sentPct = reportCampaign.total_recipients > 0
+      ? Math.round((reportCampaign.sent_count / reportCampaign.total_recipients) * 100)
+      : 0;
+    return (
+      <AdminLayout>
+        <div className="max-w-6xl">
+          <button onClick={() => setReportCampaign(null)} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Back to Campaigns
+          </button>
+
+          <div className="bg-white rounded-2xl border-2 border-gray-300 p-6 mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className="text-xl font-bold text-gray-900">{reportCampaign.campaign_name}</h2>
+              <span className={`px-2.5 py-0.5 text-xs font-medium rounded-full border ${STATUS_STYLES[reportCampaign.status] || STATUS_STYLES.draft}`}>
+                {reportCampaign.status}
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 mb-4 bg-gray-50 p-3 rounded-xl border border-gray-200">{reportCampaign.message}</p>
+            {reportCampaign.dlt_template_id && (
+              <p className="text-xs text-gray-500 mb-4">DLT Template ID: <span className="font-mono font-medium text-gray-700">{reportCampaign.dlt_template_id}</span></p>
+            )}
+
+            {/* Progress bar */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between text-sm mb-1.5">
+                <span className="font-medium text-gray-700">Delivery Progress</span>
+                <span className="text-gray-500">{reportCampaign.sent_count} / {reportCampaign.total_recipients} ({sentPct}%)</span>
+              </div>
+              <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-full transition-all" style={{ width: `${sentPct}%` }} />
+              </div>
+            </div>
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+                <p className="text-xs text-gray-500 mb-1">Total Recipients</p>
+                <p className="text-lg font-bold text-gray-900">{reportCampaign.total_recipients}</p>
+              </div>
+              <div className="bg-green-50 rounded-xl p-3 border border-green-200">
+                <p className="text-xs text-green-600 mb-1">Sent</p>
+                <p className="text-lg font-bold text-green-700">{reportCampaign.sent_count}</p>
+              </div>
+              <div className="bg-red-50 rounded-xl p-3 border border-red-200">
+                <p className="text-xs text-red-600 mb-1">Failed</p>
+                <p className="text-lg font-bold text-red-700">{reportCampaign.failed_count}</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+                <p className="text-xs text-gray-500 mb-1">Pending</p>
+                <p className="text-lg font-bold text-gray-700">{Math.max(0, reportCampaign.total_recipients - reportCampaign.sent_count - reportCampaign.failed_count)}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4 mt-4 text-xs text-gray-500">
+              <span>Created: {fmtDate(reportCampaign.created_at)}</span>
+              {reportCampaign.scheduled_at && <span>Scheduled: {fmtDate(reportCampaign.scheduled_at)}</span>}
+              {reportCampaign.started_at && <span>Started: {fmtDate(reportCampaign.started_at)}</span>}
+              {reportCampaign.completed_at && <span>Completed: {fmtDate(reportCampaign.completed_at)}</span>}
+            </div>
+          </div>
+
+          {/* Recipient table */}
+          <div className="bg-white rounded-2xl border-2 border-gray-300 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-[#8c76f0]" /> Recipient Delivery Status
+              </h3>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-1.5 text-sm border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] outline-none"
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="sent">Sent</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+
+            {recipientLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 text-[#8c76f0] animate-spin" />
+              </div>
+            ) : filteredRecipients.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No recipients found.</p>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wider">
+                        <th className="pb-2 pr-4">Phone Number</th>
+                        <th className="pb-2 pr-4">Status</th>
+                        <th className="pb-2 pr-4">Sent At</th>
+                        <th className="pb-2">Error</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredRecipients.map((r) => (
+                        <tr key={r.id} className="hover:bg-gray-50">
+                          <td className="py-2.5 pr-4 font-mono text-gray-700">{r.email_or_phone || '-'}</td>
+                          <td className="py-2.5 pr-4">
+                            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${RECIPIENT_STATUS_STYLES[r.status] || RECIPIENT_STATUS_STYLES.pending}`}>
+                              {r.status}
+                            </span>
+                          </td>
+                          <td className="py-2.5 pr-4 text-gray-500">{fmtDate(r.sent_at)}</td>
+                          <td className="py-2.5 text-red-500 text-xs">{r.error_message || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-xs text-gray-500">
+                      Page {recipientPage} of {totalPages} ({recipientTotal} total)
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setRecipientPage((p) => Math.max(1, p - 1))}
+                        disabled={recipientPage === 1}
+                        className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setRecipientPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={recipientPage === totalPages}
+                        className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  // ── Main View ──
   return (
     <AdminLayout>
       <div className="max-w-6xl">
@@ -295,6 +517,19 @@ export default function BulkSMS() {
                 className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
                 placeholder="e.g. Payment Reminder"
               />
+            </div>
+
+            {/* DLT Content Template ID */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">DLT Content Template ID</label>
+              <input
+                type="text"
+                value={formData.dlt_template_id}
+                onChange={(e) => setFormData({ ...formData, dlt_template_id: e.target.value })}
+                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all font-mono"
+                placeholder="e.g. 100716xxxxxxxxxxxxxxx"
+              />
+              <p className="text-xs text-gray-500 mt-1">Required by Indian SMS gateways for transactional/bulk SMS delivery</p>
             </div>
 
             {/* Message with parameters */}
@@ -457,18 +692,23 @@ export default function BulkSMS() {
                         {c.completed_at && <span>Completed: {fmtDate(c.completed_at)}</span>}
                       </div>
                     </div>
-                    {canEdit && (c.status === 'draft' || c.status === 'scheduled' || c.status === 'sending') && (
-                      <div className="flex gap-2 flex-shrink-0">
-                        <button onClick={() => handleCancel(c.id)} className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Cancel">
-                          <Ban className="w-4 h-4" />
-                        </button>
-                        {c.status === 'draft' && (
-                          <button onClick={() => setConfirmDelete(c.id)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                            <Trash2 className="w-4 h-4" />
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button onClick={() => openReport(c)} className="p-2 text-gray-500 hover:text-[#8c76f0] hover:bg-purple-50 rounded-lg transition-colors" title="View Report">
+                        <FileText className="w-4 h-4" />
+                      </button>
+                      {canEdit && (c.status === 'draft' || c.status === 'scheduled' || c.status === 'sending') && (
+                        <>
+                          <button onClick={() => handleCancel(c.id)} className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Cancel">
+                            <Ban className="w-4 h-4" />
                           </button>
-                        )}
-                      </div>
-                    )}
+                          {c.status === 'draft' && (
+                            <button onClick={() => setConfirmDelete(c.id)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))

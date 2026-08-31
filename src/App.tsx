@@ -52,6 +52,8 @@ import ManualPayout from './pages/admin/ManualPayout';
 import AdminReports from './pages/admin/AdminReports';
 import AdminUserSummary from './pages/admin/AdminUserSummary';
 import AdminNotifications from './pages/admin/AdminNotifications';
+import BulkEmail from './pages/admin/BulkEmail';
+import BulkSMS from './pages/admin/BulkSMS';
 import KycMethodSettings from './pages/admin/KycMethodSettings';
 import AdminMerchantKyc from './pages/admin/AdminMerchantKyc';
 import DigiLockerCallback from './pages/DigiLockerCallback';
@@ -160,6 +162,8 @@ function App() {
           <Route path="/admin/kyc-method" element={<KycMethodSettings />} />
           <Route path="/admin/merchant-kyc" element={<AdminMerchantKyc />} />
           <Route path="/admin/mobile-notifications" element={<AdminNotifications />} />
+          <Route path="/admin/bulk-email" element={<BulkEmail />} />
+          <Route path="/admin/bulk-sms" element={<BulkSMS />} />
           <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
           <Route path="/digilocker-callback" element={<DigiLockerCallback />} />
 

@@ -24,3 +24,9 @@ verify_jwt = false
 
 [functions.process-phonepe-payout]
 verify_jwt = false
+
+[functions.admin-bulk-email]
+verify_jwt = false
+
+[functions.admin-bulk-sms]
+verify_jwt = false

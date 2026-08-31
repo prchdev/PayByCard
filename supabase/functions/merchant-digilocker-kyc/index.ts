@@ -1,9 +1,11 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
+import { withUserSession } from "../_shared/session.ts";
+import { withSignedKycUrls } from "../_shared/kycUrls.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
 };
 
 interface MerchantDigiLockerRequest {
@@ -728,7 +730,7 @@ async function writeMerchantKyc(
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
-Deno.serve(async (req: Request) => {
+const __pbcHandler = (async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -983,3 +985,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+Deno.serve(withUserSession(withSignedKycUrls(__pbcHandler as (req: Request) => Promise<Response>)));

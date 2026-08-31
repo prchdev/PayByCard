@@ -1,14 +1,15 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import bcrypt from 'npm:bcryptjs@2.4.3';
 import { validatePassword } from '../_shared/passwordValidation.ts';
+import { withUserSession } from "../_shared/session.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
 };
 
-Deno.serve(async (req: Request) => {
+const __pbcHandler = (async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
@@ -129,3 +130,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+Deno.serve(withUserSession(__pbcHandler as (req: Request) => Promise<Response>));

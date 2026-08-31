@@ -1,10 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { withAdminSession } from "../_shared/session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 const SUPABASE_URL = () => Deno.env.get("SUPABASE_URL")!;
@@ -300,7 +301,7 @@ function fmt(amount: number | string): string {
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
-Deno.serve(async (req: Request) => {
+const __pbcHandler = (async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -633,3 +634,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+Deno.serve(withAdminSession(__pbcHandler as (req: Request) => Promise<Response>));

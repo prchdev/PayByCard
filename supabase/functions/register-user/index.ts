@@ -1,11 +1,12 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import bcrypt from 'npm:bcryptjs@2.4.3';
 import { validatePassword } from '../_shared/passwordValidation.ts';
+import { issueSessionToken } from '../_shared/session.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
 };
 
 interface RegisterRequest {
@@ -254,6 +255,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         userId: newUser.id,
+        sessionToken: await issueSessionToken('user', newUser.id),
         message: 'Registration successful. OTPs sent to mobile and email.',
       }),
       {

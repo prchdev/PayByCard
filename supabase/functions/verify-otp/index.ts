@@ -1,9 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
+import { issueSessionToken } from '../_shared/session.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
 };
 
 interface VerifyOTPRequest {
@@ -134,6 +135,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
+        sessionToken: await issueSessionToken('user', userId),
         message: 'OTP verification successful',
       }),
       {

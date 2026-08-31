@@ -5,7 +5,7 @@ import bcrypt from "npm:bcryptjs@2.4.3";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
 // F18: Legacy admin passwords are stored as unsalted SHA-256 (64 hex chars).
@@ -190,3 +190,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// redeploy

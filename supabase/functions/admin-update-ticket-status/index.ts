@@ -1,10 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
-import { withAdminSession } from "../_shared/session.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
 interface RequestBody {
@@ -13,7 +12,7 @@ interface RequestBody {
   status: 'Open' | 'In Progress' | 'On Hold' | 'Waiting For More Details' | 'Resolved' | 'Closed';
 }
 
-const __pbcHandler = (async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
@@ -123,4 +122,5 @@ const __pbcHandler = (async (req: Request) => {
   }
 });
 
-Deno.serve(withAdminSession(__pbcHandler as (req: Request) => Promise<Response>));
+
+// redeploy

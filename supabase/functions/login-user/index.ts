@@ -1,11 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import bcrypt from "npm:bcryptjs@2.4.3";
-import { issueSessionToken } from '../_shared/session.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -263,7 +262,6 @@ Deno.serve(async (req: Request) => {
           isVerified: false,
           kycCompleted: user.kyc_completed,
           needsVerification: true,
-          sessionToken: await issueSessionToken('user', user.id),
           message: 'OTPs sent to mobile and email for verification.',
         }),
         {
@@ -285,7 +283,6 @@ Deno.serve(async (req: Request) => {
         kycCompleted: user.kyc_completed,
         needsVerification: false,
         isRestricted: user.is_restricted || false,
-        sessionToken: await issueSessionToken('user', user.id),
       }),
       {
         status: 200,
@@ -305,3 +302,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// redeploy

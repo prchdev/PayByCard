@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { setUserSessionToken, getUserSessionToken, clearUserSessionToken } from '../utils/session';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -7,7 +6,7 @@ interface AuthContextType {
   userEmail: string | null;
   isRemembered: boolean;
   rememberedEmail: string | null;
-  login: (userId: string, email: string, sessionToken?: string) => void;
+  login: (userId: string, email: string) => void;
   biometricUnlock: () => void;
   logout: () => void;
   clearRememberedSession: () => void;
@@ -47,10 +46,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const login = (userId: string, email: string, sessionToken?: string) => {
+  const login = (userId: string, email: string) => {
     sessionStorage.setItem('userId', userId);
     sessionStorage.setItem('userEmail', email);
-    if (sessionToken) setUserSessionToken(sessionToken);
     setIsAuthenticated(true);
     setUserId(userId);
     setUserEmail(email);
@@ -66,25 +64,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const remembered = localStorage.getItem(REMEMBERED_KEY);
       if (!remembered) return;
       const parsed = JSON.parse(remembered);
-      const token = getUserSessionToken();
-      if (!token) return;
-      // F25: Verify the session token is still valid with the server before restoring.
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-user-stats`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'x-pbc-session': token,
-        },
-        body: JSON.stringify({ userId: parsed.userId }),
-      });
-      if (!res.ok) {
-        clearUserSessionToken();
-        localStorage.removeItem(REMEMBERED_KEY);
-        setIsRemembered(false);
-        setRememberedEmail(null);
-        return;
-      }
       sessionStorage.setItem('userId', parsed.userId);
       sessionStorage.setItem('userEmail', parsed.email);
       setIsAuthenticated(true);
@@ -101,7 +80,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem('userId');
     sessionStorage.removeItem('userEmail');
     sessionStorage.removeItem('isRestricted');
-    clearUserSessionToken();
     setIsAuthenticated(false);
     setUserId(null);
     setUserEmail(null);

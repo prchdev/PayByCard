@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { setUserSessionToken } from '../utils/session';
 
 interface LoginData {
   email: string;
@@ -83,7 +82,6 @@ export default function Login() {
       }
 
       if (data.needsVerification) {
-        setUserSessionToken(data.sessionToken);
         navigate('/verify-otp', {
           state: {
             userId: data.userId,
@@ -93,7 +91,7 @@ export default function Login() {
           }
         });
       } else {
-        login(data.userId, data.email, data.sessionToken);
+        login(data.userId, data.email);
         if (data.isRestricted) {
           sessionStorage.setItem('isRestricted', 'true');
         } else {

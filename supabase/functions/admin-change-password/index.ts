@@ -1,6 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { validatePassword } from '../_shared/passwordValidation.ts';
-import { withAdminSession } from "../_shared/session.ts";
 import bcrypt from "npm:bcryptjs@2.4.3";
 
 function isLegacySha256(hash: string): boolean {
@@ -19,7 +18,7 @@ async function verifyLegacySha256(password: string, hash: string): Promise<boole
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
 interface RequestBody {
@@ -28,7 +27,7 @@ interface RequestBody {
   new_password: string;
 }
 
-const __pbcHandler = (async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
@@ -137,4 +136,5 @@ const __pbcHandler = (async (req: Request) => {
   }
 });
 
-Deno.serve(withAdminSession(__pbcHandler as (req: Request) => Promise<Response>));
+
+// redeploy

@@ -30,3 +30,6 @@ verify_jwt = false
 
 [functions.admin-bulk-sms]
 verify_jwt = false
+
+[functions.admin-get-dashboard-stats]
+verify_jwt = false

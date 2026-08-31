@@ -47,8 +47,9 @@ Deno.serve(async (req: Request) => {
 
     const [
       usersRes,
-      panPendingRes,
-      addressPendingRes,
+      panAllRes,
+      addressAllRes,
+      businessAllRes,
       merchantKycRes,
       pendingPayoutsRes,
       manualPaymentsRes,
@@ -62,17 +63,20 @@ Deno.serve(async (req: Request) => {
       // Total registered users
       supabase.from("users").select("id", { count: "exact", head: true }),
 
-      // KYC: PAN records awaiting review — fetch user_ids for deduplication
+      // KYC: all PAN records (needed for per-user overall status computation)
       supabase
         .from("kyc_pan_verification")
-        .select("user_id")
-        .eq("status", "verification_pending"),
+        .select("user_id, status"),
 
-      // KYC: Address proof records awaiting review — fetch user_ids for deduplication
+      // KYC: all address proof records
       supabase
         .from("kyc_address_proof")
-        .select("user_id")
-        .eq("status", "verification_pending"),
+        .select("user_id, status"),
+
+      // KYC: all business info records
+      supabase
+        .from("kyc_business_info")
+        .select("user_id, status, incorporation_certificate_url, gst_certificate_url, loa_url"),
 
       // Merchant KYC awaiting review
       supabase
@@ -136,12 +140,52 @@ Deno.serve(async (req: Request) => {
     );
     const pendingPayoutsCount = (pendingPayoutsRes.data || []).length + uncoveredManualPayments.length;
 
-    // KYC reviews = count of distinct users with at least one section in verification_pending
-    // This matches the per-user getOverallStatus() logic used on the KYC Verification page
-    const pendingUserIds = new Set<string>();
-    for (const row of (panPendingRes.data || [])) pendingUserIds.add(row.user_id);
-    for (const row of (addressPendingRes.data || [])) pendingUserIds.add(row.user_id);
-    const pendingKycReviews = pendingUserIds.size + (merchantKycRes.count ?? 0);
+    // KYC reviews = count of distinct users whose overall status is "verification_pending"
+    // Uses the same getOverallStatus() logic as the KYC Verification page
+    const panMap = new Map<string, any>();
+    for (const row of (panAllRes.data || [])) panMap.set(row.user_id, row);
+    const addressMap = new Map<string, any>();
+    for (const row of (addressAllRes.data || [])) addressMap.set(row.user_id, row);
+    const businessMap = new Map<string, any>();
+    for (const row of (businessAllRes.data || [])) businessMap.set(row.user_id, row);
+
+    const allUserIds = new Set<string>([
+      ...panMap.keys(),
+      ...addressMap.keys(),
+      ...businessMap.keys(),
+    ]);
+
+    let pendingKycReviews = 0;
+    for (const userId of allUserIds) {
+      const pan = panMap.get(userId);
+      const address = addressMap.get(userId);
+      const business = businessMap.get(userId);
+
+      const panStatus = pan?.status;
+      const addressStatus = address?.status;
+      const businessStatus = business?.status;
+
+      if (!panStatus || !addressStatus) continue; // "pending" — not a review
+
+      if (panStatus === "rejected" || addressStatus === "rejected") continue; // "rejected"
+
+      const hasBusinessDocs = business?.incorporation_certificate_url || business?.gst_certificate_url || business?.loa_url;
+      if (hasBusinessDocs && businessStatus === "rejected") continue; // "rejected"
+
+      if (panStatus === "verification_pending" || addressStatus === "verification_pending") {
+        pendingKycReviews++;
+        continue;
+      }
+
+      if (hasBusinessDocs && businessStatus === "verification_pending") {
+        pendingKycReviews++;
+        continue;
+      }
+
+      // fully verified or other statuses don't count
+    }
+
+    pendingKycReviews += (merchantKycRes.count ?? 0);
 
     // Support tickets = open + in-progress
     const openSupportTickets =

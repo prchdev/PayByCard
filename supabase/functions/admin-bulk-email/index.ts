@@ -237,4 +237,3 @@ async function insertRecipientRecords(supabase: any, campaignType: string, campa
 }
 
 Deno.serve(withAdminSession(__pbcHandler as (req: Request) => Promise<Response>));
-modified

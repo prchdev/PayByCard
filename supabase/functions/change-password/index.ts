@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
-import bcrypt from 'npm:bcryptjs@2.4.3';
+import bcrypt from "npm:bcryptjs@2.4.3";
 import { validatePassword } from '../_shared/passwordValidation.ts';
 import { withUserSession } from "../_shared/session.ts";
 
@@ -85,7 +85,7 @@ const __pbcHandler = (async (req: Request) => {
     }
 
     const salt = bcrypt.genSaltSync(10);
-    const newPasswordHash = bcrypt.hashSync(new_password, salt);
+    const newPasswordHash = bcrypt.hashSync(new_password, salt, 10);
 
     const { error: updateError } = await supabase
       .from('users')

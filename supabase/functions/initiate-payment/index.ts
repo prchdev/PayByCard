@@ -666,4 +666,3 @@ async function generatePaymentReference(supabase: any): Promise<string> {
 }
 
 Deno.serve(withUserSession(__pbcHandler as (req: Request) => Promise<Response>));
-

@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
-import bcrypt from 'npm:bcryptjs@2.4.3';
+import bcrypt from "npm:bcryptjs@2.4.3";
 import { issueSessionToken } from '../_shared/session.ts';
 
 const corsHeaders = {
@@ -305,4 +305,3 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
-

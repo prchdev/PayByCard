@@ -789,4 +789,3 @@ const __pbcHandler = (async (req: Request) => {
 });
 
 Deno.serve(withUserSession(__pbcHandler as (req: Request) => Promise<Response>));
-

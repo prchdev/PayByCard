@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const salt = bcrypt.genSaltSync(10);
-    const passwordHash = bcrypt.hashSync(newPassword, salt);
+    const passwordHash = bcrypt.hashSync(newPassword, salt, 10);
 
     const { error: updateError } = await supabase
       .from("users")

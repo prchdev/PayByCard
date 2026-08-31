@@ -90,4 +90,3 @@ const __pbcHandler = (async (req: Request) => {
 });
 
 Deno.serve(withUserSession(withSignedKycUrls(__pbcHandler as (req: Request) => Promise<Response>)));
-

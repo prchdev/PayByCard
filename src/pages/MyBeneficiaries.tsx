@@ -19,6 +19,7 @@ import DashboardSidebar from '../components/DashboardSidebar';
 import Footer from '../components/Footer';
 import { useAuth } from '../contexts/AuthContext';
 import { getClientIp } from '../utils/getClientIp';
+import { isCreditCardIfsc, looksLikeCreditCardNumber } from '../utils/beneficiaryValidation';
 
 interface Beneficiary {
   id: string;
@@ -250,6 +251,16 @@ export default function MyBeneficiaries() {
 
     if (ifscError) {
       setError('Please fix IFSC code errors before submitting');
+      return;
+    }
+
+    if (isCreditCardIfsc(formData.ifsc)) {
+      setError('This IFSC code is for credit card bill payments. Adding credit card accounts as beneficiaries is not allowed.');
+      return;
+    }
+
+    if (looksLikeCreditCardNumber(formData.bank_account)) {
+      setError('The account number entered appears to be a credit card number. Credit card bill payments are not allowed through this platform.');
       return;
     }
 
@@ -791,6 +802,16 @@ export default function MyBeneficiaries() {
                     <Building2 className="w-4 h-4" />
                     Bank Details
                   </h3>
+
+                  <div className="mb-4 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3">
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm font-medium text-amber-800 leading-relaxed">
+                        Transfer of Money to Your Own Bank Account and Credit Card Bill Payments Are Not Allowed.
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">

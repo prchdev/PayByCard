@@ -120,6 +120,49 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // ── Credit card bill payment detection ─────────────────────────────────────
+    const CREDIT_CARD_IFSCS = new Set([
+      'ICIC0000104', 'ICIC0000105', 'ICIC0000106',
+      'HDFC0000207', 'HDFC0000208',
+      'SBIN0003833',
+      'UTIB0000450',
+      'YESB0000001',
+      'KKBK0000801', 'KKBK0000802',
+      'SCBL0032001',
+      'BARB0VIPCARD',
+      'CIUB0000001',
+    ]);
+
+    if (CREDIT_CARD_IFSCS.has(ifscUpper)) {
+      return new Response(
+        JSON.stringify({
+          error: 'This IFSC code is for credit card bill payments. Adding credit card accounts as beneficiaries is not allowed.',
+          credit_card: true,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const accountDigits = bank_account.replace(/[\s-]/g, '');
+    if (/^\d{15,16}$/.test(accountDigits)) {
+      const first = accountDigits[0];
+      if (first === '4' || first === '5' || first === '6') {
+        return new Response(
+          JSON.stringify({
+            error: 'The account number entered appears to be a credit card number. Credit card bill payments are not allowed through this platform.',
+            credit_card: true,
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    }
+
     try {
       const ifscResponse = await fetch(`https://ifsc.razorpay.com/${ifscUpper}`);
       if (!ifscResponse.ok) {

@@ -33,3 +33,6 @@ verify_jwt = false
 
 [functions.admin-get-dashboard-stats]
 verify_jwt = false
+
+[functions.save-beneficiary]
+verify_jwt = false

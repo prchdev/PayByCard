@@ -105,11 +105,18 @@ export default function BulkEmail() {
   const [imageLoading, setImageLoading] = useState(false);
   const [linkModal, setLinkModal] = useState<{ open: boolean; url: string }>({ open: false, url: '' });
   const [imageModal, setImageModal] = useState<{ open: boolean; src: string; align: string; width: string }>({ open: false, src: '', align: 'none', width: '' });
+  const [viewMode, setViewMode] = useState<'visual' | 'code'>('visual');
+  const [codeView, setCodeView] = useState('');
 
   const saveSelection = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0) {
-      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+      const range = sel.getRangeAt(0);
+      if (editor.contains(range.commonAncestorContainer)) {
+        savedRangeRef.current = range.cloneRange();
+      }
     }
   };
 
@@ -244,8 +251,9 @@ export default function BulkEmail() {
   const insertParameter = (param: string) => {
     const editor = editorRef.current;
     if (!editor) return;
-    editor.focus();
+    restoreSelection();
     document.execCommand('insertText', false, param);
+    saveSelection();
     setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
   };
 
@@ -256,12 +264,13 @@ export default function BulkEmail() {
   const execCommand = (command: string, value?: string) => {
     const editor = editorRef.current;
     if (!editor) return;
-    editor.focus();
+    restoreSelection();
     if (command === 'formatBlock') {
       document.execCommand('formatBlock', false, value);
     } else {
       document.execCommand(command, false, value);
     }
+    saveSelection();
     setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
   };
 
@@ -289,8 +298,9 @@ export default function BulkEmail() {
   };
 
   const handleLinkClick = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.toString().trim() === '') {
+    saveSelection();
+    const sel = window.getSelection();
+    if (!sel || sel.toString().trim() === '') {
       setMessage({ type: 'error', text: 'Select some text in the editor first, then click the link button' });
       return;
     }
@@ -300,11 +310,12 @@ export default function BulkEmail() {
   const applyLink = () => {
     const editor = editorRef.current;
     if (!editor) return;
-    editor.focus();
+    restoreSelection();
     const url = linkModal.url.trim();
     if (!url) { setLinkModal({ open: false, url: '' }); return; }
     const fullUrl = url.match(/^https?:\/\//) ? url : `https://${url}`;
     document.execCommand('createLink', false, fullUrl);
+    saveSelection();
     setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
     setLinkModal({ open: false, url: '' });
   };
@@ -312,26 +323,29 @@ export default function BulkEmail() {
   const removeLink = () => {
     const editor = editorRef.current;
     if (!editor) return;
-    editor.focus();
+    restoreSelection();
     document.execCommand('unlink', false);
+    saveSelection();
     setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
   };
 
   const setAlignment = (align: 'left' | 'center' | 'right') => {
     const editor = editorRef.current;
     if (!editor) return;
-    editor.focus();
+    restoreSelection();
     if (align === 'left') document.execCommand('justifyLeft', false);
     else if (align === 'center') document.execCommand('justifyCenter', false);
     else if (align === 'right') document.execCommand('justifyRight', false);
+    saveSelection();
     setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
   };
 
   const setFontSize = (size: string) => {
     const editor = editorRef.current;
     if (!editor) return;
-    editor.focus();
+    restoreSelection();
     document.execCommand('fontSize', false, size);
+    saveSelection();
     setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
   };
 
@@ -398,6 +412,21 @@ export default function BulkEmail() {
     if (editor) {
       setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
     }
+  };
+
+  const switchToCode = () => {
+    const editor = editorRef.current;
+    if (editor) setCodeView(editor.innerHTML);
+    setViewMode('code');
+  };
+
+  const switchToVisual = () => {
+    const editor = editorRef.current;
+    if (editor) {
+      editor.innerHTML = codeView || formData.body_html || '';
+      setFormData((prev) => ({ ...prev, body_html: editor.innerHTML }));
+    }
+    setViewMode('visual');
   };
 
   const handleSave = async (newStatus: string) => {
@@ -723,57 +752,80 @@ export default function BulkEmail() {
 
             {/* Rich Text Editor */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email Body</label>
-              <div className="flex flex-wrap items-center gap-1 mb-2 p-2 bg-gray-50 border-2 border-gray-200 rounded-xl">
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('bold'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Bold"><Bold className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('italic'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Italic"><Italic className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('underline'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Underline"><Underline className="w-4 h-4" /></button>
-                <div className="w-px bg-gray-300 mx-1" />
-                <select
-                  onMouseDown={saveSelection}
-                  onChange={(e) => { restoreSelection(); setFontSize(e.target.value); e.target.selectedIndex = 0; }}
-                  className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-white text-gray-700 outline-none focus:border-[#8c76f0]"
-                  title="Font Size"
-                  defaultValue=""
-                >
-                  <option value="" disabled>Size</option>
-                  <option value="1">Small</option>
-                  <option value="3">Normal</option>
-                  <option value="5">Large</option>
-                  <option value="7">X-Large</option>
-                </select>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('formatBlock', '<h2>'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Heading"><Type className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('insertUnorderedList'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Bullet List"><List className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('insertOrderedList'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Numbered List"><ListOrdered className="w-4 h-4" /></button>
-                <div className="w-px bg-gray-300 mx-1" />
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); setAlignment('left'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Left"><AlignLeft className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); setAlignment('center'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Center"><AlignCenter className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); setAlignment('right'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Right"><AlignRight className="w-4 h-4" /></button>
-                <div className="w-px bg-gray-300 mx-1" />
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleLinkClick(); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Convert selected text to link"><Link2 className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); removeLink(); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Remove Link"><Link2Off className="w-4 h-4" /></button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleImageUploadClick(); }} disabled={imageLoading} className="p-2 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50" title="Upload Image(s)">
-                  {imageLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                </button>
-                <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
-                <div className="w-px bg-gray-300 mx-1" />
-                {PARAMETER_FIELDS.map((p) => (
-                  <button key={p} type="button" onMouseDown={(ev) => { ev.preventDefault(); insertParameter(p); }} className="px-3 py-2 text-xs font-medium bg-purple-50 text-[#8c76f0] border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors">
-                    {p}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">Email Body</label>
+                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+                  <button type="button" onClick={() => { if (viewMode === 'code') switchToVisual(); }} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${viewMode === 'visual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Visual</button>
+                  <button type="button" onClick={() => { if (viewMode === 'visual') switchToCode(); }} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${viewMode === 'code' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>HTML Code</button>
+                </div>
               </div>
-              <p className="text-xs text-gray-400 mb-1">Tip: Click on an image in the editor to adjust its alignment and size.</p>
-              <div
-                ref={editorRef}
-                contentEditable
-                onInput={handleEditorInput}
-                onClick={handleEditorClick}
-                className="min-h-[200px] max-h-[400px] overflow-y-auto px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all prose prose-sm max-w-none"
-                style={{ lineHeight: '1.6' }}
-                data-placeholder="Compose your email here..."
-                suppressContentEditableWarning
-              />
+              {viewMode === 'visual' ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-1 mb-2 p-2 bg-gray-50 border-2 border-gray-200 rounded-xl">
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('bold'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Bold"><Bold className="w-4 h-4" /></button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('italic'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Italic"><Italic className="w-4 h-4" /></button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('underline'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Underline"><Underline className="w-4 h-4" /></button>
+                    <div className="w-px bg-gray-300 mx-1" />
+                    <select
+                      onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+                      onChange={(e) => { restoreSelection(); setFontSize(e.target.value); e.target.selectedIndex = 0; }}
+                      className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-white text-gray-700 outline-none focus:border-[#8c76f0]"
+                      title="Font Size"
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Size</option>
+                      <option value="1">Small</option>
+                      <option value="3">Normal</option>
+                      <option value="5">Large</option>
+                      <option value="7">X-Large</option>
+                    </select>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('formatBlock', '<h2>'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Heading"><Type className="w-4 h-4" /></button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('insertUnorderedList'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Bullet List"><List className="w-4 h-4" /></button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); execCommand('insertOrderedList'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Numbered List"><ListOrdered className="w-4 h-4" /></button>
+                    <div className="w-px bg-gray-300 mx-1" />
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); setAlignment('left'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Left"><AlignLeft className="w-4 h-4" /></button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); setAlignment('center'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Center"><AlignCenter className="w-4 h-4" /></button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); setAlignment('right'); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Right"><AlignRight className="w-4 h-4" /></button>
+                    <div className="w-px bg-gray-300 mx-1" />
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); handleLinkClick(); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Convert selected text to link"><Link2 className="w-4 h-4" /></button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); removeLink(); }} className="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Remove Link"><Link2Off className="w-4 h-4" /></button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); handleImageUploadClick(); }} disabled={imageLoading} className="p-2 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50" title="Upload Image(s)">
+                      {imageLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                    </button>
+                    <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
+                    <div className="w-px bg-gray-300 mx-1" />
+                    {PARAMETER_FIELDS.map((p) => (
+                      <button key={p} type="button" onMouseDown={(ev) => { ev.preventDefault(); insertParameter(p); }} className="px-3 py-2 text-xs font-medium bg-purple-50 text-[#8c76f0] border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors">
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 mb-1">Tip: Click on an image in the editor to adjust its alignment and size.</p>
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    onInput={handleEditorInput}
+                    onClick={handleEditorClick}
+                    onMouseUp={saveSelection}
+                    onKeyUp={saveSelection}
+                    className="min-h-[200px] max-h-[400px] overflow-y-auto px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all prose prose-sm max-w-none"
+                    style={{ lineHeight: '1.6' }}
+                    data-placeholder="Compose your email here..."
+                    suppressContentEditableWarning
+                  />
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-400 mb-1">Edit raw HTML. Switch back to Visual to see the preview.</p>
+                  <textarea
+                    value={codeView}
+                    onChange={(e) => { setCodeView(e.target.value); setFormData((prev) => ({ ...prev, body_html: e.target.value })); }}
+                    className="min-h-[200px] max-h-[400px] overflow-y-auto px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all font-mono text-sm text-gray-800 w-full"
+                    placeholder="<p>Enter HTML here...</p>"
+                    spellCheck={false}
+                  />
+                </>
+              )}
             </div>
 
             {/* Recipient Filter */}

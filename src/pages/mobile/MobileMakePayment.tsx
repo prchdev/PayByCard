@@ -98,11 +98,6 @@ interface ChargesDetails {
     gstNumber: string;
     payoutMode: string;
     chargesInfo: {
-      visa: number;
-      mastercard: number;
-      rupay: number;
-      amex: number;
-      diners: number;
       gst_percentage: number;
     };
   };
@@ -651,7 +646,6 @@ export default function MobileMakePayment() {
           gstNumber: selectedPaymentOption.gateway_gst_number || '',
           payoutMode: selectedPaymentOption.payout_mode || 'manual',
           chargesInfo: {
-            visa: 0, mastercard: 0, rupay: 0, amex: 0, diners: 0,
             gst_percentage: selectedPaymentOption.gateway_gst_percentage || 18,
           },
         },

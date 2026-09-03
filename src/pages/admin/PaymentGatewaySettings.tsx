@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Save, AlertCircle, CheckCircle, Loader2, Percent, Building2, Key } from 'lucide-react';
+import { CreditCard, Save, AlertCircle, CheckCircle, Loader2, Building2, Key } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
 
@@ -18,14 +18,7 @@ interface PaymentGateway {
   supported_cards: string[];
   instant_settlement_cards: string[];
   default_payment_cards: string[];
-  instant_settlement_charges: Record<string, number>;
   gst_percentage: number;
-  visa_charges: number;
-  mastercard_charges: number;
-  rupay_charges: number;
-  amex_charges: number;
-  diners_charges: number;
-  payout_charges_inr: number;
   registered_name: string;
   gst_number: string;
   payout_mode: string;
@@ -91,14 +84,7 @@ export default function PaymentGatewaySettings() {
             test_api_secret: gw.test_api_secret || '',
             production_api_key: gw.production_api_key || '',
             production_api_secret: gw.production_api_secret || '',
-            instant_settlement_charges: gw.instant_settlement_charges || {},
             gst_percentage: gw.gst_percentage || 18,
-            visa_charges: gw.visa_charges || 0,
-            mastercard_charges: gw.mastercard_charges || 0,
-            rupay_charges: gw.rupay_charges || 0,
-            amex_charges: gw.amex_charges || 0,
-            diners_charges: gw.diners_charges || 0,
-            payout_charges_inr: gw.payout_charges_inr || 0,
             registered_name: gw.registered_name || '',
             gst_number: gw.gst_number || '',
             payout_mode: gw.payout_mode || 'payment_split',
@@ -179,16 +165,6 @@ export default function PaymentGatewaySettings() {
       updated.forEach((gw, i) => { if (i !== index) updated[i] = { ...updated[i], is_enabled: false }; });
     }
     updated[index] = { ...updated[index], [field]: value };
-    setGateways(updated);
-  };
-
-  const updateCharge = (index: number, chargeType: 'instant_settlement_charges', card: string, value: string) => {
-    const updated = [...gateways];
-    const numValue = parseFloat(value) || 0;
-    updated[index][chargeType] = {
-      ...updated[index][chargeType],
-      [card]: numValue
-    };
     setGateways(updated);
   };
 
@@ -552,13 +528,8 @@ export default function PaymentGatewaySettings() {
                   </div>
                 )}
 
-                {/* Card Charges */}
+                {/* GST Configuration */}
                 <div className="border-t-2 border-gray-200 pt-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Percent className="w-5 h-5 text-[#8c76f0]" />
-                    <h3 className="text-base font-semibold text-gray-900">Card Charges Configuration</h3>
-                  </div>
-
                   <div className="mb-4">
                     <label htmlFor={`gst-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
                       GST Percentage (%)
@@ -574,82 +545,6 @@ export default function PaymentGatewaySettings() {
                       className="w-full md:w-48 px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
                       placeholder="18.00"
                     />
-                  </div>
-
-                  {/* Group 1: Visa / MasterCard / RuPay */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-800 mb-4 px-3 py-1.5 bg-gray-100 rounded-lg inline-block">
-                      Visa / MasterCard / RuPay
-                    </h4>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <CardChargeGroup
-                        label="Visa"
-                        index={index}
-                        normalValue={gateway.visa_charges}
-                        instantValue={gateway.instant_settlement_charges['Visa'] || 0}
-                        onNormalChange={(val) => updateGateway(index, 'visa_charges', val)}
-                        onInstantChange={(val) => updateCharge(index, 'instant_settlement_charges', 'Visa', String(val))}
-                      />
-                      <CardChargeGroup
-                        label="MasterCard"
-                        index={index}
-                        normalValue={gateway.mastercard_charges}
-                        instantValue={gateway.instant_settlement_charges['MasterCard'] || 0}
-                        onNormalChange={(val) => updateGateway(index, 'mastercard_charges', val)}
-                        onInstantChange={(val) => updateCharge(index, 'instant_settlement_charges', 'MasterCard', String(val))}
-                      />
-                      <CardChargeGroup
-                        label="RuPay"
-                        index={index}
-                        normalValue={gateway.rupay_charges}
-                        instantValue={gateway.instant_settlement_charges['Rupay'] || 0}
-                        onNormalChange={(val) => updateGateway(index, 'rupay_charges', val)}
-                        onInstantChange={(val) => updateCharge(index, 'instant_settlement_charges', 'Rupay', String(val))}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Group 2: AmEx / Diners */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-800 mb-4 px-3 py-1.5 bg-gray-100 rounded-lg inline-block">
-                      American Express / Diners Club
-                    </h4>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <CardChargeGroup
-                        label="American Express"
-                        index={index}
-                        normalValue={gateway.amex_charges}
-                        instantValue={gateway.instant_settlement_charges['American Express'] || 0}
-                        onNormalChange={(val) => updateGateway(index, 'amex_charges', val)}
-                        onInstantChange={(val) => updateCharge(index, 'instant_settlement_charges', 'American Express', String(val))}
-                      />
-                      <CardChargeGroup
-                        label="Diners Club"
-                        index={index}
-                        normalValue={gateway.diners_charges}
-                        instantValue={gateway.instant_settlement_charges['Dinner Club'] || 0}
-                        onNormalChange={(val) => updateGateway(index, 'diners_charges', val)}
-                        onInstantChange={(val) => updateCharge(index, 'instant_settlement_charges', 'Dinner Club', String(val))}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Payout Charges */}
-                  <div>
-                    <label htmlFor={`payout-${index}`} className="block text-sm font-semibold text-gray-900 mb-2">
-                      PayOut Charges Per Transaction (INR)
-                    </label>
-                    <input
-                      type="number"
-                      id={`payout-${index}`}
-                      value={gateway.payout_charges_inr}
-                      onChange={(e) => updateGateway(index, 'payout_charges_inr', parseFloat(e.target.value) || 0)}
-                      step="0.01"
-                      min="0"
-                      className="w-full md:w-64 px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                      placeholder="0.00"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Flat fee charged per payout transaction</p>
                   </div>
                 </div>
               </div>
@@ -678,55 +573,5 @@ export default function PaymentGatewaySettings() {
         </div>
       </div>
     </AdminLayout>
-  );
-}
-
-function CardChargeGroup({
-  label,
-  index,
-  normalValue,
-  instantValue,
-  onNormalChange,
-  onInstantChange,
-}: {
-  label: string;
-  index: number;
-  normalValue: number;
-  instantValue: number;
-  onNormalChange: (val: number) => void;
-  onInstantChange: (val: number) => void;
-}) {
-  return (
-    <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-      <label className="block text-sm font-medium text-gray-800 mb-3">{label}</label>
-      <div className="space-y-3">
-        <div>
-          <label className="block text-xs text-gray-600 mb-1">Normal Settlement (%)</label>
-          <input
-            type="number"
-            value={normalValue}
-            onChange={(e) => onNormalChange(parseFloat(e.target.value) || 0)}
-            step="0.01"
-            min="0"
-            max="100"
-            className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-50 outline-none transition-all bg-white"
-            placeholder="0.00"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-600 mb-1">Instant Settlement (%)</label>
-          <input
-            type="number"
-            value={instantValue}
-            onChange={(e) => onInstantChange(parseFloat(e.target.value) || 0)}
-            step="0.01"
-            min="0"
-            max="100"
-            className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-50 outline-none transition-all bg-white"
-            placeholder="0.00"
-          />
-        </div>
-      </div>
-    </div>
   );
 }

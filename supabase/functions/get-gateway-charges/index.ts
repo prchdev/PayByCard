@@ -33,7 +33,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: gateways, error: gatewaysError } = await supabase
       .from('payment_gateway_settings')
-      .select('id, gateway_name, registered_name, gst_number, payout_mode, gst_percentage, visa_charges, mastercard_charges, rupay_charges, amex_charges, diners_charges')
+      .select('id, gateway_name, registered_name, gst_number, payout_mode, gst_percentage')
       .eq('is_enabled', true)
       .limit(1);
 

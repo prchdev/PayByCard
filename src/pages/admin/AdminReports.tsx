@@ -174,7 +174,7 @@ function downloadCSV(rows: TxRecord[]) {
     'Beneficiary Name', 'Beneficiary Email', 'Beneficiary Mobile', 'Beneficiary PAN', 'Beneficiary Bank', 'Beneficiary Account', 'Beneficiary IFSC',
     // Payment Details
     'Category', 'Payment Option', 'Gateway', 'Environment',
-    'Base Amount (INR)', 'Platform Charges (INR)', 'CGST 9% (INR)', 'SGST 9% (INR)', 'Total Charged (INR)',
+    'Base Amount (INR)', 'Platform Charges (INR)', 'CGST 9% (INR)', 'SGST/IGST (INR)', 'Total Charged (INR)',
     // Gateway
     'Gateway Transaction Ref', 'Gateway Settlement Status',
     // Payout / Settlement Details
@@ -190,7 +190,11 @@ function downloadCSV(rows: TxRecord[]) {
     const payout = r.payout;
     const gstTotal = parseFloat(r.gst || '0');
     const cgst = (gstTotal / 2).toFixed(2);
-    const sgst = (gstTotal / 2).toFixed(2);
+    const payerAddrCSV = r.business_kyc_verified
+      ? (r.company_address || r.sender_address || '')
+      : (r.sender_address || '');
+    const isMHCSV = isMaharashtraState(payerAddrCSV.match(/\b(Maharashtra|MH)\b/i)?.[0]);
+    const sgstOrIgst = isMHCSV ? (gstTotal / 2).toFixed(2) : gstTotal.toFixed(2);
     const isRefund = ds === 'refunded';
 
     const refundDate = isRefund && payout?.completed_at ? fmtDate(payout.completed_at) : '';
@@ -228,7 +232,7 @@ function downloadCSV(rows: TxRecord[]) {
       r.amount,
       r.charges,
       cgst,
-      sgst,
+      sgstOrIgst,
       r.total_amount,
       r.gateway_transaction_id || '',
       // Gateway settlement
@@ -269,6 +273,12 @@ interface CompanyInfo {
   company_logo_url: string | null;
 }
 
+function isMaharashtraState(stateText: string | null | undefined): boolean {
+  if (!stateText) return false;
+  const s = stateText.trim().toLowerCase();
+  return s === 'maharashtra' || s === 'mh';
+}
+
 function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): string {
   const bene = r.beneficiary_details || {};
   const ds = r.display_status || r.status;
@@ -283,7 +293,13 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
   const gst = parseFloat(r.gst || '0');
   const cgst = gst / 2;
   const sgst = gst / 2;
+  const igst = gst;
   const totalCharged = charges + gst;
+  // Determine if payer is in Maharashtra for SGST vs IGST
+  const payerStateRaw = r.business_kyc_verified
+    ? (r.company_address || r.sender_address || '')
+    : (r.sender_address || '');
+  const isMH = isMaharashtraState(payerStateRaw.match(/\b(Maharashtra|MH)\b/i)?.[0]);
   const invYear = new Date(r.completed_at || r.created_at).getFullYear();
   const invoiceNumDisplay = r.invoice_number ? `PAY-${invYear}-${r.invoice_number}` : null;
   const logoHtml = co.company_logo_url
@@ -433,8 +449,8 @@ ${r.gateway_environment ? row('Environment', r.gateway_environment.charAt(0).toU
           <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">₹${fmt(cgst)}</td>
         </tr>
         <tr>
-          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">SGST (9%)</td>
-          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">₹${fmt(sgst)}</td>
+          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">${isMH ? 'SGST (9%)' : 'IGST (18%)'}</td>
+          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">₹${fmt(isMH ? sgst : igst)}</td>
         </tr>
         <tr style="background:#0f172a;">
           <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#fff;">TOTAL CHARGED</td>
@@ -566,7 +582,12 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
   const buyerGstin = (r.business_kyc_verified && r.company_gst ? r.company_gst : '').toUpperCase().trim();
   const supplierStateCode = supplierGstin.slice(0, 2);
   const buyerStateCode = buyerGstin ? buyerGstin.slice(0, 2) : supplierStateCode;
-  const isInterState = buyerGstin ? supplierStateCode !== buyerStateCode : false;
+  // Also check payer address for Maharashtra state to decide SGST vs IGST
+  const payerAddrForState = r.business_kyc_verified
+    ? (r.company_address || r.sender_address || '')
+    : (r.sender_address || '');
+  const isMHFromAddress = isMaharashtraState(payerAddrForState.match(/\b(Maharashtra|MH)\b/i)?.[0]);
+  const isInterState = buyerGstin ? supplierStateCode !== buyerStateCode : !isMHFromAddress;
   const posCode = buyerGstin ? buyerStateCode : supplierStateCode;
 
   const txDate = r.created_at ? new Date(r.created_at) : new Date();

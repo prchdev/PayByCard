@@ -229,7 +229,16 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   const gst      = parseFloat(String(d.gst || 0));
   const cgst     = gst / 2;
   const sgst     = gst / 2;
+  const igst     = gst;
   const total    = parseFloat(String(d.total_amount || baseAmt));
+
+  // Determine if payer is in Maharashtra for SGST vs IGST
+  const payerStateRaw = d.business_kyc_verified
+    ? (d.company_address || d.sender_address || "")
+    : (d.sender_address || "");
+  const isMH = isMaharashtraState(
+    payerStateRaw.match(/\b(Maharashtra|MH)\b/i)?.[0]
+  );
 
   // Table header row
   R(ML, y, CW, 18, rgb(0.886, 0.898, 0.914));
@@ -252,7 +261,7 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
 
   const simpleRows = [
     ["CGST (9%)", `Rs. ${fmtAmt(cgst)}`],
-    ["SGST (9%)", `Rs. ${fmtAmt(sgst)}`],
+    [isMH ? "SGST (9%)" : "IGST (18%)", `Rs. ${fmtAmt(isMH ? sgst : igst)}`],
   ];
   for (const [desc, val] of simpleRows) {
     R(ML, y, CW, 16, BGFAINT);

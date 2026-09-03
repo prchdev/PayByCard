@@ -47,9 +47,28 @@ function statusStyle(s: string): { color: string; bg: string; label: string } {
   return map[s] || { color: "#475569", bg: "#f1f5f9", label: s };
 }
 
-async function fetchLogoAsDataUrl(url: string | null | undefined): Promise<string | null> {
+async function fetchLogoAsDataUrl(supabase: any, url: string | null | undefined): Promise<string | null> {
   if (!url) return null;
   try {
+    // If it's a Supabase storage URL in a private bucket, create a signed URL
+    const bucketMatch = url.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.*)/);
+    if (bucketMatch) {
+      const [, bucket, filePath] = bucketMatch;
+      const { data: signedData, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(filePath, 3600);
+      if (!error && signedData?.signedUrl) {
+        const res = await fetch(signedData.signedUrl);
+        if (!res.ok) return null;
+        const buf = await res.arrayBuffer();
+        const ct = res.headers.get("content-type") || "image/png";
+        const bytes = new Uint8Array(buf);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return `data:${ct};base64,${btoa(binary)}`;
+      }
+    }
+    // Fallback: try direct fetch (works for public URLs)
     const res = await fetch(url);
     if (!res.ok) return null;
     const buf = await res.arrayBuffer();
@@ -61,6 +80,12 @@ async function fetchLogoAsDataUrl(url: string | null | undefined): Promise<strin
   } catch {
     return null;
   }
+}
+
+function isMaharashtraState(stateText: string | null | undefined): boolean {
+  if (!stateText) return false;
+  const s = stateText.trim().toLowerCase();
+  return s === "maharashtra" || s === "mh";
 }
 
 function buildHtml(
@@ -84,7 +109,15 @@ function buildHtml(
   const gst = parseFloat(String(payment.gst || 0));
   const cgst = gst / 2;
   const sgst = gst / 2;
+  const igst = gst;
   const totalCharged = charges + cgst + sgst;
+
+  // Determine if payer is in Maharashtra for SGST vs IGST
+  const payerState = bizKyc?.business_address || senderAddress || "";
+  const isMH = isMaharashtraState(
+    // Try to extract state from address string
+    payerState.match(/\b(Maharashtra|MH)\b/i)?.[0]
+  );
   const businessKycVerified = bizKyc?.status === "verified";
 
   // Invoice number in PAY-YEAR-N format (only for completed/refunded)
@@ -299,8 +332,8 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
           <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(cgst)}</td>
         </tr>
         <tr>
-          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">SGST (9%)</td>
-          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(sgst)}</td>
+          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">${isMH ? "SGST (9%)" : "IGST (18%)"}</td>
+          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(isMH ? sgst : igst)}</td>
         </tr>
         <tr style="background:#0f172a;">
           <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#fff;">TOTAL CHARGED</td>
@@ -409,7 +442,7 @@ Deno.serve(async (req: Request) => {
     };
 
     // Embed logo as data URL so it renders in email clients and offline HTML
-    const logoDataUrl = await fetchLogoAsDataUrl(co.company_logo_url);
+    const logoDataUrl = await fetchLogoAsDataUrl(supabase, co.company_logo_url);
 
     const enrichedPayment = {
       ...payment,

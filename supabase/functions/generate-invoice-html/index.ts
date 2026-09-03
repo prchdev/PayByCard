@@ -327,14 +327,17 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
           </td>
           <td style="padding:7px 8px;text-align:right;font-size:12px;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(charges)}</td>
         </tr>
-        <tr>
+        ${isMH ? `<tr>
           <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">CGST (9%)</td>
           <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(cgst)}</td>
         </tr>
         <tr>
-          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">${isMH ? "SGST (9%)" : "IGST (18%)"}</td>
-          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(isMH ? sgst : igst)}</td>
-        </tr>
+          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">SGST (9%)</td>
+          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(sgst)}</td>
+        </tr>` : `<tr>
+          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">IGST (18%)</td>
+          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(igst)}</td>
+        </tr>`}
         <tr style="background:#0f172a;">
           <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#fff;">TOTAL CHARGED</td>
           <td style="padding:10px 8px;text-align:right;font-size:16px;font-weight:800;color:#fff;">&#8377;${fmt(totalCharged)}</td>

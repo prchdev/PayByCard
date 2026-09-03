@@ -259,10 +259,9 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   T(tranVal, RX - TW(tranVal, 9) - 8, y + 12, 9, reg, GRAY);
   y += 32;
 
-  const simpleRows = [
-    ["CGST (9%)", `Rs. ${fmtAmt(cgst)}`],
-    [isMH ? "SGST (9%)" : "IGST (18%)", `Rs. ${fmtAmt(isMH ? sgst : igst)}`],
-  ];
+  const simpleRows = isMH
+    ? [["CGST (9%)", `Rs. ${fmtAmt(cgst)}`], ["SGST (9%)", `Rs. ${fmtAmt(sgst)}`]]
+    : [["IGST (18%)", `Rs. ${fmtAmt(igst)}`]];
   for (const [desc, val] of simpleRows) {
     R(ML, y, CW, 16, BGFAINT);
     L(ML, y + 16, RX, y + 16, 0.5, LGRAY);

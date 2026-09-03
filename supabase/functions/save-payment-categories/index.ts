@@ -81,6 +81,7 @@ Deno.serve(async (req: Request) => {
         const { error } = await supabase
           .from("payment_options")
           .update({
+            category_name: category.category_name?.trim() || undefined,
             is_enabled: category.is_enabled,
             terms_and_conditions: category.terms_and_conditions || '',
             charges_percentage: Number(category.charges_percentage) || 0,

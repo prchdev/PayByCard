@@ -338,6 +338,20 @@ export default function PaymentCharges() {
                     {isExpanded && canEdit && (
                       <div className="px-6 pb-6 border-t border-gray-100 bg-gray-50">
                         <div className="pt-5 space-y-6">
+                          {/* Category Name */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                              <Tag className="w-4 h-4" /> Category Name
+                            </label>
+                            <input
+                              type="text"
+                              value={cat.category_name}
+                              onChange={(e) => updateCategory(cat.id, 'category_name', e.target.value)}
+                              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all bg-white"
+                              placeholder="Category name"
+                            />
+                          </div>
+
                           {/* Enable toggle */}
                           <div className="flex items-center gap-3">
                             <input

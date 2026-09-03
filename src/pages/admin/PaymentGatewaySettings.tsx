@@ -33,7 +33,7 @@ interface PaymentGateway {
 }
 
 const ALLOWED_GATEWAYS = ['RazorPay', 'CashFree', 'PayU', 'PhonePe'];
-const PAYOUT_GATEWAYS = ['RazorPay', 'CashFree', 'PayU', 'PhonePe'];
+const PAYOUT_GATEWAYS = ['RazorPay', 'CashFree'];
 
 export default function PaymentGatewaySettings() {
   const navigate = useNavigate();
@@ -219,7 +219,7 @@ export default function PaymentGatewaySettings() {
 
               <div className="space-y-6">
                 {/* Environment and Enabled */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor={`environment-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
                       Environment
@@ -232,22 +232,6 @@ export default function PaymentGatewaySettings() {
                     >
                       <option value="test">Testing</option>
                       <option value="production">Production</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor={`payout-mode-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                      Payout Mode
-                    </label>
-                    <select
-                      id={`payout-mode-${index}`}
-                      value={gateway.payout_mode}
-                      onChange={(e) => updateGateway(index, 'payout_mode', e.target.value)}
-                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                    >
-                      <option value="payment_split">Payment Split</option>
-                      <option value="manual">Manual Payout</option>
-                      <option value="payout">Auto Payout</option>
                     </select>
                   </div>
 
@@ -381,8 +365,6 @@ export default function PaymentGatewaySettings() {
                         ? 'Cashfree Payout API uses separate credentials from the Payment Gateway API.'
                         : gateway.gateway_name === 'RazorPay'
                         ? 'RazorPay X Payout API credentials and source account number for fund transfers.'
-                        : gateway.gateway_name === 'PhonePe'
-                        ? 'PhonePe Business Payout API uses separate credentials from the Payment Gateway API.'
                         : 'Payout API credentials for fund transfer operations.'}
                     </p>
 

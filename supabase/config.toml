@@ -256,3 +256,9 @@ verify_jwt = false
 verify_jwt = false
 [functions.waf-validate]
 verify_jwt = false
+[functions.get-payout-settings]
+verify_jwt = false
+[functions.save-payout-settings]
+verify_jwt = false
+[functions.process-axis-payout]
+verify_jwt = false

@@ -49,6 +49,7 @@ import PaymentCategories from './pages/admin/PaymentCategories';
 import MasterSettings from './pages/admin/MasterSettings';
 import MerchantOnboarding from './pages/MerchantOnboarding';
 import ManualPayout from './pages/admin/ManualPayout';
+import PayoutSettings from './pages/admin/PayoutSettings';
 import AdminReports from './pages/admin/AdminReports';
 import AdminUserSummary from './pages/admin/AdminUserSummary';
 import AdminNotifications from './pages/admin/AdminNotifications';
@@ -158,6 +159,7 @@ function App() {
           <Route path="/admin/payment-categories" element={<PaymentCategories />} />
           <Route path="/admin/master-settings" element={<MasterSettings />} />
           <Route path="/admin/manual-payout" element={<ManualPayout />} />
+          <Route path="/admin/payout-settings" element={<PayoutSettings />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/user-summary" element={<AdminUserSummary />} />
           <Route path="/admin/kyc-method" element={<KycMethodSettings />} />

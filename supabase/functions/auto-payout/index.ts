@@ -1128,8 +1128,17 @@ Deno.serve(async (req: Request) => {
       await supabase.rpc("fn_release_payment_lock", { p_payment_id: singlePaymentId });
     }
 
+    // ── Fetch global payout settings ──────────────────────────────────────────
+    const { data: payoutSettings } = await supabase
+      .from("payout_settings")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+    const globalPayoutMode = payoutSettings?.payout_mode ?? "manual";
+    const globalEnv = payoutSettings?.environment ?? "test";
+
     // ── Fetch eligible payments ───────────────────────────────────────────────
-    // Target: settlement_pending OR settlement_in_progress, payout_mode = payout or payment_split
+    // Target: settlement_pending OR settlement_in_progress, payout_mode is an auto mode
     let query = supabase
       .from("payments")
       .select("*, payment_gateway_settings(*), beneficiaries(*)")
@@ -1155,21 +1164,26 @@ Deno.serve(async (req: Request) => {
     const now = new Date();
 
     // ── Filter ────────────────────────────────────────────────────────────────
+    const AUTO_PAYOUT_MODES = new Set([
+      "payout", "payment_split",
+      "cashfree_payout", "cashfree_payment_split",
+      "razorpay_payout", "razorpay_payment_split",
+      "axis_payout",
+    ]);
     const eligible = payments
       .filter((p: any) => {
-        const mode      = p.payout_mode ?? p.payment_gateway_settings?.payout_mode;
+        const mode      = p.payout_mode ?? globalPayoutMode;
         const gwSettled = GATEWAY_SETTLED_STATUSES.has(
           (p.gateway_settlement_status ?? "").toLowerCase(),
         );
 
-        if (mode !== "payout" && mode !== "payment_split") return false;
+        if (!AUTO_PAYOUT_MODES.has(mode)) return false;
 
-        // payment_split: process immediately (funds stay with gateway)
-        if (mode === "payment_split") return true;
+        // payment_split / cashfree_payment_split / razorpay_payment_split: process immediately
+        if (mode.includes("payment_split")) return true;
 
-        // payout mode: always require gateway to confirm settlement first.
-        // A date-based timer is NOT sufficient — we must see gateway_settlement_status
-        // as "paid", "settled", "success", or "captured" before creating any transfer.
+        // payout modes (payout, cashfree_payout, razorpay_payout, axis_payout):
+        // always require gateway to confirm settlement first.
         return gwSettled;
       })
       .sort((a: any, b: any) => {
@@ -1197,8 +1211,8 @@ Deno.serve(async (req: Request) => {
       const gateway     = payment.payment_gateway_settings;
       const beneficiary = payment.beneficiaries;
       const amount      = parseFloat(payment.amount ?? "0");
-      const payoutMode  = payment.payout_mode ?? gateway?.payout_mode;
-      const env         = payment.gateway_environment ?? "production";
+      const payoutMode  = payment.payout_mode ?? globalPayoutMode;
+      const env         = payment.gateway_environment ?? globalEnv;
 
       if (!gateway) {
         results.push({ id: payment.id, reference: payment.payment_reference, action: "skipped", error: "No gateway settings" });
@@ -1352,7 +1366,7 @@ Deno.serve(async (req: Request) => {
       // ── Verify gateway settlement (for settlement_pending with payout mode) ─
       // Skip re-verification if DB already has a confirmed settled status —
       // calling the gateway again would return the same result and burn quota.
-      if (payment.status === "settlement_pending" && payoutMode === "payout") {
+      if (payment.status === "settlement_pending" && !payoutMode.includes("payment_split")) {
         const alreadySettled = GATEWAY_SETTLED_STATUSES.has(
           (payment.gateway_settlement_status ?? "").toLowerCase(),
         );
@@ -1381,7 +1395,53 @@ Deno.serve(async (req: Request) => {
 
       // ── Execute payout ─────────────────────────────────────────────────────
       try {
-        const result = await executePayout(supabase, payment, gateway, beneficiary, userKyc);
+        // For axis_payout mode, use the Axis Bank process function instead
+        let result: { success: boolean; gateway_tx_id: string | null; utr: string | null; response: any };
+        if (payoutMode === "axis_payout") {
+          const axisRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/process-axis-payout`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              payment_id: payment.id,
+              beneficiary_account_number: beneficiary.bank_account,
+              beneficiary_ifsc: beneficiary.ifsc,
+              beneficiary_name: beneficiary.full_name,
+              amount,
+              remarks: `Payout for ${payment.payment_reference}`,
+            }),
+          });
+          const axisData = await axisRes.json();
+          result = {
+            success: !!axisData.success,
+            gateway_tx_id: axisData.reference_number ?? null,
+            utr: axisData.reference_number ?? null,
+            response: axisData,
+          };
+        } else {
+          // Merge payout_settings credentials into gateway object for cashfree/razorpay modes
+          const mergedGateway = { ...gateway };
+          if (payoutSettings) {
+            if (payoutMode.startsWith("cashfree_")) {
+              mergedGateway.test_payout_client_id = payoutSettings.cashfree_test_client_id;
+              mergedGateway.test_payout_client_secret = payoutSettings.cashfree_test_client_secret;
+              mergedGateway.production_payout_client_id = payoutSettings.cashfree_production_client_id;
+              mergedGateway.production_payout_client_secret = payoutSettings.cashfree_production_client_secret;
+              mergedGateway.test_cashfree_2fa_public_key = payoutSettings.cashfree_test_2fa_public_key;
+              mergedGateway.production_cashfree_2fa_public_key = payoutSettings.cashfree_production_2fa_public_key;
+            } else if (payoutMode.startsWith("razorpay_")) {
+              mergedGateway.test_payout_client_id = payoutSettings.razorpay_test_key_id;
+              mergedGateway.test_payout_client_secret = payoutSettings.razorpay_test_key_secret;
+              mergedGateway.production_payout_client_id = payoutSettings.razorpay_production_key_id;
+              mergedGateway.production_payout_client_secret = payoutSettings.razorpay_production_key_secret;
+              mergedGateway.test_payout_account_number = payoutSettings.razorpay_test_account_number;
+              mergedGateway.production_payout_account_number = payoutSettings.razorpay_production_account_number;
+            }
+          }
+          result = await executePayout(supabase, payment, mergedGateway, beneficiary, userKyc);
+        }
         const payoutRef = `AUTO-${payment.payment_reference}`;
         const transferMode = resolveTransferMode(payment.category_details?.settlement_time);
 
@@ -1421,7 +1481,7 @@ Deno.serve(async (req: Request) => {
           beneficiary_id:        payment.beneficiary_id,
           payment_gateway_id:    payment.payment_gateway_id,
           payment_id:            payment.id,
-          payout_type:           payoutMode === "payment_split" ? "split" : "auto",
+          payout_type:           payoutMode.includes("payment_split") ? "split" : payoutMode === "axis_payout" ? "axis" : "auto",
           amount,
           charges:               0,
           gst:                   0,

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Save, AlertCircle, CheckCircle, Loader2, Building2, Key } from 'lucide-react';
+import { CreditCard, Save, AlertCircle, CheckCircle, Loader2, Building2 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
 
@@ -21,19 +21,9 @@ interface PaymentGateway {
   gst_percentage: number;
   registered_name: string;
   gst_number: string;
-  payout_mode: string;
-  test_payout_client_id: string;
-  test_payout_client_secret: string;
-  production_payout_client_id: string;
-  production_payout_client_secret: string;
-  test_payout_account_number: string;
-  production_payout_account_number: string;
-  test_cashfree_2fa_public_key: string;
-  production_cashfree_2fa_public_key: string;
 }
 
 const ALLOWED_GATEWAYS = ['RazorPay', 'CashFree', 'PayU', 'PhonePe'];
-const PAYOUT_GATEWAYS = ['RazorPay', 'CashFree'];
 
 export default function PaymentGatewaySettings() {
   const navigate = useNavigate();
@@ -87,15 +77,6 @@ export default function PaymentGatewaySettings() {
             gst_percentage: gw.gst_percentage || 18,
             registered_name: gw.registered_name || '',
             gst_number: gw.gst_number || '',
-            payout_mode: gw.payout_mode || 'payment_split',
-            test_payout_client_id: gw.test_payout_client_id || '',
-            test_payout_client_secret: gw.test_payout_client_secret || '',
-            production_payout_client_id: gw.production_payout_client_id || '',
-            production_payout_client_secret: gw.production_payout_client_secret || '',
-            test_payout_account_number: gw.test_payout_account_number || '',
-            production_payout_account_number: gw.production_payout_account_number || '',
-            test_cashfree_2fa_public_key: gw.test_cashfree_2fa_public_key || '',
-            production_cashfree_2fa_public_key: gw.production_cashfree_2fa_public_key || '',
           }));
         setGateways(gatewaysData);
       } else {
@@ -352,163 +333,6 @@ export default function PaymentGatewaySettings() {
                     </div>
                   </div>
                 </div>
-
-                {/* Payout API Credentials — CashFree, RazorPay, PayU */}
-                {PAYOUT_GATEWAYS.includes(gateway.gateway_name) && (
-                  <div className="border-t border-gray-200 pt-6">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Key className="w-4 h-4 text-[#8c76f0]" />
-                      <h3 className="text-sm font-semibold text-gray-900">Payout API Credentials</h3>
-                    </div>
-                    <p className="text-xs text-gray-500 mb-5">
-                      {gateway.gateway_name === 'CashFree'
-                        ? 'Cashfree Payout API uses separate credentials from the Payment Gateway API.'
-                        : gateway.gateway_name === 'RazorPay'
-                        ? 'RazorPay X Payout API credentials and source account number for fund transfers.'
-                        : 'Payout API credentials for fund transfer operations.'}
-                    </p>
-
-                    {/* Test Payout Credentials */}
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">Test</span>
-                        <span className="text-xs text-gray-500">Used when Environment is set to Testing</span>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor={`test-payout-client-id-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                            {gateway.gateway_name === 'RazorPay' ? 'Test Payout Key ID' : 'Test Payout Client ID'}
-                          </label>
-                          <input
-                            type="text"
-                            id={`test-payout-client-id-${index}`}
-                            value={gateway.test_payout_client_id}
-                            onChange={(e) => updateGateway(index, 'test_payout_client_id', e.target.value)}
-                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                            placeholder={gateway.gateway_name === 'RazorPay' ? 'rzp_test_...' : 'Enter Test Payout Client ID'}
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor={`test-payout-client-secret-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                            {gateway.gateway_name === 'RazorPay' ? 'Test Payout Key Secret' : 'Test Payout Client Secret'}
-                          </label>
-                          <input
-                            type="password"
-                            id={`test-payout-client-secret-${index}`}
-                            value={gateway.test_payout_client_secret}
-                            onChange={(e) => updateGateway(index, 'test_payout_client_secret', e.target.value)}
-                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                            placeholder="Enter Test Payout Client Secret"
-                          />
-                        </div>
-                        {gateway.gateway_name === 'RazorPay' && (
-                          <div className="md:col-span-2">
-                            <label htmlFor={`test-payout-account-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                              Test Payout Account Number
-                            </label>
-                            <input
-                              type="text"
-                              id={`test-payout-account-${index}`}
-                              value={gateway.test_payout_account_number}
-                              onChange={(e) => updateGateway(index, 'test_payout_account_number', e.target.value)}
-                              className="w-full md:w-1/2 px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                              placeholder="RazorPay X test account number"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Production Payout Credentials */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">Production</span>
-                        <span className="text-xs text-gray-500">Used when Environment is set to Production</span>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor={`prod-payout-client-id-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                            {gateway.gateway_name === 'RazorPay' ? 'Production Payout Key ID' : 'Production Payout Client ID'}
-                          </label>
-                          <input
-                            type="text"
-                            id={`prod-payout-client-id-${index}`}
-                            value={gateway.production_payout_client_id}
-                            onChange={(e) => updateGateway(index, 'production_payout_client_id', e.target.value)}
-                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                            placeholder={gateway.gateway_name === 'RazorPay' ? 'rzp_live_...' : 'Enter Production Payout Client ID'}
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor={`prod-payout-client-secret-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                            {gateway.gateway_name === 'RazorPay' ? 'Production Payout Key Secret' : 'Production Payout Client Secret'}
-                          </label>
-                          <input
-                            type="password"
-                            id={`prod-payout-client-secret-${index}`}
-                            value={gateway.production_payout_client_secret}
-                            onChange={(e) => updateGateway(index, 'production_payout_client_secret', e.target.value)}
-                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                            placeholder="Enter Production Payout Client Secret"
-                          />
-                        </div>
-                        {gateway.gateway_name === 'RazorPay' && (
-                          <div className="md:col-span-2">
-                            <label htmlFor={`prod-payout-account-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                              Production Payout Account Number
-                            </label>
-                            <input
-                              type="text"
-                              id={`prod-payout-account-${index}`}
-                              value={gateway.production_payout_account_number}
-                              onChange={(e) => updateGateway(index, 'production_payout_account_number', e.target.value)}
-                              className="w-full md:w-1/2 px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                              placeholder="RazorPay X production account number"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Cashfree 2FA Public Key */}
-                    {gateway.gateway_name === 'CashFree' && (
-                      <div className="mt-6">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">2FA</span>
-                          <span className="text-xs text-gray-500">RSA public key for Cashfree Payout OTP verification (optional)</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label htmlFor={`test-2fa-key-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                              Test 2FA Public Key
-                            </label>
-                            <textarea
-                              id={`test-2fa-key-${index}`}
-                              value={gateway.test_cashfree_2fa_public_key}
-                              onChange={(e) => updateGateway(index, 'test_cashfree_2fa_public_key', e.target.value)}
-                              rows={5}
-                              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all font-mono text-xs resize-y"
-                              placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----"
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor={`prod-2fa-key-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                              Production 2FA Public Key
-                            </label>
-                            <textarea
-                              id={`prod-2fa-key-${index}`}
-                              value={gateway.production_cashfree_2fa_public_key}
-                              onChange={(e) => updateGateway(index, 'production_cashfree_2fa_public_key', e.target.value)}
-                              rows={5}
-                              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all font-mono text-xs resize-y"
-                              placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {/* GST Configuration */}
                 <div className="border-t-2 border-gray-200 pt-6">

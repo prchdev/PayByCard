@@ -64,14 +64,15 @@ export default function PaymentGatewaySettings() {
   const fetchPaymentOptions = async () => {
     try {
       const adminId = sessionStorage.getItem('adminId');
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-get-payment-categories`;
+      if (!adminId) return;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-categories`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ adminId }),
+        body: JSON.stringify({ admin_id: adminId }),
       });
       const data = await response.json();
       if (response.ok && data.categories) {

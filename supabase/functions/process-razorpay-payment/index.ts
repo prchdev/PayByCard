@@ -179,28 +179,55 @@ Deno.serve(async (req: Request) => {
     const detectedCardType = card_type.toLowerCase();
     const categoryName = payment.card_type?.toLowerCase() || "";
 
-    let allowedMethods: string[] = [];
+    // Look up per-payment-option Razorpay configuration
+    let configuredMethod: string | null = null;
+    let configuredCardTypes: string[] | null = null;
 
-    if (categoryName.includes("amex") || categoryName.includes("american express") || categoryName.includes("diners")) {
-      allowedMethods = ["amex"];
-    } else if (categoryName.includes("visa")) {
-      allowedMethods = ["card"];
-    } else if (categoryName.includes("master")) {
-      allowedMethods = ["card"];
-    } else if (categoryName.includes("rupay")) {
-      allowedMethods = ["card"];
-    } else if (detectedCardType === "amex" || detectedCardType === "diners") {
-      allowedMethods = ["amex"];
-    } else {
-      allowedMethods = ["card"];
+    if (payment.payment_category_id) {
+      const { data: razorpayConfig } = await supabase
+        .from("razorpay_payment_configs")
+        .select("method, allowed_card_types")
+        .eq("payment_gateway_id", gateway.id)
+        .eq("payment_option_id", payment.payment_category_id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (razorpayConfig) {
+        configuredMethod = razorpayConfig.method;
+        configuredCardTypes = razorpayConfig.allowed_card_types
+          ? razorpayConfig.allowed_card_types.split(",").map((s: string) => s.trim()).filter(Boolean)
+          : null;
+      }
     }
 
-    const method = allowedMethods[0] || "card";
+    let allowedMethods: string[] = [];
+    let allowedCardTypes: string[] = [];
 
-    const allowedCardTypes =
-      method === "amex"
-        ? ["amex", "diners"]
-        : ["visa", "mastercard", "rupay"];
+    if (configuredMethod) {
+      // Use per-option configuration
+      allowedMethods = [configuredMethod];
+      allowedCardTypes = configuredCardTypes && configuredCardTypes.length > 0
+        ? configuredCardTypes
+        : configuredMethod === "amex"
+          ? ["amex", "diners"]
+          : ["visa", "mastercard", "rupay"];
+    } else {
+      // Fall back to default configuration
+      if (categoryName.includes("amex") || categoryName.includes("american express") || categoryName.includes("diners")) {
+        allowedMethods = ["amex"];
+      } else if (categoryName.includes("visa") || categoryName.includes("master") || categoryName.includes("rupay")) {
+        allowedMethods = ["card"];
+      } else if (detectedCardType === "amex" || detectedCardType === "diners") {
+        allowedMethods = ["amex"];
+      } else {
+        allowedMethods = ["card"];
+      }
+
+      const method = allowedMethods[0] || "card";
+      allowedCardTypes = method === "amex" ? ["amex", "diners"] : ["visa", "mastercard", "rupay"];
+    }
+
+    const orderMethod = allowedMethods[0] || "card";
 
     const orderData: any = {
       amount: Math.round(parseFloat(payment.total_amount) * 100),
@@ -211,7 +238,7 @@ Deno.serve(async (req: Request) => {
         user_id: user.id,
         card_type: allowedCardTypes.join(",")
       },
-      method: method
+      method: orderMethod
     };
 
     // Payment Split: configure Razorpay Route transfer at order creation time

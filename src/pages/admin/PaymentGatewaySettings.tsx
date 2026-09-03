@@ -1,8 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Save, AlertCircle, CheckCircle, Loader2, Building2 } from 'lucide-react';
+import { CreditCard, Save, AlertCircle, CheckCircle, Loader2, Building2, Settings2 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
+
+interface PaymentOption {
+  id: string;
+  category_name: string;
+}
+
+interface RazorpayConfig {
+  payment_option_id: string;
+  method: string;
+  allowed_card_types: string;
+  is_active: boolean;
+}
 
 interface PaymentGateway {
   id: string;
@@ -40,10 +52,104 @@ export default function PaymentGatewaySettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [paymentOptions, setPaymentOptions] = useState<PaymentOption[]>([]);
+  const [razorpayConfigs, setRazorpayConfigs] = useState<Record<string, RazorpayConfig>>({});
+  const [configsLoading, setConfigsLoading] = useState(false);
+  const [configsSaving, setConfigsSaving] = useState(false);
 
   useEffect(() => {
     fetchGateways();
+    fetchPaymentOptions();
   }, []);
+
+  const fetchPaymentOptions = async () => {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-categories-list`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
+      const data = await response.json();
+      if (response.ok && data.categories) {
+        setPaymentOptions(data.categories.map((c: any) => ({ id: c.id, category_name: c.category_name })));
+      }
+    } catch {
+      // silent fail — configs are optional
+    }
+  };
+
+  const fetchRazorpayConfigs = async (gatewayId: string) => {
+    setConfigsLoading(true);
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/razorpay-payment-configs?gateway_id=${gatewayId}`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok && data.configs) {
+        const map: Record<string, RazorpayConfig> = {};
+        for (const c of data.configs) {
+          map[c.payment_option_id] = {
+            payment_option_id: c.payment_option_id,
+            method: c.method || 'card',
+            allowed_card_types: c.allowed_card_types || 'visa,mastercard,rupay',
+            is_active: c.is_active !== false,
+          };
+        }
+        setRazorpayConfigs(map);
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setConfigsLoading(false);
+    }
+  };
+
+  const updateRazorpayConfig = (optionId: string, field: keyof RazorpayConfig, value: any) => {
+    setRazorpayConfigs(prev => ({
+      ...prev,
+      [optionId]: {
+        payment_option_id: optionId,
+        method: prev[optionId]?.method || 'card',
+        allowed_card_types: prev[optionId]?.allowed_card_types || 'visa,mastercard,rupay',
+        is_active: prev[optionId]?.is_active ?? true,
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveRazorpayConfigs = async (gatewayId: string) => {
+    setConfigsSaving(true);
+    setMessage(null);
+    try {
+      const configs = Object.values(razorpayConfigs);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/razorpay-payment-configs`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ gateway_id: gatewayId, configs }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Razorpay payment configurations saved successfully' });
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to save Razorpay configurations' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'An error occurred while saving Razorpay configurations' });
+    } finally {
+      setConfigsSaving(false);
+    }
+  };
 
   const fetchGateways = async () => {
     try {
@@ -79,6 +185,12 @@ export default function PaymentGatewaySettings() {
             gst_number: gw.gst_number || '',
           }));
         setGateways(gatewaysData);
+
+        // Fetch Razorpay per-option configs if RazorPay gateway exists
+        const razorpayGw = gatewaysData.find((gw: any) => gw.gateway_name === 'RazorPay');
+        if (razorpayGw) {
+          fetchRazorpayConfigs(razorpayGw.id);
+        }
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to load payment gateways' });
       }
@@ -333,6 +445,99 @@ export default function PaymentGatewaySettings() {
                     </div>
                   </div>
                 </div>
+
+                {/* Razorpay Per-Payment-Option Configuration */}
+                {gateway.gateway_name === 'RazorPay' && (
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Settings2 className="w-4 h-4 text-[#8c76f0]" />
+                      <h3 className="text-sm font-semibold text-gray-900">Payment Option Configurations</h3>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-4">
+                      Configure Razorpay payment method and allowed card types for each payment option. If a payment option is not configured below, the default configuration is used.
+                    </p>
+
+                    {configsLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Loading configurations...
+                      </div>
+                    ) : paymentOptions.length === 0 ? (
+                      <p className="text-sm text-gray-400 italic">No payment options available. Create payment options first.</p>
+                    ) : (
+                      <>
+                        <div className="space-y-3">
+                          {paymentOptions.map((option) => {
+                            const config = razorpayConfigs[option.id];
+                            const isEnabled = config?.is_active ?? false;
+                            return (
+                              <div key={option.id} className={`rounded-xl border-2 p-4 transition-all ${isEnabled ? 'border-[#8c76f0] bg-purple-50/30' : 'border-gray-200 bg-gray-50/50'}`}>
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={isEnabled}
+                                      onChange={(e) => updateRazorpayConfig(option.id, 'is_active', e.target.checked)}
+                                      className="w-4 h-4 text-white bg-white border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#8c76f0] checked:bg-[#8c76f0] checked:border-[#8c76f0] transition-colors cursor-pointer"
+                                    />
+                                    <span className="text-sm font-medium text-gray-900">{option.category_name}</span>
+                                  </div>
+                                </div>
+                                {isEnabled && (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-7">
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Payment Method</label>
+                                      <select
+                                        value={config?.method || 'card'}
+                                        onChange={(e) => updateRazorpayConfig(option.id, 'method', e.target.value)}
+                                        className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-50 outline-none transition-all text-sm"
+                                      >
+                                        <option value="card">Card</option>
+                                        <option value="amex">Amex / Diners</option>
+                                        <option value="netbanking">Netbanking</option>
+                                        <option value="wallet">Wallet</option>
+                                        <option value="upi">UPI</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Allowed Card Types</label>
+                                      <input
+                                        type="text"
+                                        value={config?.allowed_card_types || 'visa,mastercard,rupay'}
+                                        onChange={(e) => updateRazorpayConfig(option.id, 'allowed_card_types', e.target.value)}
+                                        className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-50 outline-none transition-all text-sm"
+                                        placeholder="visa,mastercard,rupay"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="mt-4">
+                          <button
+                            onClick={() => saveRazorpayConfigs(gateway.id)}
+                            disabled={configsSaving || !canEdit}
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {configsSaving ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="w-4 h-4" />
+                                Save Configurations
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {/* GST Configuration */}
                 <div className="border-t-2 border-gray-200 pt-6">

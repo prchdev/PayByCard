@@ -7,14 +7,20 @@ const corsHeaders = {
 };
 
 /**
- * process-axis-payout — Transfer money to a beneficiary using Axis Bank Neo Corporate API
+ * process-axis-payout — Transfer money to a beneficiary using Axis Bank Corporate Payout API
+ *
+ * Based on Axis Bank Corporate API Process and Requirement Specification:
+ *   Product 35409: Corporate Payout (7 APIs)
+ *   Product 36009: Beneficiary Management (2 APIs)
  *
  * Flow:
  *   1. Fetch OAuth2 access token from Axis Bank token endpoint
- *   2. Create a fund transfer request using the Neo Corporate Payments API
- *   3. Return the transfer status and reference number
+ *   2. Call Balance Enquiry API to verify available balance
+ *   3. If available balance >= transfer amount, create fund transfer request
+ *   4. Return the transfer status and reference number
  *
- * Called by auto-payout when payout_mode is 'axis_payout'.
+ * If balance is insufficient, returns a "pending" status so the auto-payout
+ * job can retry in the next run (FIFO — first confirmed payment gets paid first).
  */
 
 interface AxisPayoutRequest {
@@ -71,11 +77,19 @@ Deno.serve(async (req: Request) => {
     const clientId = isTest ? settings.axis_test_client_id : settings.axis_production_client_id;
     const clientSecret = isTest ? settings.axis_test_client_secret : settings.axis_production_client_secret;
     const baseUrl = isTest ? settings.axis_test_base_url : settings.axis_production_base_url;
-    const virtualAccount = isTest ? settings.axis_test_virtual_account : settings.axis_production_virtual_account;
-    const corporateId = settings.axis_corporate_id;
+    const corpAccNum = isTest ? settings.axis_test_virtual_account : settings.axis_production_virtual_account;
+    const corpCode = settings.axis_corporate_id;
+    const channelId = settings.axis_channel_id || "TXB";
 
     if (!clientId || !clientSecret) {
       return new Response(JSON.stringify({ error: "Axis Bank API credentials not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!corpAccNum || !corpCode) {
+      return new Response(JSON.stringify({ error: "Axis Bank corporate account number or corporate ID not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -115,16 +129,66 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Step 2: Create fund transfer
+    // Step 2: Balance Enquiry API — verify available balance before transfer
+    const balanceUrl = `${baseUrl}/neo/v1/account/balance`;
+    const balancePayload = {
+      channelId,
+      corpCode,
+      corpAccNum,
+    };
+
+    const balanceResponse = await fetch(balanceUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${accessToken}`,
+        "client-id": clientId,
+      },
+      body: JSON.stringify(balancePayload),
+    });
+
+    const balanceData = await balanceResponse.json();
+
+    if (!balanceResponse.ok || balanceData?.status !== "S") {
+      console.error("Axis Bank balance enquiry error:", JSON.stringify(balanceData));
+      return new Response(JSON.stringify({
+        error: "Failed to verify account balance with Axis Bank",
+        details: balanceData?.message || "Balance enquiry failed",
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const availableBalance = parseFloat(balanceData?.data?.Balance ?? "0");
+
+    // If available balance is less than the transfer amount, return pending status
+    // so the auto-payout job can retry in the next run (FIFO order)
+    if (availableBalance < amount) {
+      return new Response(JSON.stringify({
+        success: false,
+        status: "pending",
+        pending_reason: "insufficient_balance",
+        available_balance: availableBalance,
+        required_amount: amount,
+        message: `Insufficient balance in Axis Bank account. Available: ₹${availableBalance.toFixed(2)}, Required: ₹${amount.toFixed(2)}. Payment will be retried in the next payout job run.`,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Step 3: Create fund transfer using Corporate Payout API
     const transferUrl = `${baseUrl}/neo/v1/payments/transfer`;
     const transferPayload = {
-      corporateId,
-      virtualAccountId: virtualAccount,
+      channelId,
+      corpCode,
+      corpAccNum,
       paymentDetails: {
         paymentReference: payment_id,
-        beneficiaryAccountNumber: beneficiary_account_number,
-        beneficiaryIFSC: beneficiary_ifsc,
-        beneficiaryName: beneficiary_name,
+        beneAccNum: beneficiary_account_number,
+        beneIfscCode: beneficiary_ifsc,
+        beneName: beneficiary_name,
         amount: String(amount),
         currency: "INR",
         remarks: remarks || `Payout for ${payment_id}`,
@@ -144,23 +208,25 @@ Deno.serve(async (req: Request) => {
 
     const transferData = await transferResponse.json();
 
-    if (!transferResponse.ok) {
+    if (!transferResponse.ok || transferData?.status !== "S") {
       console.error("Axis Bank transfer error:", JSON.stringify(transferData));
       return new Response(JSON.stringify({
         error: "Axis Bank transfer failed",
-        details: transferData.message || transferData.error || "Unknown error",
+        details: transferData?.message || "Unknown error",
       }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Step 3: Return transfer status
+    // Step 4: Return transfer status
+    const responseData = transferData?.data || {};
     return new Response(JSON.stringify({
       success: true,
-      status: transferData.status || "PENDING",
-      reference_number: transferData.referenceNumber || transferData.rrn || "",
-      message: transferData.message || "Transfer initiated successfully",
+      status: "processing",
+      reference_number: responseData.referenceNumber || responseData.rrn || responseData.utr || "",
+      utr: responseData.utr || responseData.rrn || null,
+      message: transferData?.message || "Transfer initiated successfully",
       raw_response: transferData,
     }), {
       status: 200,

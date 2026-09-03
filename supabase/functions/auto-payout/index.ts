@@ -1414,10 +1414,37 @@ Deno.serve(async (req: Request) => {
             }),
           });
           const axisData = await axisRes.json();
+
+          // Axis Bank returns pending when available balance is insufficient.
+          // Skip this payment without creating a payout record — leave it
+          // for the next job run (FIFO: first confirmed payment gets paid first).
+          if (!axisData.success && axisData.status === "pending") {
+            await supabase.from("payment_logs").insert({
+              payment_id: payment.id,
+              status:     "payout_skipped_insufficient_balance",
+              message:    `Axis Bank payout skipped: ${axisData.message || "insufficient balance"}. Available: ₹${(axisData.available_balance ?? 0).toFixed(2)}, Required: ₹${(axisData.required_amount ?? amount).toFixed(2)}. Will retry in next job run.`,
+              metadata:   {
+                payout_mode:       payoutMode,
+                available_balance: axisData.available_balance,
+                required_amount:   axisData.required_amount,
+                pending_reason:    axisData.pending_reason,
+              },
+            });
+            // Release the lock so the payment can be re-claimed in the next run
+            await supabase.rpc("fn_release_payment_lock", { p_payment_id: payment.id });
+            results.push({
+              id:        payment.id,
+              reference: payment.payment_reference,
+              action:    "skipped_insufficient_balance",
+              error:     axisData.message || "Insufficient balance — will retry next run",
+            });
+            continue;
+          }
+
           result = {
             success: !!axisData.success,
             gateway_tx_id: axisData.reference_number ?? null,
-            utr: axisData.reference_number ?? null,
+            utr: axisData.utr ?? axisData.reference_number ?? null,
             response: axisData,
           };
         } else {

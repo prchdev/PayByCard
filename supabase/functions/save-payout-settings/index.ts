@@ -63,6 +63,7 @@ Deno.serve(async (req: Request) => {
       axis_test_base_url: settings.axis_test_base_url || "https://uatapis.axisbank.co.uk",
       axis_production_base_url: settings.axis_production_base_url || "https://apis.axisbank.co.uk",
       axis_corporate_id: settings.axis_corporate_id || "",
+      axis_channel_id: settings.axis_channel_id || "TXB",
       axis_test_virtual_account: settings.axis_test_virtual_account || "",
       axis_production_virtual_account: settings.axis_production_virtual_account || "",
       updated_at: new Date().toISOString(),

@@ -39,6 +39,7 @@ interface PayoutSettings {
   axis_test_base_url: string;
   axis_production_base_url: string;
   axis_corporate_id: string;
+  axis_channel_id: string;
   axis_test_virtual_account: string;
   axis_production_virtual_account: string;
 }
@@ -69,6 +70,7 @@ const EMPTY_SETTINGS: PayoutSettings = {
   axis_test_base_url: 'https://uatapis.axisbank.co.uk',
   axis_production_base_url: 'https://apis.axisbank.co.uk',
   axis_corporate_id: '',
+  axis_channel_id: 'TXB',
   axis_test_virtual_account: '',
   axis_production_virtual_account: '',
 };
@@ -470,15 +472,28 @@ export default function PayoutSettingsPage() {
               <span className="text-xs font-semibold text-[#8c76f0] bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-full">Corporate</span>
               <span className="text-xs text-gray-500">Shared corporate identifier used across environments</span>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Corporate ID</label>
-              <input
-                type="text"
-                value={settings.axis_corporate_id}
-                onChange={(e) => update('axis_corporate_id', e.target.value)}
-                className="w-full md:w-1/2 px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                placeholder="Enter Axis Bank Corporate ID"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Corporate ID</label>
+                <input
+                  type="text"
+                  value={settings.axis_corporate_id}
+                  onChange={(e) => update('axis_corporate_id', e.target.value)}
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                  placeholder="Enter Axis Bank Corporate ID"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Channel ID</label>
+                <input
+                  type="text"
+                  value={settings.axis_channel_id}
+                  onChange={(e) => update('axis_channel_id', e.target.value)}
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                  placeholder="TXB"
+                />
+                <p className="text-xs text-gray-500 mt-1">Channel identifier from Axis Bank (e.g. TXB)</p>
+              </div>
             </div>
           </div>
 

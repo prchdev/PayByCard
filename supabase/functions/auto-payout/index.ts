@@ -1207,6 +1207,11 @@ Deno.serve(async (req: Request) => {
     // ── Per-gateway balance cache ──────────────────────────────────────────────
     const balanceCache: Record<string, { balance: number | null; error?: string }> = {};
 
+    // Track gateways that hit insufficient balance during this run so all
+    // subsequent (newer) payments on the same gateway are also skipped,
+    // preserving FIFO order (first confirmed payment gets paid first).
+    const insufficientGateways = new Set<string>();
+
     for (const payment of eligible) {
       const gateway     = payment.payment_gateway_settings;
       const beneficiary = payment.beneficiaries;
@@ -1338,6 +1343,20 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      // FIFO: if this gateway already hit insufficient balance for an earlier
+      // (older) payment, skip all subsequent payments on the same gateway so
+      // newer payments don't jump ahead of older ones in the queue.
+      if (insufficientGateways.has(gwCacheKey)) {
+        await supabase.rpc("fn_release_payment_lock", { p_payment_id: payment.id });
+        results.push({
+          id:        payment.id,
+          reference: payment.payment_reference,
+          action:    "skipped_fifo_insufficient_balance",
+          error:     `Earlier payment in queue had insufficient balance on ${gateway.gateway_name} (${env}) — holding this payment for FIFO order`,
+        });
+        continue;
+      }
+
       const cachedBalance = balanceCache[gwCacheKey];
       if (cachedBalance.balance === null) {
         // Balance API returned an error — this means we couldn't CHECK the balance,
@@ -1356,9 +1375,14 @@ Deno.serve(async (req: Request) => {
         await supabase.from("payment_logs").insert({
           payment_id: payment.id,
           status:     "payout_skipped_low_balance",
-          message:    `Auto-payout skipped: insufficient balance in ${gateway.gateway_name} ${env} account. Available: ₹${currentBalance.toFixed(2)}, Required: ₹${amount.toFixed(2)}.`,
+          message:    `Auto-payout skipped: insufficient balance in ${gateway.gateway_name} ${env} account. Available: ₹${currentBalance.toFixed(2)}, Required: ₹${amount.toFixed(2)}. Holding FIFO order — subsequent payments on this gateway will also be skipped until funds are available.`,
           metadata:   { available_balance: currentBalance, required_amount: amount, gateway: gateway.gateway_name, environment: env },
         });
+        // Release the lock so the payment can be re-claimed in the next job run
+        await supabase.rpc("fn_release_payment_lock", { p_payment_id: payment.id });
+        // Mark this gateway as insufficient so all subsequent (newer) payments
+        // on the same gateway are also skipped, preserving FIFO order
+        insufficientGateways.add(gwCacheKey);
         results.push({ id: payment.id, reference: payment.payment_reference, action: "skipped_low_balance" });
         continue;
       }
@@ -1477,6 +1501,14 @@ Deno.serve(async (req: Request) => {
           const cur = balanceCache[gwCacheKey]?.balance;
           if (cur !== null && cur !== undefined) {
             balanceCache[gwCacheKey] = { balance: cur - amount };
+          }
+        } else {
+          // Payout failed — if it looks like an insufficient-funds error from the
+          // gateway, mark this gateway as insufficient so subsequent (newer)
+          // payments on the same gateway are also skipped, preserving FIFO order.
+          const respStr = JSON.stringify(result.response ?? "").toLowerCase();
+          if (respStr.includes("insufficient") || respStr.includes("low balance") || respStr.includes("not enough")) {
+            insufficientGateways.add(gwCacheKey);
           }
         }
 

@@ -11,8 +11,7 @@ interface PaymentOption {
 
 interface RazorpayConfig {
   payment_option_id: string;
-  method: string;
-  allowed_card_types: string;
+  checkout_config_id: string;
   is_active: boolean;
 }
 
@@ -64,14 +63,15 @@ export default function PaymentGatewaySettings() {
 
   const fetchPaymentOptions = async () => {
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-categories-list`;
+      const adminId = sessionStorage.getItem('adminId');
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-get-payment-categories`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ adminId }),
       });
       const data = await response.json();
       if (response.ok && data.categories) {
@@ -97,8 +97,7 @@ export default function PaymentGatewaySettings() {
         for (const c of data.configs) {
           map[c.payment_option_id] = {
             payment_option_id: c.payment_option_id,
-            method: c.method || 'card',
-            allowed_card_types: c.allowed_card_types || 'visa,mastercard,rupay',
+            checkout_config_id: c.checkout_config_id || '',
             is_active: c.is_active !== false,
           };
         }
@@ -116,8 +115,7 @@ export default function PaymentGatewaySettings() {
       ...prev,
       [optionId]: {
         payment_option_id: optionId,
-        method: prev[optionId]?.method || 'card',
-        allowed_card_types: prev[optionId]?.allowed_card_types || 'visa,mastercard,rupay',
+        checkout_config_id: prev[optionId]?.checkout_config_id || '',
         is_active: prev[optionId]?.is_active ?? true,
         [field]: value,
       },
@@ -454,7 +452,7 @@ export default function PaymentGatewaySettings() {
                       <h3 className="text-sm font-semibold text-gray-900">Payment Option Configurations</h3>
                     </div>
                     <p className="text-xs text-gray-500 mb-4">
-                      Configure Razorpay payment method and allowed card types for each payment option. If a payment option is not configured below, the default configuration is used.
+                      Configure a Razorpay Checkout Config ID for each payment option. If a payment option is not configured below, the default Razorpay checkout configuration is used.
                     </p>
 
                     {configsLoading ? (
@@ -463,7 +461,7 @@ export default function PaymentGatewaySettings() {
                         Loading configurations...
                       </div>
                     ) : paymentOptions.length === 0 ? (
-                      <p className="text-sm text-gray-400 italic">No payment options available. Create payment options first.</p>
+                      <p className="text-sm text-gray-400 italic">No payment options available. Create payment options first in the Payment Categories page.</p>
                     ) : (
                       <>
                         <div className="space-y-3">
@@ -484,31 +482,18 @@ export default function PaymentGatewaySettings() {
                                   </div>
                                 </div>
                                 {isEnabled && (
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-7">
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Payment Method</label>
-                                      <select
-                                        value={config?.method || 'card'}
-                                        onChange={(e) => updateRazorpayConfig(option.id, 'method', e.target.value)}
-                                        className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-50 outline-none transition-all text-sm"
-                                      >
-                                        <option value="card">Card</option>
-                                        <option value="amex">Amex / Diners</option>
-                                        <option value="netbanking">Netbanking</option>
-                                        <option value="wallet">Wallet</option>
-                                        <option value="upi">UPI</option>
-                                      </select>
-                                    </div>
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Allowed Card Types</label>
-                                      <input
-                                        type="text"
-                                        value={config?.allowed_card_types || 'visa,mastercard,rupay'}
-                                        onChange={(e) => updateRazorpayConfig(option.id, 'allowed_card_types', e.target.value)}
-                                        className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-50 outline-none transition-all text-sm"
-                                        placeholder="visa,mastercard,rupay"
-                                      />
-                                    </div>
+                                  <div className="pl-7">
+                                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Checkout Config ID</label>
+                                    <input
+                                      type="text"
+                                      value={config?.checkout_config_id || ''}
+                                      onChange={(e) => updateRazorpayConfig(option.id, 'checkout_config_id', e.target.value)}
+                                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-50 outline-none transition-all text-sm"
+                                      placeholder="e.g. config_1234567890"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      The Razorpay Checkout Config ID to use for this payment option. Leave empty to use the default configuration.
+                                    </p>
                                   </div>
                                 )}
                               </div>

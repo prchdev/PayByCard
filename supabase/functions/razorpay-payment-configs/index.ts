@@ -52,7 +52,6 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Delete existing configs for this gateway, then insert new ones
       await supabase
         .from("razorpay_payment_configs")
         .delete()
@@ -62,8 +61,7 @@ Deno.serve(async (req: Request) => {
         const rows = configs.map((c: any) => ({
           payment_gateway_id: gateway_id,
           payment_option_id: c.payment_option_id,
-          method: c.method || "card",
-          allowed_card_types: c.allowed_card_types || "visa,mastercard,rupay",
+          checkout_config_id: c.checkout_config_id || null,
           is_active: c.is_active !== false,
         }));
 

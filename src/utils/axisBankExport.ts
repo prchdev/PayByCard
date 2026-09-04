@@ -9,13 +9,16 @@ export interface AxisPayoutRow {
 }
 
 function formatIndianDate(): string {
-  const now = new Date().toLocaleDateString('en-IN', {
+  const now = new Date();
+  const istOpts: Intl.DateTimeFormatOptions = {
     timeZone: 'Asia/Kolkata',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  });
-  return now;
+  };
+  const parts = new Intl.DateTimeFormat('en-IN', istOpts).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  return `${get('month')}/${get('day')}/${get('year')}`;
 }
 
 function formatFileNameDateTime(): string {
@@ -83,7 +86,9 @@ function mapRowToTemplate(
 ): (string | number)[] {
   const refNoDash = row.paymentReference.replace(/-/g, '');
   const refNoSpaces = row.beneficiaryName.replace(/\s+/g, '');
-  const paymentMode = row.amount < 200000 ? 'N' : 'R';
+  const paymentMode = row.beneficiaryIfsc.toUpperCase().startsWith('UTIB')
+    ? 'I'
+    : row.amount < 200000 ? 'N' : 'R';
 
   // 31 values matching columns A–AE
   return [
@@ -100,9 +105,9 @@ function mapRowToTemplate(
     '',                          // K: Bank Account Type
     '',                          // L: Beneficiary Type
     '',                          // M: LEI
-    '',                          // N: Debit Narration
+    row.paymentReference,        // N: Debit Narration
     '',                          // O: Credit Narration
-    row.paymentReference,        // P: Invoice Number
+    '',                          // P: Invoice Number
     '',                          // Q: Beneficiary Address 1
     '',                          // R: Beneficiary Address 2
     '',                          // S: Beneficiary Address 3

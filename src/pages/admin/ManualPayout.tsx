@@ -24,6 +24,7 @@ import {
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
 import BulkPayoutModal from './BulkPayoutModal';
+import { downloadAxisBankPayoutTemplate } from '../../utils/axisBankExport';
 
 interface PayoutRecord {
   id: string;
@@ -234,6 +235,7 @@ export default function ManualPayout() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [axisExporting, setAxisExporting] = useState(false);
 
   const adminId = sessionStorage.getItem('adminId') ?? localStorage.getItem('adminId');
 
@@ -279,6 +281,40 @@ export default function ManualPayout() {
   };
 
   const closeModal = () => setModal({ open: false, payout: null, action: 'confirm' });
+
+  const handleAxisBankExport = async () => {
+    if (filtered.length === 0) return;
+    setAxisExporting(true);
+    setError('');
+    try {
+      const settingsRes = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-get-master-settings`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminId }),
+        }
+      );
+      const settingsData = await settingsRes.json();
+      if (!settingsRes.ok) throw new Error(settingsData.error || 'Failed to fetch master settings');
+      const companyBankAccount = settingsData.settings?.bank_account_number;
+      if (!companyBankAccount) throw new Error('Company bank account number is not configured in Master Settings.');
+
+      const axisRows = filtered.map((p) => ({
+        amount: p.net_amount || p.amount,
+        beneficiaryName: p.beneficiary?.beneficiary_name || p.account_holder_name || '',
+        beneficiaryAccountNumber: p.beneficiary?.account_number || p.account_number || '',
+        beneficiaryIfsc: p.beneficiary?.ifsc_code || p.ifsc_code || '',
+        paymentReference: p.payment_reference || p.payout_reference || '',
+      }));
+
+      await downloadAxisBankPayoutTemplate(axisRows, companyBankAccount);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate Axis Bank payout file');
+    } finally {
+      setAxisExporting(false);
+    }
+  };
 
   const handleProcess = async () => {
     if (!modal.payout) return;
@@ -359,6 +395,14 @@ export default function ManualPayout() {
                 Bulk Update Payout
               </button>
             )}
+            <button
+              onClick={handleAxisBankExport}
+              disabled={loading || filtered.length === 0 || axisExporting}
+              className="flex items-center gap-2 px-4 py-2 border-2 border-blue-400 rounded-xl text-sm font-medium text-blue-600 hover:bg-blue-50 transition-all disabled:opacity-50"
+            >
+              {axisExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              Axis Bank Payout
+            </button>
             <button
               onClick={() => downloadCSV(filtered)}
               disabled={loading || filtered.length === 0}

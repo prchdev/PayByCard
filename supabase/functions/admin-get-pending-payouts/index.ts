@@ -69,8 +69,8 @@ Deno.serve(async (req: Request) => {
     const { data: existingPayouts } = await supabase
       .from("payouts")
       .select("*, payments!inner(status)")
-      .in("status", ["pending", "processing"])
-      .not("payments.status", "in", '("completed","refunded","cancelled","failed")')
+      .in("status", ["pending", "processing", "failed"])
+      .not("payments.status", "in", '("completed","refunded","cancelled")')
       .order("created_at", { ascending: false });
 
     const payoutPaymentIds = new Set(

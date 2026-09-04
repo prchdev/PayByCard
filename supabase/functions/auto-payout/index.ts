@@ -1179,6 +1179,11 @@ Deno.serve(async (req: Request) => {
 
         if (!AUTO_PAYOUT_MODES.has(mode)) return false;
 
+        // Skip payments already marked as auto_payout_failed — they are in the
+        // manual payout queue and must not be retried by the cron to prevent
+        // double spending.
+        if (p.auto_payout_failed === true) return false;
+
         // payment_split / cashfree_payment_split / razorpay_payment_split: process immediately
         if (mode.includes("payment_split")) return true;
 
@@ -1600,13 +1605,21 @@ Deno.serve(async (req: Request) => {
         });
       } catch (err: any) {
         console.error(`Payout error for ${payment.payment_reference}:`, err);
+        // Mark the payment as auto_payout_failed so it appears in the Manual Payout queue.
+        // Release the lock so it can be re-claimed if admin retries manually.
+        await supabase.from("payments").update({
+          auto_payout_failed: true,
+          status:            "settlement_in_progress",
+          updated_at:        new Date().toISOString(),
+        }).eq("id", payment.id);
+        await supabase.rpc("fn_release_payment_lock", { p_payment_id: payment.id });
         await supabase.from("payment_logs").insert({
           payment_id: payment.id,
           status:     "auto_payout_error",
-          message:    `Auto-payout error for ${payment.payment_reference}: ${err?.message}`,
-          metadata:   { error: err?.message },
+          message:    `Auto-payout error for ${payment.payment_reference}: ${err?.message}. Moved to manual payout queue.`,
+          metadata:   { error: err?.message, payout_mode: payoutMode },
         });
-        results.push({ id: payment.id, reference: payment.payment_reference, action: "error", error: err?.message });
+        results.push({ id: payment.id, reference: payment.payment_reference, action: "auto_payout_failed", error: err?.message });
       }
     }
 

@@ -1,4 +1,4 @@
-import { FileText, Scale, Shield, AlertTriangle, Gavel, Globe, Mail, Building, CreditCard, UserCheck } from 'lucide-react';
+import { FileText, Scale, Shield, AlertTriangle, Gavel, Globe, Mail, Building, CreditCard, UserCheck, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function TermsOfService() {
@@ -42,6 +42,7 @@ export default function TermsOfService() {
           </div>
 
           <div className="space-y-6">
+            {/* 1 - white */}
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <CreditCard className="w-7 h-7 text-[#8c76f0] mr-3" />
@@ -60,7 +61,8 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
+            {/* 2 - purple */}
+            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <UserCheck className="w-7 h-7 text-[#8c76f0] mr-3" />
                 2. Eligibility
@@ -74,7 +76,8 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
+            {/* 3 - white */}
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">3. User Account and Security</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
@@ -91,6 +94,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
+            {/* 4 - purple */}
             <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">4. Mandatory KYC and Merchant Onboarding</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
@@ -106,7 +110,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
-
+            {/* 5 - white */}
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">5. Transaction Verification and Cooperation</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
@@ -119,7 +123,8 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
+            {/* 6 - purple */}
+            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">6. Protection of Card and Payment Credentials</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
@@ -134,7 +139,7 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            
+            {/* 7 - white */}
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">7. Fees and Charges</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
@@ -147,7 +152,8 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
+            {/* 8 - purple */}
+            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <AlertTriangle className="w-7 h-7 text-[#8c76f0] mr-3" />
                 8. Prohibited Conduct
@@ -173,8 +179,28 @@ export default function TermsOfService() {
               </div>
             </div>
 
+            {/* 9 - white - NEW SECTION */}
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                <Clock className="w-7 h-7 text-[#8c76f0] mr-3" />
+                9. Payment Gateway Holds, Risk Review and Delayed Settlement
+              </h3>
+              <div className="space-y-3 text-gray-700 leading-relaxed">
+                <p>
+                  In certain circumstances, the payment gateway, acquiring bank, payment aggregator, or other banking/payment partner may place a temporary hold, reserve, or restriction on the settlement of a transaction or related funds due to risk evaluation, fraud prevention, chargeback/dispute management, regulatory requirements, compliance review, suspected suspicious activity, or any other reason determined by such payment partner.
+                </p>
+                <p>
+                  Where a transaction has already been initiated or successfully processed but the settlement of the corresponding funds is subsequently restricted or placed on hold by the relevant payment gateway, acquiring bank, payment aggregator, or other payment partner, PayByCard may be unable to release or settle such funds until the restriction is lifted and the funds are actually received and made available to PayByCard.
+                </p>
+                <p>
+                  Accordingly, notwithstanding the standard settlement timelines communicated by PayByCard, settlement of such affected transactions may be delayed for an extended period, including up to 120 days or such longer period as may be required under applicable law, regulatory requirements, or the policies and procedures of the relevant payment partner. PayByCard shall have no liability for delays arising solely from such third-party restrictions, holds, investigations, chargebacks, or regulatory/compliance processes, provided that PayByCard takes reasonable steps to facilitate release and settlement of the funds once the restriction is removed.
+                </p>
+              </div>
+            </div>
+
+            {/* 10 - purple (was 9) */}
             <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">9. Intellectual Property Rights</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">10. Intellectual Property Rights</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
                   All content, logos, trademarks, designs, software, and technology on the Platform are owned by or licensed to PayByCard. You are granted a limited, revocable, non-exclusive, non-transferable license to access and use the Services for personal or authorized business purposes only.
@@ -185,10 +211,11 @@ export default function TermsOfService() {
               </div>
             </div>
 
+            {/* 11 - white (was 10) */}
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <Shield className="w-7 h-7 text-[#8c76f0] mr-3" />
-                10. Privacy and Data Protection
+                11. Privacy and Data Protection
               </h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
@@ -200,8 +227,9 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">11. Disclaimers</h3>
+            {/* 12 - purple (was 11) */}
+            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">12. Disclaimers</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
                   The Platform and Services are provided on an "as is" and "as available" basis without any warranties, express or implied.
@@ -218,8 +246,9 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">12. Limitation of Liability</h3>
+            {/* 13 - white (was 12) */}
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">13. Limitation of Liability</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
                   To the maximum extent permitted by law, PayByCard, its directors, officers, employees, and affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Services.
@@ -230,8 +259,9 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">13. Indemnification</h3>
+            {/* 14 - purple (was 13) */}
+            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">14. Indemnification</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
                   You agree to indemnify, defend, and hold harmless PayByCard and its affiliates from and against any claims, damages, losses, liabilities, costs, and expenses (including reasonable legal fees) arising out of or relating to:
@@ -244,8 +274,9 @@ export default function TermsOfService() {
               </div>
             </div>
 
+            {/* 15 - white (was 14) */}
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">14. Termination</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">15. Termination</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
                   We may suspend or terminate your access to the Services at any time, with or without notice, for breach of these Terms, suspected fraud, or regulatory requirements.
@@ -256,8 +287,9 @@ export default function TermsOfService() {
               </div>
             </div>
 
+            {/* 16 - purple (was 15) */}
             <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">15. Amendments</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">16. Amendments</h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
                   We reserve the right to modify these Terms at any time. We will post the updated Terms on the Platform with a new effective date. Your continued use of the Services after such changes constitutes your acceptance of the revised Terms.
@@ -265,10 +297,11 @@ export default function TermsOfService() {
               </div>
             </div>
 
+            {/* 17 - white (was 16) */}
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <Gavel className="w-7 h-7 text-[#8c76f0] mr-3" />
-                16. Governing Law and Dispute Resolution
+                17. Governing Law and Dispute Resolution
               </h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
@@ -283,10 +316,11 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
+            {/* 18 - purple (was 17) */}
+            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <Globe className="w-7 h-7 text-[#8c76f0] mr-3" />
-                17. Miscellaneous
+                18. Miscellaneous
               </h3>
               <div className="space-y-4 text-gray-700 leading-relaxed">
                 <div>
@@ -308,7 +342,8 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
+            {/* Contact - white */}
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-300 hover:border-[#8c76f0] transition-all shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <Mail className="w-7 h-7 text-[#8c76f0] mr-3" />
                 Contact Us
@@ -323,7 +358,8 @@ export default function TermsOfService() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 border-2 border-[#8c76f0] shadow-xl">
+            {/* Acknowledgement - purple */}
+            <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <Building className="w-7 h-7 text-[#8c76f0] mr-3" />
                 Acknowledgement

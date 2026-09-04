@@ -8,7 +8,7 @@ export interface AxisPayoutRow {
   paymentReference: string;
 }
 
-function formatIndianDate(): string {
+function getIndianDateParts(): { day: string; month: string; year: string } {
   const now = new Date();
   const istOpts: Intl.DateTimeFormatOptions = {
     timeZone: 'Asia/Kolkata',
@@ -18,7 +18,12 @@ function formatIndianDate(): string {
   };
   const parts = new Intl.DateTimeFormat('en-IN', istOpts).formatToParts(now);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
-  return `${get('month')}/${get('day')}/${get('year')}`;
+  return { day: get('day'), month: get('month'), year: get('year') };
+}
+
+function formatIndianDate(): string {
+  const { day, month, year } = getIndianDateParts();
+  return `${day}/${month}/${year}`;
 }
 
 function formatFileNameDateTime(): string {
@@ -136,6 +141,16 @@ function appendRowsToSheet(
   dataRows: (string | number)[][],
 ): void {
   XLSX.utils.sheet_add_aoa(ws, dataRows, { origin: 'A2' });
+
+  // Apply Excel Date number format to the Transaction Date column (G) for every data row
+  const dateFmt = 'dd/mm/yyyy';
+  for (let i = 0; i < dataRows.length; i++) {
+    const cellRef = XLSX.utils.encode_cell({ r: i + 1, c: 6 }); // row i+1 (0-indexed header is row 0), col 6 = G
+    const cell = ws[cellRef];
+    if (cell) {
+      cell.z = dateFmt;
+    }
+  }
 }
 
 export async function downloadAxisBankPayoutTemplate(

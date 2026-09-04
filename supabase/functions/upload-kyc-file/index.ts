@@ -1,10 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { SESSION_HEADER } from "../_shared/session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session",
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -76,9 +77,9 @@ Deno.serve(async (req: Request) => {
     }
 
     // F12: userId comes from the verified session token, not the request body.
-    const userId = req.headers.get(SESSION_HEADER)
+    const token = req.headers.get(SESSION_HEADER);
+    const userId = token
       ? (() => {
-          const token = req.headers.get(SESSION_HEADER)!;
           const parts = token.split(".");
           return parts.length >= 4 ? parts[1] : null;
         })()

@@ -44,8 +44,8 @@ export async function uploadKycFile(
   userId: string,
   fileKey: string
 ): Promise<string> {
-  if (file.size > 1024 * 1024) {
-    throw new Error(`File "${file.name}" exceeds the 1 MB limit (${(file.size / (1024 * 1024)).toFixed(2)} MB).`);
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error(`File "${file.name}" exceeds the 5 MB limit (${(file.size / (1024 * 1024)).toFixed(2)} MB).`);
   }
   const formData = new FormData();
   formData.append('file', file);

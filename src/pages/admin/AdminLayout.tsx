@@ -59,7 +59,7 @@ const MENU_SECTIONS: MenuSection[] = [
   {
     label: 'Regular Usage',
     items: [
-      { key: 'kyc-verification', name: 'KYC Verification', path: '/admin/kyc-verification', icon: 'FileCheck' },
+      { key: 'kyc', name: 'KYC Verification', path: '/admin/kyc-verification', icon: 'FileCheck' },
       { key: 'merchant-kyc', name: 'Merchant KYC', path: '/admin/merchant-kyc', icon: 'ScanFace' },
       { key: 'user-summary', name: 'User Summary', path: '/admin/user-summary', icon: 'UserSearch' },
       { key: 'manual-payout', name: 'Manual Payout', path: '/admin/manual-payout', icon: 'Wallet' },
@@ -76,12 +76,12 @@ const MENU_SECTIONS: MenuSection[] = [
     label: 'Master Configuration',
     items: [
       { key: 'master-settings', name: 'Master Settings', path: '/admin/master-settings', icon: 'Settings' },
-      { key: 'email-settings', name: 'Email Settings', path: '/admin/email-settings', icon: 'Mail' },
-      { key: 'sms-settings', name: 'SMS Settings', path: '/admin/sms-settings', icon: 'Send' },
+      { key: 'email', name: 'Email Settings', path: '/admin/email-settings', icon: 'Mail' },
+      { key: 'sms', name: 'SMS Settings', path: '/admin/sms-settings', icon: 'Send' },
       { key: 'payment-limits', name: 'Payment Limit', path: '/admin/payment-limits', icon: 'IndianRupee' },
-      { key: 'payment-gateway-settings', name: 'Payment Gateway', path: '/admin/payment-gateway-settings', icon: 'CreditCard' },
+      { key: 'payment-gateway', name: 'Payment Gateway', path: '/admin/payment-gateway-settings', icon: 'CreditCard' },
       { key: 'payout-settings', name: 'Payout Settings', path: '/admin/payout-settings', icon: 'DollarSign' },
-      { key: 'payment-option', name: 'Payment Option', path: '/admin/payment-option', icon: 'Tag' },
+      { key: 'payment-charges', name: 'Payment Option', path: '/admin/payment-option', icon: 'Tag' },
       { key: 'payment-categories', name: 'Payment Categories', path: '/admin/payment-categories', icon: 'Tag' },
       { key: 'kyc-method', name: 'KYC Method', path: '/admin/kyc-method', icon: 'ShieldCheck' },
     ],
@@ -97,7 +97,7 @@ const MENU_SECTIONS: MenuSection[] = [
   {
     label: 'Admin User Management',
     items: [
-      { key: 'user-management', name: 'Admin Management', path: '/admin/user-management', icon: 'Users' },
+      { key: 'users', name: 'Admin Management', path: '/admin/user-management', icon: 'Users' },
       { key: 'role-permissions', name: 'Roles Permission', path: '/admin/role-permissions', icon: 'Shield' },
       { key: 'change-password', name: 'Change Password', path: '/admin/change-password', icon: 'Lock' },
     ],

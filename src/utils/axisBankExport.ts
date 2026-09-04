@@ -83,7 +83,7 @@ function mapRowToTemplate(
 ): (string | number)[] {
   const refNoDash = row.paymentReference.replace(/-/g, '');
   const refNoSpaces = row.beneficiaryName.replace(/\s+/g, '');
-  const paymentMode = row.amount < 200000 ? 'NEFT' : 'RTGS';
+  const paymentMode = row.amount < 200000 ? 'N' : 'R';
 
   // 31 values matching columns A–AE
   return [

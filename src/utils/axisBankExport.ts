@@ -91,9 +91,7 @@ function mapRowToTemplate(
 ): (string | number)[] {
   const refNoDash = row.paymentReference.replace(/-/g, '');
   const refNoSpaces = row.beneficiaryName.replace(/\s+/g, '');
-  const paymentMode = row.beneficiaryIfsc.toUpperCase().startsWith('UTIB')
-    ? 'I'
-    : row.amount < 200000 ? 'N' : 'R';
+  const paymentMode = 'I';
 
   // 31 values matching columns A–AE
   return [

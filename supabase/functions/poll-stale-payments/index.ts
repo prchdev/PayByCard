@@ -399,12 +399,125 @@ async function sendTransactionEmails(supabase: any, payment: any, paymentStatus:
   } catch (e) { console.error("sendTransactionEmails error:", e); }
 }
 
-async function sendKycRequestEmails(supabase: any, payment: any) {
+/**
+ * Looks up a previously verified merchant_onboarding record for the same beneficiary.
+ * Primary match: same beneficiary_id + same email + same mobile.
+ * Fallback: same bank_account + same ifsc + same mobile (handles cross-beneficiary
+ * cases where the same person was added under a different user account or with
+ * a slightly different email spelling).
+ */
+async function findPreviousVerifiedKyc(supabase: any, beneficiaryId: string | null): Promise<any | null> {
+  if (!beneficiaryId) return null;
+
+  const { data: bene } = await supabase
+    .from("beneficiaries")
+    .select("email, mobile, bank_account, ifsc")
+    .eq("id", beneficiaryId)
+    .maybeSingle();
+
+  const email = bene?.email?.trim() || null;
+  const mobile = bene?.mobile?.trim() || null;
+  const bankAccount = bene?.bank_account?.trim() || null;
+  const ifsc = bene?.ifsc?.trim() || null;
+
+  if (email && mobile) {
+    const { data: matches } = await supabase
+      .from("merchant_onboarding")
+      .select("*")
+      .eq("status", "verified")
+      .eq("beneficiary_id", beneficiaryId)
+      .eq("email", email)
+      .eq("mobile", mobile)
+      .order("verified_at", { ascending: false })
+      .limit(1);
+    if (matches?.[0]) return matches[0];
+  }
+
+  if (bankAccount && ifsc && mobile) {
+    const { data: beneMatches } = await supabase
+      .from("beneficiaries")
+      .select("id")
+      .eq("bank_account", bankAccount)
+      .eq("ifsc", ifsc)
+      .eq("mobile", mobile);
+
+    if (beneMatches && beneMatches.length > 0) {
+      const beneIds = beneMatches.map((b: any) => b.id);
+      const { data: fallbackMatches } = await supabase
+        .from("merchant_onboarding")
+        .select("*")
+        .eq("status", "verified")
+        .in("beneficiary_id", beneIds)
+        .order("verified_at", { ascending: false })
+        .limit(1);
+      if (fallbackMatches?.[0]) return fallbackMatches[0];
+    }
+  }
+
+  return null;
+}
+
+async function sendKycRequestEmails(supabase: any, payment: any): Promise<boolean> {
   try {
     const bene = payment.beneficiary_details || {};
     const receiverName = bene.full_name || "Beneficiary";
     const receiverEmail = bene.email;
     const receiverMobile = bene.mobile || "";
+
+    // ── Auto-reuse: if beneficiary was previously verified, skip KYC flow ──
+    const previousKyc = await findPreviousVerifiedKyc(supabase, payment.beneficiary_id || null);
+
+    if (previousKyc) {
+      const nowIso = new Date().toISOString();
+
+      await supabase.from("merchant_onboarding").insert({
+        payment_id: payment.id,
+        beneficiary_id: payment.beneficiary_id || null,
+        full_name: previousKyc.full_name ?? receiverName,
+        email: previousKyc.email ?? receiverEmail ?? "",
+        mobile: previousKyc.mobile ?? receiverMobile,
+        sender_name: payment.beneficiary_details?.full_name ?? "Sender",
+        category_name: payment.category_details?.category_name ?? "Payment",
+        token: crypto.randomUUID(),
+        status: "verified",
+        expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+        kyc_completed_at: nowIso,
+        verified_at: nowIso,
+        updated_at: nowIso,
+        pan_number: previousKyc.pan_number ?? null,
+        pan_photo_url: previousKyc.pan_photo_url ?? null,
+        dob: previousKyc.dob ?? null,
+        id_number: previousKyc.id_number ?? null,
+        aadhaar_front_url: previousKyc.aadhaar_front_url ?? null,
+        aadhaar_back_url: previousKyc.aadhaar_back_url ?? null,
+        address: previousKyc.address ?? null,
+        city: previousKyc.city ?? null,
+        state: previousKyc.state ?? null,
+        pincode: previousKyc.pincode ?? null,
+        bank_account_number: previousKyc.bank_account_number ?? null,
+        bank_ifsc: previousKyc.bank_ifsc ?? null,
+        bank_name: previousKyc.bank_name ?? null,
+        bank_branch: previousKyc.bank_branch ?? null,
+        kyc_method: previousKyc.kyc_method ?? null,
+        digilocker_verified: previousKyc.digilocker_verified ?? null,
+        digilocker_provider: previousKyc.digilocker_provider ?? null,
+        address_proof_type: previousKyc.address_proof_type ?? null,
+      });
+
+      await supabase.from("payments")
+        .update({ status: "settlement_pending", updated_at: nowIso })
+        .eq("id", payment.id);
+
+      await supabase.from("payment_logs").insert({
+        payment_id: payment.id,
+        status: "settlement_pending",
+        message: "Merchant KYC auto-reused from a previous verified submission (stale-payment poller). Payment queued for settlement.",
+        metadata: { previous_merchant_onboarding_id: previousKyc.id },
+      });
+
+      return true;
+    }
+    // ── End auto-reuse ────────────────────────────────────────────────────
 
     const { data: senderUser } = await supabase.from("users").select("first_name,last_name,middle_name").eq("id", payment.user_id).maybeSingle();
     const senderName = senderUser
@@ -466,6 +579,7 @@ async function sendKycRequestEmails(supabase: any, payment: any) {
       }).catch((_) => {});
     }
   } catch (e) { console.error("sendKycRequestEmails error:", e); }
+  return false;
 }
 
 // ─── Auto-payout (mirrors save-transaction-status / check-payment-status) ────
@@ -640,7 +754,17 @@ async function processSuccessfulPayment(supabase: any, payment: any, gatewayResu
     EdgeRuntime.waitUntil(sendSettledSms(supabase, enriched || payment));
   }
   if (!isEligibleForPayout) {
-    EdgeRuntime.waitUntil(sendKycRequestEmails(supabase, enriched || payment));
+    EdgeRuntime.waitUntil(
+      sendKycRequestEmails(supabase, enriched || payment).then((autoResolved) => {
+        if (autoResolved) {
+          const payoutModeResolved = enriched?.payout_mode ?? enriched?.payment_gateway_settings?.payout_mode ?? "manual";
+          const splitConfiguredResolved = enriched?.split_configured === true;
+          if (payoutModeResolved === "payout" || (payoutModeResolved === "payment_split" && !splitConfiguredResolved)) {
+            return triggerAutoPayout(supabase, enriched || payment, enriched?.payment_gateway_settings);
+          }
+        }
+      })
+    );
   }
 }
 

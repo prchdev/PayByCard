@@ -311,38 +311,70 @@ async function sendTransactionEmails(supabase: any, payment: any, paymentStatus:
 
 /**
  * Looks up a previously verified merchant_onboarding record for the same beneficiary.
- * All three must match: same beneficiary_id (bank account), same email, AND same mobile.
+ * Primary match: same beneficiary_id + same email + same mobile.
+ * Fallback: same bank_account + same ifsc + same mobile (handles cross-beneficiary
+ * cases where the same person was added under a different user account or with
+ * a slightly different email spelling).
  */
 async function findPreviousVerifiedKyc(supabase: any, beneficiaryId: string | null, currentOnboardingId: string | null): Promise<any | null> {
   if (!beneficiaryId) return null;
 
-  // Resolve email and mobile for this beneficiary
   const { data: bene } = await supabase
     .from("beneficiaries")
-    .select("email, mobile")
+    .select("email, mobile, bank_account, ifsc")
     .eq("id", beneficiaryId)
     .maybeSingle();
 
   const email = bene?.email?.trim() || null;
   const mobile = bene?.mobile?.trim() || null;
+  const bankAccount = bene?.bank_account?.trim() || null;
+  const ifsc = bene?.ifsc?.trim() || null;
 
-  // Require all three: same bank account, same email, same mobile
-  if (!email || !mobile) return null;
+  // Primary match: same beneficiary_id + email + mobile
+  if (email && mobile) {
+    let query = supabase
+      .from("merchant_onboarding")
+      .select("*")
+      .eq("status", "verified")
+      .eq("beneficiary_id", beneficiaryId)
+      .eq("email", email)
+      .eq("mobile", mobile)
+      .order("verified_at", { ascending: false })
+      .limit(1);
 
-  let query = supabase
-    .from("merchant_onboarding")
-    .select("*")
-    .eq("status", "verified")
-    .eq("beneficiary_id", beneficiaryId)
-    .eq("email", email)
-    .eq("mobile", mobile)
-    .order("verified_at", { ascending: false })
-    .limit(1);
+    if (currentOnboardingId) query = query.neq("id", currentOnboardingId);
 
-  if (currentOnboardingId) query = query.neq("id", currentOnboardingId);
+    const { data: matches } = await query;
+    if (matches?.[0]) return matches[0];
+  }
 
-  const { data: matches } = await query;
-  return matches?.[0] ?? null;
+  // Fallback: match by bank_account + ifsc + mobile across any beneficiary
+  if (bankAccount && ifsc && mobile) {
+    const { data: beneMatches } = await supabase
+      .from("beneficiaries")
+      .select("id")
+      .eq("bank_account", bankAccount)
+      .eq("ifsc", ifsc)
+      .eq("mobile", mobile);
+
+    if (beneMatches && beneMatches.length > 0) {
+      const beneIds = beneMatches.map((b: any) => b.id);
+      let fallbackQuery = supabase
+        .from("merchant_onboarding")
+        .select("*")
+        .eq("status", "verified")
+        .in("beneficiary_id", beneIds)
+        .order("verified_at", { ascending: false })
+        .limit(1);
+
+      if (currentOnboardingId) fallbackQuery = fallbackQuery.neq("id", currentOnboardingId);
+
+      const { data: fallbackMatches } = await fallbackQuery;
+      if (fallbackMatches?.[0]) return fallbackMatches[0];
+    }
+  }
+
+  return null;
 }
 
 async function sendKycRequestEmails(supabase: any, payment: any): Promise<boolean> {

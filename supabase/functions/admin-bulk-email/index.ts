@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+const CRON_INTERVAL_MINUTES = 5;
+const MINUTES_PER_HOUR = 60;
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -19,26 +22,37 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const { admin_id, action } = body;
 
+    // Cron entry point — no admin auth required
     if (action === "process_scheduled") {
       const now = new Date().toISOString();
-      const { data: dueCampaigns, error } = await supabase
+
+      // Pick up scheduled campaigns whose time has arrived
+      const { data: dueCampaigns } = await supabase
         .from("bulk_email_campaigns")
         .select("*")
         .eq("status", "scheduled")
         .not("scheduled_at", "is", null)
         .lte("scheduled_at", now);
 
-      if (error) {
-        return new Response(JSON.stringify({ error: "Failed to fetch scheduled campaigns" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
       for (const c of (dueCampaigns || [])) {
-        await processEmailCampaign(supabaseUrl, supabaseKey, supabase, c.id, c.subject, c.body_html, c.attachments || []);
+        await supabase.from("bulk_email_campaigns")
+          .update({ status: "sending", started_at: new Date().toISOString() })
+          .eq("id", c.id);
       }
 
-      return new Response(JSON.stringify({ processed: (dueCampaigns || []).length }), {
+      // Pick up all campaigns in "sending" status (includes just-activated "Send Now" + due scheduled)
+      const { data: sendingCampaigns } = await supabase
+        .from("bulk_email_campaigns")
+        .select("*")
+        .eq("status", "sending");
+
+      let totalProcessed = 0;
+      for (const c of (sendingCampaigns || [])) {
+        const processed = await processEmailCampaignBatch(supabaseUrl, supabaseKey, supabase, c);
+        totalProcessed += processed;
+      }
+
+      return new Response(JSON.stringify({ processed: totalProcessed }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -126,6 +140,7 @@ Deno.serve(async (req: Request) => {
             total_recipients: recipients.length,
             created_by_admin_id: admin_id,
             attachments: attachments || [],
+            ...(status === "sending" ? { started_at: new Date().toISOString() } : {}),
           })
           .select().single();
         if (error) {
@@ -135,10 +150,6 @@ Deno.serve(async (req: Request) => {
         }
 
         await insertRecipientRecords(supabase, "email", data.id, recipients);
-
-        if (status === "sending") {
-          await processEmailCampaign(supabaseUrl, supabaseKey, supabase, data.id, data.subject, data.body_html, data.attachments || []);
-        }
 
         return new Response(JSON.stringify({ campaign: data }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -156,6 +167,7 @@ Deno.serve(async (req: Request) => {
             total_recipients: recipients.length,
             updated_at: new Date().toISOString(),
             attachments: attachments || [],
+            ...(status === "sending" ? { started_at: new Date().toISOString() } : {}),
           })
           .eq("id", campaign_id)
           .select().single();
@@ -228,7 +240,6 @@ async function fetchRecipients(supabase: any, filter: string, filterDays: number
   } else if (filter === "non_kyced_users") {
     query = query.eq("kyc_completed", false);
   } else if (filter === "kyced_no_payment") {
-    // KYCed users who have never made a payment
     const { data: kycedUsers } = await supabase.from("users").select("id, email, first_name, middle_name, last_name").eq("kyc_completed", true);
     if (!kycedUsers) return [];
     const userIds = kycedUsers.map((u: any) => u.id);
@@ -236,7 +247,6 @@ async function fetchRecipients(supabase: any, filter: string, filterDays: number
     const payingIds = new Set((payingUsers || []).map((p: any) => p.user_id));
     return kycedUsers.filter((u: any) => !payingIds.has(u.id));
   } else if (filter === "kyced_no_payment_x_days") {
-    // KYCed users who haven't made a payment in the last X days
     const daysAgo = new Date(Date.now() - filterDays * 24 * 60 * 60 * 1000).toISOString();
     const { data: kycedUsers } = await supabase.from("users").select("id, email, first_name, middle_name, last_name").eq("kyc_completed", true);
     if (!kycedUsers) return [];
@@ -266,103 +276,120 @@ async function insertRecipientRecords(supabase: any, campaignType: string, campa
   }
 }
 
-
-// redeploy
-
-async function processEmailCampaign(
+/**
+ * Process one batch of a campaign, respecting the hourly_rate limit.
+ * Sends at most floor(hourly_rate * CRON_INTERVAL_MINUTES / 60) emails per cycle.
+ * Returns the number of emails attempted this cycle.
+ * The cron calls this repeatedly across cycles until all recipients are processed.
+ */
+async function processEmailCampaignBatch(
   supabaseUrl: string,
   supabaseKey: string,
   supabase: any,
-  campaignId: string,
-  subject: string,
-  bodyHtml: string,
-  attachments: any[],
-) {
-  await supabase.from("bulk_email_campaigns")
-    .update({ status: "sending", started_at: new Date().toISOString() })
-    .eq("id", campaignId);
+  campaign: any,
+): Promise<number> {
+  const hourlyRate = campaign.hourly_rate || 100;
+  const perCycle = Math.max(1, Math.floor(hourlyRate * CRON_INTERVAL_MINUTES / MINUTES_PER_HOUR));
 
-  const batchSize = 50;
-  let sentCount = 0;
-  let failedCount = 0;
-  let hasMore = true;
+  const { data: batch, error } = await supabase
+    .from("bulk_campaign_recipients")
+    .select("id, user_id, email_or_phone")
+    .eq("campaign_type", "email")
+    .eq("campaign_id", campaign.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: true })
+    .limit(perCycle);
 
-  while (hasMore) {
-    const { data: batch, error } = await supabase
-      .from("bulk_campaign_recipients")
-      .select("id, user_id, email_or_phone")
-      .eq("campaign_type", "email")
-      .eq("campaign_id", campaignId)
-      .eq("status", "pending")
-      .order("created_at", { ascending: true })
-      .limit(batchSize);
+  if (error || !batch || batch.length === 0) {
+    // No more pending recipients — mark campaign as completed
+    await supabase.from("bulk_email_campaigns")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        last_batch_sent_at: new Date().toISOString(),
+      })
+      .eq("id", campaign.id);
+    return 0;
+  }
 
-    if (error || !batch || batch.length === 0) { hasMore = false; break; }
+  let sentThisCycle = 0;
+  let failedThisCycle = 0;
 
-    for (const recipient of batch) {
-      try {
-        const { data: user } = await supabase
-          .from("users")
-          .select("first_name, middle_name, last_name")
-          .eq("id", recipient.user_id)
-          .maybeSingle();
+  for (const recipient of batch) {
+    try {
+      const { data: user } = await supabase
+        .from("users")
+        .select("first_name, middle_name, last_name")
+        .eq("id", recipient.user_id)
+        .maybeSingle();
 
-        const firstName = user?.first_name || "";
-        const middleName = user?.middle_name || "";
-        const lastName = user?.last_name || "";
+      const firstName = user?.first_name || "";
+      const middleName = user?.middle_name || "";
+      const lastName = user?.last_name || "";
 
-        let personalizedSubject = subject || "";
-        let personalizedBody = bodyHtml || "";
-        personalizedSubject = personalizedSubject.replace(/\{first_name\}/g, firstName).replace(/\{middle_name\}/g, middleName).replace(/\{last_name\}/g, lastName);
-        personalizedBody = personalizedBody.replace(/\{first_name\}/g, firstName).replace(/\{middle_name\}/g, middleName).replace(/\{last_name\}/g, lastName);
+      let personalizedSubject = (campaign.subject || "").replace(/\{first_name\}/g, firstName).replace(/\{middle_name\}/g, middleName).replace(/\{last_name\}/g, lastName);
+      let personalizedBody = (campaign.body_html || "").replace(/\{first_name\}/g, firstName).replace(/\{middle_name\}/g, middleName).replace(/\{last_name\}/g, lastName);
 
-        const emailPayload: any = {
-          to: recipient.email_or_phone,
-          subject: personalizedSubject,
-          body: personalizedBody,
-          body_type: "html",
-          use_template: true,
-        };
+      const emailPayload: any = {
+        to: recipient.email_or_phone,
+        subject: personalizedSubject,
+        body: personalizedBody,
+        body_type: "html",
+        use_template: true,
+      };
 
-        if (attachments && attachments.length > 0) {
-          emailPayload.attachments = attachments;
-        }
+      if (campaign.attachments && campaign.attachments.length > 0) {
+        emailPayload.attachments = campaign.attachments;
+      }
 
-        const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
-          body: JSON.stringify(emailPayload),
-        });
+      const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+        body: JSON.stringify(emailPayload),
+      });
 
-        if (emailResponse.ok) {
-          sentCount++;
-          await supabase.from("bulk_campaign_recipients")
-            .update({ status: "sent", sent_at: new Date().toISOString() })
-            .eq("id", recipient.id);
-        } else {
-          failedCount++;
-          const errData = await emailResponse.json().catch(() => ({}));
-          await supabase.from("bulk_campaign_recipients")
-            .update({ status: "failed", error_message: (errData.error || "Email send failed").substring(0, 500) })
-            .eq("id", recipient.id);
-        }
-      } catch (err) {
-        failedCount++;
+      if (emailResponse.ok) {
+        sentThisCycle++;
         await supabase.from("bulk_campaign_recipients")
-          .update({ status: "failed", error_message: (err instanceof Error ? err.message : "Unknown error").substring(0, 500) })
+          .update({ status: "sent", sent_at: new Date().toISOString() })
+          .eq("id", recipient.id);
+      } else {
+        failedThisCycle++;
+        const errData = await emailResponse.json().catch(() => ({}));
+        await supabase.from("bulk_campaign_recipients")
+          .update({ status: "failed", error_message: (errData.error || "Email send failed").substring(0, 500) })
           .eq("id", recipient.id);
       }
+    } catch (err) {
+      failedThisCycle++;
+      await supabase.from("bulk_campaign_recipients")
+        .update({ status: "failed", error_message: (err instanceof Error ? err.message : "Unknown error").substring(0, 500) })
+        .eq("id", recipient.id);
     }
-
-    if (batch.length < batchSize) hasMore = false;
   }
+
+  // Update campaign counts and last_batch_sent_at
+  const newSentCount = (campaign.sent_count || 0) + sentThisCycle;
+  const newFailedCount = (campaign.failed_count || 0) + failedThisCycle;
+
+  // Check if there are any remaining pending recipients
+  const { count: remainingPending } = await supabase
+    .from("bulk_campaign_recipients")
+    .select("id", { count: "exact", head: true })
+    .eq("campaign_type", "email")
+    .eq("campaign_id", campaign.id)
+    .eq("status", "pending");
+
+  const isComplete = !remainingPending || remainingPending === 0;
 
   await supabase.from("bulk_email_campaigns")
     .update({
-      status: "completed",
-      sent_count: sentCount,
-      failed_count: failedCount,
-      completed_at: new Date().toISOString(),
+      sent_count: newSentCount,
+      failed_count: newFailedCount,
+      last_batch_sent_at: new Date().toISOString(),
+      ...(isComplete ? { status: "completed", completed_at: new Date().toISOString() } : {}),
     })
-    .eq("id", campaignId);
+    .eq("id", campaign.id);
+
+  return sentThisCycle + failedThisCycle;
 }

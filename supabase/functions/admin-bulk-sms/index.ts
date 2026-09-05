@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+const CRON_INTERVAL_MINUTES = 5;
+const MINUTES_PER_HOUR = 60;
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -19,26 +22,37 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const { admin_id, action } = body;
 
+    // Cron entry point — no admin auth required
     if (action === "process_scheduled") {
       const now = new Date().toISOString();
-      const { data: dueCampaigns, error } = await supabase
+
+      // Pick up scheduled campaigns whose time has arrived
+      const { data: dueCampaigns } = await supabase
         .from("bulk_sms_campaigns")
         .select("*")
         .eq("status", "scheduled")
         .not("scheduled_at", "is", null)
         .lte("scheduled_at", now);
 
-      if (error) {
-        return new Response(JSON.stringify({ error: "Failed to fetch scheduled campaigns" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
       for (const c of (dueCampaigns || [])) {
-        await processSmsCampaign(supabaseUrl, supabaseKey, supabase, c.id, c.message, c.dlt_template_id || "");
+        await supabase.from("bulk_sms_campaigns")
+          .update({ status: "sending", started_at: new Date().toISOString() })
+          .eq("id", c.id);
       }
 
-      return new Response(JSON.stringify({ processed: (dueCampaigns || []).length }), {
+      // Pick up all campaigns in "sending" status (includes just-activated "Send Now" + due scheduled)
+      const { data: sendingCampaigns } = await supabase
+        .from("bulk_sms_campaigns")
+        .select("*")
+        .eq("status", "sending");
+
+      let totalProcessed = 0;
+      for (const c of (sendingCampaigns || [])) {
+        const processed = await processSmsCampaignBatch(supabaseUrl, supabaseKey, supabase, c);
+        totalProcessed += processed;
+      }
+
+      return new Response(JSON.stringify({ processed: totalProcessed }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -126,6 +140,7 @@ Deno.serve(async (req: Request) => {
             total_recipients: recipients.length,
             dlt_template_id: dlt_template_id || "",
             created_by_admin_id: admin_id,
+            ...(status === "sending" ? { started_at: new Date().toISOString() } : {}),
           })
           .select().single();
         if (error) {
@@ -135,10 +150,6 @@ Deno.serve(async (req: Request) => {
         }
 
         await insertRecipientRecords(supabase, "sms", data.id, recipients);
-
-        if (status === "sending") {
-          await processSmsCampaign(supabaseUrl, supabaseKey, supabase, data.id, data.message, data.dlt_template_id || "");
-        }
 
         return new Response(JSON.stringify({ campaign: data }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -156,6 +167,7 @@ Deno.serve(async (req: Request) => {
             total_recipients: recipients.length,
             dlt_template_id: dlt_template_id || "",
             updated_at: new Date().toISOString(),
+            ...(status === "sending" ? { started_at: new Date().toISOString() } : {}),
           })
           .eq("id", campaign_id)
           .select().single();
@@ -264,95 +276,110 @@ async function insertRecipientRecords(supabase: any, campaignType: string, campa
   }
 }
 
-
-// redeploy
-
-async function processSmsCampaign(
+/**
+ * Process one batch of an SMS campaign, respecting the hourly_rate limit.
+ * Sends at most floor(hourly_rate * CRON_INTERVAL_MINUTES / 60) SMS per cycle.
+ * Returns the number of SMS attempted this cycle.
+ */
+async function processSmsCampaignBatch(
   supabaseUrl: string,
   supabaseKey: string,
   supabase: any,
-  campaignId: string,
-  messageTemplate: string,
-  dltTemplateId: string,
-) {
-  await supabase.from("bulk_sms_campaigns")
-    .update({ status: "sending", started_at: new Date().toISOString() })
-    .eq("id", campaignId);
+  campaign: any,
+): Promise<number> {
+  const hourlyRate = campaign.hourly_rate || 100;
+  const perCycle = Math.max(1, Math.floor(hourlyRate * CRON_INTERVAL_MINUTES / MINUTES_PER_HOUR));
 
-  const batchSize = 50;
-  let sentCount = 0;
-  let failedCount = 0;
-  let hasMore = true;
+  const { data: batch, error } = await supabase
+    .from("bulk_campaign_recipients")
+    .select("id, user_id, email_or_phone")
+    .eq("campaign_type", "sms")
+    .eq("campaign_id", campaign.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: true })
+    .limit(perCycle);
 
-  while (hasMore) {
-    const { data: batch, error } = await supabase
-      .from("bulk_campaign_recipients")
-      .select("id, user_id, email_or_phone")
-      .eq("campaign_type", "sms")
-      .eq("campaign_id", campaignId)
-      .eq("status", "pending")
-      .order("created_at", { ascending: true })
-      .limit(batchSize);
+  if (error || !batch || batch.length === 0) {
+    await supabase.from("bulk_sms_campaigns")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        last_batch_sent_at: new Date().toISOString(),
+      })
+      .eq("id", campaign.id);
+    return 0;
+  }
 
-    if (error || !batch || batch.length === 0) { hasMore = false; break; }
+  let sentThisCycle = 0;
+  let failedThisCycle = 0;
 
-    for (const recipient of batch) {
-      try {
-        const { data: user } = await supabase
-          .from("users")
-          .select("first_name, middle_name, last_name")
-          .eq("id", recipient.user_id)
-          .maybeSingle();
+  for (const recipient of batch) {
+    try {
+      const { data: user } = await supabase
+        .from("users")
+        .select("first_name, middle_name, last_name")
+        .eq("id", recipient.user_id)
+        .maybeSingle();
 
-        const firstName = user?.first_name || "";
-        const middleName = user?.middle_name || "";
-        const lastName = user?.last_name || "";
+      const firstName = user?.first_name || "";
+      const middleName = user?.middle_name || "";
+      const lastName = user?.last_name || "";
 
-        let personalizedMessage = messageTemplate || "";
-        personalizedMessage = personalizedMessage.replace(/\{first_name\}/g, firstName).replace(/\{middle_name\}/g, middleName).replace(/\{last_name\}/g, lastName);
+      let personalizedMessage = (campaign.message || "").replace(/\{first_name\}/g, firstName).replace(/\{middle_name\}/g, middleName).replace(/\{last_name\}/g, lastName);
 
-        const smsPayload: any = {
-          mobile: recipient.email_or_phone,
-          message: personalizedMessage,
-          message_type: "transactional",
-          template_id: dltTemplateId || undefined,
-        };
+      const smsPayload: any = {
+        mobile: recipient.email_or_phone,
+        message: personalizedMessage,
+        message_type: "transactional",
+        template_id: campaign.dlt_template_id || undefined,
+      };
 
-        const smsResponse = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
-          body: JSON.stringify(smsPayload),
-        });
+      const smsResponse = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+        body: JSON.stringify(smsPayload),
+      });
 
-        if (smsResponse.ok) {
-          sentCount++;
-          await supabase.from("bulk_campaign_recipients")
-            .update({ status: "sent", sent_at: new Date().toISOString() })
-            .eq("id", recipient.id);
-        } else {
-          failedCount++;
-          const errData = await smsResponse.json().catch(() => ({}));
-          await supabase.from("bulk_campaign_recipients")
-            .update({ status: "failed", error_message: (errData.error || "SMS send failed").substring(0, 500) })
-            .eq("id", recipient.id);
-        }
-      } catch (err) {
-        failedCount++;
+      if (smsResponse.ok) {
+        sentThisCycle++;
         await supabase.from("bulk_campaign_recipients")
-          .update({ status: "failed", error_message: (err instanceof Error ? err.message : "Unknown error").substring(0, 500) })
+          .update({ status: "sent", sent_at: new Date().toISOString() })
+          .eq("id", recipient.id);
+      } else {
+        failedThisCycle++;
+        const errData = await smsResponse.json().catch(() => ({}));
+        await supabase.from("bulk_campaign_recipients")
+          .update({ status: "failed", error_message: (errData.error || "SMS send failed").substring(0, 500) })
           .eq("id", recipient.id);
       }
+    } catch (err) {
+      failedThisCycle++;
+      await supabase.from("bulk_campaign_recipients")
+        .update({ status: "failed", error_message: (err instanceof Error ? err.message : "Unknown error").substring(0, 500) })
+        .eq("id", recipient.id);
     }
-
-    if (batch.length < batchSize) hasMore = false;
   }
+
+  const newSentCount = (campaign.sent_count || 0) + sentThisCycle;
+  const newFailedCount = (campaign.failed_count || 0) + failedThisCycle;
+
+  const { count: remainingPending } = await supabase
+    .from("bulk_campaign_recipients")
+    .select("id", { count: "exact", head: true })
+    .eq("campaign_type", "sms")
+    .eq("campaign_id", campaign.id)
+    .eq("status", "pending");
+
+  const isComplete = !remainingPending || remainingPending === 0;
 
   await supabase.from("bulk_sms_campaigns")
     .update({
-      status: "completed",
-      sent_count: sentCount,
-      failed_count: failedCount,
-      completed_at: new Date().toISOString(),
+      sent_count: newSentCount,
+      failed_count: newFailedCount,
+      last_batch_sent_at: new Date().toISOString(),
+      ...(isComplete ? { status: "completed", completed_at: new Date().toISOString() } : {}),
     })
-    .eq("id", campaignId);
+    .eq("id", campaign.id);
+
+  return sentThisCycle + failedThisCycle;
 }

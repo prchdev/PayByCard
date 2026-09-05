@@ -250,7 +250,11 @@ export default function BulkSMS() {
       );
       const data = await response.json();
       if (response.ok) {
-        setMessage({ type: 'success', text: `Campaign ${newStatus === 'scheduled' ? 'scheduled' : 'saved'} successfully` });
+        setMessage({ type: 'success', text: newStatus === 'sending'
+          ? 'Campaign queued for sending. SMS will be dispatched progressively at the configured hourly rate.'
+          : newStatus === 'scheduled'
+            ? 'Campaign scheduled successfully. It will start automatically at the scheduled time.'
+            : 'Campaign saved as draft successfully.' });
         setShowForm(false);
         setFormData(emptyForm);
         setPreviewCount(null);

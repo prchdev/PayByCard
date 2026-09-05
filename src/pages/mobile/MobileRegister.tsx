@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, AlertCircle, X, FileText, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { validatePassword, PASSWORD_REQUIREMENTS } from '../../utils/passwordValidation';
+import { capitalizeName } from '../../utils/nameFormat';
 import TermsOfService from '../TermsOfService';
 import Privacy from '../Privacy';
 
@@ -61,13 +62,16 @@ export default function MobileRegister() {
     if (!validateForm()) return;
     setIsSubmitting(true);
     try {
-      const fullName = [formData.firstName.trim(), formData.middleName.trim(), formData.lastName.trim()].filter(Boolean).join(' ');
+      const capFirst = capitalizeName(formData.firstName);
+      const capMiddle = capitalizeName(formData.middleName);
+      const capLast = capitalizeName(formData.lastName);
+      const fullName = [capFirst, capMiddle, capLast].filter(Boolean).join(' ');
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-user`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName: formData.firstName.trim(), middleName: formData.middleName.trim() || undefined,
-          lastName: formData.lastName.trim(), fullName,
+          firstName: capFirst, middleName: capMiddle || undefined,
+          lastName: capLast, fullName,
           mobileNumber: `+91${formData.mobileNumber}`, email: formData.email, password: formData.password,
         }),
       });

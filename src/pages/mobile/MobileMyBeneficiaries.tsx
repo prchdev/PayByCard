@@ -20,6 +20,7 @@ import MobileLayout from '../../components/mobile/MobileLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { getClientIp } from '../../utils/getClientIp';
 import { isCreditCardIfsc, looksLikeCreditCardNumber } from '../../utils/beneficiaryValidation';
+import { capitalizeName } from '../../utils/nameFormat';
 
 interface Beneficiary {
   id: string;
@@ -230,6 +231,9 @@ export default function MobileMyBeneficiaries() {
     if (!/^[A-Za-z ]+$/.test(formData.full_name)) {
       setError('Full Name must contain only letters and spaces.'); return;
     }
+    if (formData.full_name.trim().split(/\s+/).length < 2) {
+      setError('Please enter your full name (First Name and Last Name).'); return;
+    }
     if (formData.full_name.length > 90) {
       setError('Full Name must not exceed 90 characters.'); return;
     }
@@ -301,7 +305,7 @@ export default function MobileMyBeneficiaries() {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ...formData, userId, ipAddress }),
+        body: JSON.stringify({ ...formData, full_name: capitalizeName(formData.full_name), userId, ipAddress }),
       });
 
       const data = await response.json();

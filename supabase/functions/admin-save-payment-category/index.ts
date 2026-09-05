@@ -27,8 +27,6 @@ Deno.serve(async (req: Request) => {
       settlement_time,
       is_enabled,
       display_order,
-      gateway_id,
-      environment,
     } = await req.json();
 
     if (!adminId) {
@@ -75,20 +73,6 @@ Deno.serve(async (req: Request) => {
     const delayHours = Math.max(0, Math.floor(Number(new_card_payment_delay_hours) || 0));
     const refundHours = Math.max(0, Math.floor(Number(refund_after_hours) || 0));
 
-    const validEnvironments = ['test', 'production'];
-    const envValue = validEnvironments.includes(environment) ? environment : 'test';
-
-    // If enabling, require a gateway to be selected
-    if (is_enabled && !gateway_id) {
-      return new Response(
-        JSON.stringify({ error: 'A payment gateway must be selected before enabling this payment option' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
     if (id) {
       const { data: updated, error: updateError } = await supabase
         .from("payment_categories")
@@ -100,8 +84,6 @@ Deno.serve(async (req: Request) => {
           settlement_time: settlement_time || 'instant',
           is_enabled: !!is_enabled,
           display_order: Number(display_order) || 0,
-          gateway_id: gateway_id || null,
-          environment: envValue,
           updated_by_admin_id: adminId,
           updated_at: new Date().toISOString(),
         })
@@ -148,8 +130,6 @@ Deno.serve(async (req: Request) => {
         settlement_time: settlement_time || 'instant',
         is_enabled: !!is_enabled,
         display_order: Number(display_order) || nextOrder,
-        gateway_id: gateway_id || null,
-        environment: envValue,
         created_by_admin_id: adminId,
         updated_by_admin_id: adminId,
         updated_at: new Date().toISOString(),

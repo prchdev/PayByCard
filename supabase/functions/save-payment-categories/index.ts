@@ -17,6 +17,8 @@ interface PaymentCategoryUpdate {
   discounted_charges_percentage: number;
   gst_percentage: number;
   settlement_time?: string;
+  gateway_id?: string | null;
+  environment?: string;
   created_at?: string;
   updated_at?: string;
   updated_by_admin_id?: string;
@@ -78,6 +80,14 @@ Deno.serve(async (req: Request) => {
 
     const updates = categories.map(async (category) => {
       try {
+        // Validate: if enabling, require a gateway
+        if (category.is_enabled && !category.gateway_id) {
+          return { categoryId: category.id, error: 'A payment gateway must be selected before enabling this payment option' };
+        }
+
+        const validEnvironments = ['test', 'production'];
+        const envValue = validEnvironments.includes(category.environment || '') ? category.environment! : 'test';
+
         const { error } = await supabase
           .from("payment_options")
           .update({
@@ -89,6 +99,8 @@ Deno.serve(async (req: Request) => {
             discounted_charges_percentage: Number(category.discounted_charges_percentage) || 0,
             gst_percentage: Number(category.gst_percentage) || 0,
             settlement_time: category.settlement_time || 'instant',
+            gateway_id: category.gateway_id || null,
+            environment: envValue,
             updated_by_admin_id: admin_id,
             updated_by_ip: clientIp,
             updated_at: new Date().toISOString(),

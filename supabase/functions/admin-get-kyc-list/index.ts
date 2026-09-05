@@ -8,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-Deno.serve(async (req: Request) => {
+Deno.serve(withSignedKycUrls(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -137,7 +137,7 @@ Deno.serve(async (req: Request) => {
       }
     );
   }
-});
+}));
 
 
 // redeploy

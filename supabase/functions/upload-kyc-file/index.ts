@@ -116,11 +116,16 @@ Deno.serve(async (req: Request) => {
       .from("kyc-documents")
       .createSignedUrl(path, 3600);
 
+    // Store the canonical public-style path (not the signed URL) so that
+    // downstream code can generate fresh signed URLs on demand. The signed
+    // URL returned to the uploader is still valid for immediate use.
+    const canonicalUrl = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/kyc-documents/${path}`;
+
     const clientIp = getClientIp(req);
     const uploadedAt = new Date().toISOString();
 
     return new Response(
-      JSON.stringify({ url: urlData.signedUrl, uploadedAt, uploadIp: clientIp }),
+      JSON.stringify({ url: canonicalUrl, signedUrl: urlData.signedUrl, uploadedAt, uploadIp: clientIp }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

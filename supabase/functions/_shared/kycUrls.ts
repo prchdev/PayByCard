@@ -8,15 +8,16 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 const BUCKET = "kyc-documents";
 const PUBLIC_MARKER = `/storage/v1/object/public/${BUCKET}/`;
+const SIGN_MARKER = `/storage/v1/object/sign/${BUCKET}/`;
 const SIGN_TTL_SECONDS = 3600;
 
 const URL_PATTERN = new RegExp(
-  `https?://[^"'\\\\\\s)<>]+/storage/v1/object/public/${BUCKET}/[^"'\\\\\\s)<>]+`,
+  `https?://[^"'\\\\\\s)<>]+/storage/v1/object/(?:public|sign)/${BUCKET}/[^"'\\\\\\s)<>]+`,
   "g",
 );
 
 export async function signKycUrlsInText(text: string): Promise<string> {
-  if (!text || !text.includes(PUBLIC_MARKER)) return text;
+  if (!text || (!text.includes(PUBLIC_MARKER) && !text.includes(SIGN_MARKER))) return text;
 
   const found = Array.from(new Set(text.match(URL_PATTERN) || []));
   if (found.length === 0) return text;
@@ -28,9 +29,17 @@ export async function signKycUrlsInText(text: string): Promise<string> {
 
   let out = text;
   for (const fullUrl of found) {
-    const rawPath = fullUrl.split(PUBLIC_MARKER)[1];
-    if (!rawPath) continue;
-    let path = rawPath.split("?")[0];
+    let path: string | null = null;
+    if (fullUrl.includes(PUBLIC_MARKER)) {
+      const rawPath = fullUrl.split(PUBLIC_MARKER)[1];
+      if (!rawPath) continue;
+      path = rawPath.split("?")[0];
+    } else if (fullUrl.includes(SIGN_MARKER)) {
+      const rawPath = fullUrl.split(SIGN_MARKER)[1];
+      if (!rawPath) continue;
+      path = rawPath.split("?")[0];
+    }
+    if (!path) continue;
     try {
       path = decodeURIComponent(path);
     } catch {

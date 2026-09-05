@@ -15,6 +15,20 @@ interface RazorpayConfig {
   is_active: boolean;
 }
 
+interface PhonePeConfig {
+  payment_option_id: string;
+  card_types: string[];
+  networks: string[];
+  variants: string[];
+  geo_scopes: string[];
+  is_active: boolean;
+}
+
+const PHONEPE_CARD_TYPES = ['CREDIT_CARD', 'DEBIT_CARD'];
+const PHONEPE_NETWORKS = ['VISA', 'MASTER_CARD', 'RUPAY', 'AMEX', 'DINERS_CLUB'];
+const PHONEPE_VARIANTS = ['CONSUMER', 'PREMIUM', 'SUPER_PREMIUM', 'CORPORATE'];
+const PHONEPE_GEO_SCOPES = ['DOMESTIC', 'INTERNATIONAL'];
+
 interface PaymentGateway {
   id: string;
   gateway_name: string;
@@ -53,6 +67,9 @@ export default function PaymentGatewaySettings() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [paymentOptions, setPaymentOptions] = useState<PaymentOption[]>([]);
   const [razorpayConfigs, setRazorpayConfigs] = useState<Record<string, RazorpayConfig>>({});
+  const [phonepeConfigs, setPhonepeConfigs] = useState<Record<string, PhonePeConfig>>({});
+  const [phonepeConfigsLoading, setPhonepeConfigsLoading] = useState(false);
+  const [phonepeConfigsSaving, setPhonepeConfigsSaving] = useState(false);
   const [configsLoading, setConfigsLoading] = useState(false);
   const [configsSaving, setConfigsSaving] = useState(false);
 
@@ -150,6 +167,98 @@ export default function PaymentGatewaySettings() {
     }
   };
 
+  const fetchPhonepeConfigs = async (gatewayId: string) => {
+    setPhonepeConfigsLoading(true);
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/phonepe-payment-configs?gateway_id=${gatewayId}`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok && data.configs) {
+        const map: Record<string, PhonePeConfig> = {};
+        for (const c of data.configs) {
+          map[c.payment_option_id] = {
+            payment_option_id: c.payment_option_id,
+            card_types: c.card_types || [],
+            networks: c.networks || [],
+            variants: c.variants || [],
+            geo_scopes: c.geo_scopes || [],
+            is_active: c.is_active !== false,
+          };
+        }
+        setPhonepeConfigs(map);
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setPhonepeConfigsLoading(false);
+    }
+  };
+
+  const updatePhonepeConfig = (optionId: string, field: keyof PhonePeConfig, value: any) => {
+    setPhonepeConfigs(prev => ({
+      ...prev,
+      [optionId]: {
+        payment_option_id: optionId,
+        card_types: prev[optionId]?.card_types || [],
+        networks: prev[optionId]?.networks || [],
+        variants: prev[optionId]?.variants || [],
+        geo_scopes: prev[optionId]?.geo_scopes || [],
+        is_active: prev[optionId]?.is_active ?? true,
+        [field]: value,
+      },
+    }));
+  };
+
+  const togglePhonepeMultiSelect = (optionId: string, field: 'card_types' | 'networks' | 'variants' | 'geo_scopes', value: string) => {
+    setPhonepeConfigs(prev => {
+      const current = prev[optionId] || {
+        payment_option_id: optionId,
+        card_types: [],
+        networks: [],
+        variants: [],
+        geo_scopes: [],
+        is_active: true,
+      };
+      const arr = current[field] as string[];
+      const newArr = arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value];
+      return {
+        ...prev,
+        [optionId]: { ...current, [field]: newArr },
+      };
+    });
+  };
+
+  const savePhonepeConfigs = async (gatewayId: string) => {
+    setPhonepeConfigsSaving(true);
+    setMessage(null);
+    try {
+      const configs = Object.values(phonepeConfigs);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/phonepe-payment-configs`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ gateway_id: gatewayId, configs }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'PhonePe payment configurations saved successfully' });
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to save PhonePe configurations' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'An error occurred while saving PhonePe configurations' });
+    } finally {
+      setPhonepeConfigsSaving(false);
+    }
+  };
+
   const fetchGateways = async () => {
     try {
       const adminId = sessionStorage.getItem('adminId');
@@ -189,6 +298,12 @@ export default function PaymentGatewaySettings() {
         const razorpayGw = gatewaysData.find((gw: any) => gw.gateway_name === 'RazorPay');
         if (razorpayGw) {
           fetchRazorpayConfigs(razorpayGw.id);
+        }
+
+        // Fetch PhonePe per-option configs if PhonePe gateway exists
+        const phonepeGw = gatewaysData.find((gw: any) => gw.gateway_name === 'PhonePe');
+        if (phonepeGw) {
+          fetchPhonepeConfigs(phonepeGw.id);
         }
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to load payment gateways' });
@@ -508,6 +623,154 @@ export default function PaymentGatewaySettings() {
                             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {configsSaving ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="w-4 h-4" />
+                                Save Configurations
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* PhonePe Per-Payment-Option Configuration */}
+                {gateway.gateway_name === 'PhonePe' && (
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Settings2 className="w-4 h-4 text-[#8c76f0]" />
+                      <h3 className="text-sm font-semibold text-gray-900">Payment Option Configurations</h3>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-4">
+                      Configure PhonePe payment mode constraints for each payment option. If a payment option is not configured below, the default PhonePe checkout is used (no paymentModeConfig sent to PhonePe API).
+                    </p>
+
+                    {phonepeConfigsLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Loading configurations...
+                      </div>
+                    ) : paymentOptions.length === 0 ? (
+                      <p className="text-sm text-gray-400 italic">No payment options available. Create payment options first in the Payment Categories page.</p>
+                    ) : (
+                      <>
+                        <div className="space-y-3">
+                          {paymentOptions.map((option) => {
+                            const config = phonepeConfigs[option.id];
+                            const isEnabled = config?.is_active ?? false;
+                            return (
+                              <div key={option.id} className={`rounded-xl border-2 p-4 transition-all ${isEnabled ? 'border-[#8c76f0] bg-purple-50/30' : 'border-gray-200 bg-gray-50/50'}`}>
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={isEnabled}
+                                      onChange={(e) => updatePhonepeConfig(option.id, 'is_active', e.target.checked)}
+                                      className="w-4 h-4 text-white bg-white border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#8c76f0] checked:bg-[#8c76f0] checked:border-[#8c76f0] transition-colors cursor-pointer"
+                                    />
+                                    <span className="text-sm font-medium text-gray-900">{option.category_name}</span>
+                                  </div>
+                                </div>
+                                {isEnabled && (
+                                  <div className="pl-7 space-y-4">
+                                    {/* Card Types */}
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Card Types</label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {PHONEPE_CARD_TYPES.map((ct) => {
+                                          const selected = (config?.card_types || []).includes(ct);
+                                          return (
+                                            <button
+                                              key={ct}
+                                              type="button"
+                                              onClick={() => togglePhonepeMultiSelect(option.id, 'card_types', ct)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${selected ? 'border-[#8c76f0] bg-[#8c76f0] text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-[#8c76f0]/50'}`}
+                                            >
+                                              {ct.replace(/_/g, ' ')}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                    {/* Networks */}
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Networks</label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {PHONEPE_NETWORKS.map((n) => {
+                                          const selected = (config?.networks || []).includes(n);
+                                          return (
+                                            <button
+                                              key={n}
+                                              type="button"
+                                              onClick={() => togglePhonepeMultiSelect(option.id, 'networks', n)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${selected ? 'border-[#8c76f0] bg-[#8c76f0] text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-[#8c76f0]/50'}`}
+                                            >
+                                              {n.replace(/_/g, ' ')}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                    {/* Variants */}
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Variants</label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {PHONEPE_VARIANTS.map((v) => {
+                                          const selected = (config?.variants || []).includes(v);
+                                          return (
+                                            <button
+                                              key={v}
+                                              type="button"
+                                              onClick={() => togglePhonepeMultiSelect(option.id, 'variants', v)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${selected ? 'border-[#8c76f0] bg-[#8c76f0] text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-[#8c76f0]/50'}`}
+                                            >
+                                              {v.replace(/_/g, ' ')}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                    {/* Geo Scopes */}
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Geo Scopes</label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {PHONEPE_GEO_SCOPES.map((g) => {
+                                          const selected = (config?.geo_scopes || []).includes(g);
+                                          return (
+                                            <button
+                                              key={g}
+                                              type="button"
+                                              onClick={() => togglePhonepeMultiSelect(option.id, 'geo_scopes', g)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${selected ? 'border-[#8c76f0] bg-[#8c76f0] text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-[#8c76f0]/50'}`}
+                                            >
+                                              {g}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                    <p className="text-xs text-gray-400">
+                                      If all fields are left empty, no paymentModeConfig is sent to PhonePe and the default checkout is used.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="mt-4">
+                          <button
+                            onClick={() => savePhonepeConfigs(gateway.id)}
+                            disabled={phonepeConfigsSaving || !canEdit}
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {phonepeConfigsSaving ? (
                               <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
                                 Saving...

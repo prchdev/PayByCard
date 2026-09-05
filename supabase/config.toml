@@ -264,3 +264,6 @@ verify_jwt = false
 verify_jwt = false
 [functions.razorpay-payment-configs]
 verify_jwt = false
+
+[functions.phonepe-payment-configs]
+verify_jwt = false

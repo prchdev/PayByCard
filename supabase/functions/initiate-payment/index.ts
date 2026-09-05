@@ -583,8 +583,38 @@ async function createGatewayPaymentConfig(
       const redirectUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-gateway-webhook?gateway=phonepe`;
       const callbackUrlFull = callbackUrl;
 
+      // Look up per-payment-option PhonePe configuration
+      let phonepeConfig: any = null;
+      if (payment.payment_category_id) {
+        const { data: ppConfig } = await supabase
+          .from("phonepe_payment_configs")
+          .select("card_types, networks, variants, geo_scopes")
+          .eq("payment_gateway_id", gatewaySettings.id)
+          .eq("payment_option_id", payment.payment_category_id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (ppConfig) {
+          phonepeConfig = ppConfig;
+        }
+      }
+
+      // Build paymentModeConfig only if any constraint values are defined
+      const hasCardTypes = phonepeConfig?.card_types?.length > 0;
+      const hasNetworks = phonepeConfig?.networks?.length > 0;
+      const hasVariants = phonepeConfig?.variants?.length > 0;
+      const hasGeoScopes = phonepeConfig?.geo_scopes?.length > 0;
+
+      const cardMode: any = { type: "CARD" };
+      if (hasCardTypes) cardMode.types = phonepeConfig.card_types;
+      if (hasNetworks) cardMode.networks = phonepeConfig.networks;
+      if (hasVariants) cardMode.variants = phonepeConfig.variants;
+      if (hasGeoScopes) cardMode.geoScopes = phonepeConfig.geo_scopes;
+
+      const usePaymentModeConfig = hasCardTypes || hasNetworks || hasVariants || hasGeoScopes;
+
       // PhonePe Standard Checkout: initiate a PG transaction
-      const payload = {
+      const payload: any = {
         merchantId,
         merchantOrderId,
         amount: amountInPaise,
@@ -595,6 +625,19 @@ async function createGatewayPaymentConfig(
           type: "PAY_PAGE",
         },
       };
+
+      if (usePaymentModeConfig) {
+        payload.paymentFlow = {
+          type: "PG_CHECKOUT",
+          merchantUrls: {
+            redirectUrl,
+          },
+          paymentModeConfig: {
+            version: "V2",
+            enabledPaymentModes: [cardMode],
+          },
+        };
+      }
 
       const payloadBase64 = btoa(JSON.stringify(payload));
       const xVerify = await generatePhonePeChecksum(payloadBase64, "/pg/v1/pay", saltKey);

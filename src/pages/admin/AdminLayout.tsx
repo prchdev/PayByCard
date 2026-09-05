@@ -84,6 +84,7 @@ const MENU_SECTIONS: MenuSection[] = [
       { key: 'payment-option', name: 'Payment Option', path: '/admin/payment-option', icon: 'Tag' },
       { key: 'payment-categories', name: 'Payment Categories', path: '/admin/payment-categories', icon: 'Tag' },
       { key: 'kyc-method', name: 'KYC Method', path: '/admin/kyc-method', icon: 'ShieldCheck' },
+      { key: 'dashboard-notification', name: 'Dashboard Notification', path: '/admin/dashboard-notification', icon: 'Bell' },
     ],
   },
   {

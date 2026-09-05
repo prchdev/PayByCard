@@ -14,6 +14,8 @@ import {
   Hourglass,
   Hash,
   Landmark,
+  Info,
+  AlertTriangle,
 } from 'lucide-react';
 import DashboardNavigation from '../components/DashboardNavigation';
 import DashboardSidebar from '../components/DashboardSidebar';
@@ -73,6 +75,9 @@ export default function Dashboard() {
     amount_in_settlement: number;
     total_transactions: number;
   } | null>(null);
+  const [dashboardNotifications, setDashboardNotifications] = useState<
+    { id: string; title: string; message: string; notification_type: string }[]
+  >([]);
 
   useEffect(() => {
     if (!userId) {
@@ -81,6 +86,7 @@ export default function Dashboard() {
       checkKycStatus();
       fetchRecentTransactions();
       fetchStats();
+      fetchDashboardNotifications();
     }
   }, [userId, navigate]);
 
@@ -105,6 +111,23 @@ export default function Dashboard() {
     } finally {
       setIsCheckingKyc(false);
     }
+  };
+
+  const fetchDashboardNotifications = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dashboard-notifications?action=active`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const data = await res.json();
+      if (res.ok) setDashboardNotifications(data.notifications ?? []);
+    } catch (_) {}
   };
 
   const fetchStats = async () => {
@@ -268,6 +291,39 @@ export default function Dashboard() {
                 </>
               )}
             </>
+          )}
+
+          {/* Dashboard Notifications */}
+          {dashboardNotifications.length > 0 && (
+            <div className="mb-8 space-y-3">
+              {dashboardNotifications.map((n) => {
+                const isError = n.notification_type === 'error';
+                const isWarning = n.notification_type === 'warning';
+                const NotifIcon = isError ? AlertCircle : isWarning ? AlertTriangle : Info;
+                const containerClass = isError
+                  ? 'bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-500 rounded-xl px-6 py-4'
+                  : isWarning
+                    ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-500 rounded-xl px-6 py-4'
+                    : 'bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-500 rounded-xl px-6 py-4';
+                const iconBgClass = isError ? 'bg-red-100' : isWarning ? 'bg-amber-100' : 'bg-blue-100';
+                const iconColorClass = isError ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-blue-600';
+                const titleColorClass = isError ? 'text-red-900' : isWarning ? 'text-amber-900' : 'text-blue-900';
+                const bodyColorClass = isError ? 'text-red-700' : isWarning ? 'text-amber-700' : 'text-blue-700';
+                return (
+                  <div key={n.id} className={containerClass}>
+                    <div className="flex items-start gap-3">
+                      <div className={'w-10 h-10 ' + iconBgClass + ' rounded-xl flex items-center justify-center flex-shrink-0'}>
+                        <NotifIcon className={'w-5 h-5 ' + iconColorClass} />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className={'text-sm font-semibold ' + titleColorClass}>{n.title}</h3>
+                        <p className={'text-sm ' + bodyColorClass + ' mt-0.5 whitespace-pre-line'}>{n.message}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
 
           {/* Stats Grid */}

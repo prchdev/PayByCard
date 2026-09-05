@@ -267,3 +267,6 @@ verify_jwt = false
 
 [functions.phonepe-payment-configs]
 verify_jwt = false
+
+[functions.dashboard-notifications]
+verify_jwt = false

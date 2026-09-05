@@ -360,8 +360,20 @@ async function processSmsCampaignBatch(
     }
   }
 
-  const newSentCount = (campaign.sent_count || 0) + sentThisCycle;
-  const newFailedCount = (campaign.failed_count || 0) + failedThisCycle;
+  // Count actual sent/failed from the database to avoid stale accumulation
+  const { count: actualSent } = await supabase
+    .from("bulk_campaign_recipients")
+    .select("id", { count: "exact", head: true })
+    .eq("campaign_type", "sms")
+    .eq("campaign_id", campaign.id)
+    .eq("status", "sent");
+
+  const { count: actualFailed } = await supabase
+    .from("bulk_campaign_recipients")
+    .select("id", { count: "exact", head: true })
+    .eq("campaign_type", "sms")
+    .eq("campaign_id", campaign.id)
+    .eq("status", "failed");
 
   const { count: remainingPending } = await supabase
     .from("bulk_campaign_recipients")
@@ -374,8 +386,8 @@ async function processSmsCampaignBatch(
 
   await supabase.from("bulk_sms_campaigns")
     .update({
-      sent_count: newSentCount,
-      failed_count: newFailedCount,
+      sent_count: actualSent || 0,
+      failed_count: actualFailed || 0,
       last_batch_sent_at: new Date().toISOString(),
       ...(isComplete ? { status: "completed", completed_at: new Date().toISOString() } : {}),
     })

@@ -126,15 +126,35 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!gatewaySettings.is_enabled) {
+    // Fetch the payment option to get the per-option environment
+    const { data: paymentOption, error: optionError } = await supabase
+      .from("payment_options")
+      .select("id, gateway_id, environment, is_enabled")
+      .eq("id", paymentOptionId)
+      .maybeSingle();
+
+    if (optionError || !paymentOption) {
       return new Response(
-        JSON.stringify({ error: "Selected gateway is not enabled" }),
+        JSON.stringify({ error: "Payment option not found" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
+
+    if (!paymentOption.is_enabled) {
+      return new Response(
+        JSON.stringify({ error: "Selected payment option is not enabled" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Use the environment from the payment option, not from the gateway settings
+    const optionEnvironment = paymentOption.environment || "test";
 
     const allowedCards = determineAllowedCards(cardType);
 
@@ -149,7 +169,7 @@ Deno.serve(async (req: Request) => {
       total_amount: parsedTotal,
       card_type: cardType,
       gateway_name: gatewaySettings.gateway_name,
-      environment: gatewaySettings.environment,
+      environment: optionEnvironment,
       allowed_cards: allowedCards,
       initiated_at: new Date().toISOString(),
       ip_address: ipAddress || "unknown",
@@ -157,7 +177,7 @@ Deno.serve(async (req: Request) => {
 
     const validCardType = cardType ? extractSingleCardType(cardType) : null;
     // Normalize: "Testing"/"test" → "test", "Production"/"production" → "production"
-    const rawEnv = (gatewaySettings.environment || "").toLowerCase();
+    const rawEnv = (optionEnvironment || "").toLowerCase();
     const normalizedEnvironment = rawEnv.startsWith("prod") ? "production" : "test";
 
     const { data: payment, error: paymentError } = await supabase

@@ -14,6 +14,8 @@ import {
   ToggleLeft,
   ToggleRight,
   RotateCcw,
+  CreditCard,
+  Settings2,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -27,8 +29,15 @@ interface PaymentCategory {
   new_card_payment_delay_hours: number;
   refund_after_hours: number;
   settlement_time: string;
+  gateway_id: string | null;
+  environment: string;
   created_at: string;
   updated_at: string;
+}
+
+interface GatewayOption {
+  id: string;
+  gateway_name: string;
 }
 
 interface CategoryFormData {
@@ -40,6 +49,8 @@ interface CategoryFormData {
   settlement_time: string;
   is_enabled: boolean;
   display_order: number;
+  gateway_id: string;
+  environment: string;
 }
 
 const SETTLEMENT_TIME_OPTIONS = [
@@ -57,6 +68,8 @@ const EMPTY_FORM: CategoryFormData = {
   settlement_time: 'instant',
   is_enabled: true,
   display_order: 0,
+  gateway_id: '',
+  environment: 'test',
 };
 
 export default function PaymentCategories() {
@@ -77,10 +90,34 @@ export default function PaymentCategories() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<CategoryFormData>(EMPTY_FORM);
   const [searchTerm, setSearchTerm] = useState('');
+  const [gateways, setGateways] = useState<GatewayOption[]>([]);
 
   useEffect(() => {
     fetchCategories();
+    fetchGateways();
   }, []);
+
+  const fetchGateways = async () => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-gateways`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ admin_id: adminId }),
+        }
+      );
+      const data = await response.json();
+      if (response.ok && data.gateways) {
+        setGateways(data.gateways.map((g: any) => ({ id: g.id, gateway_name: g.gateway_name })));
+      }
+    } catch {
+      // silent fail
+    }
+  };
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -116,6 +153,12 @@ export default function PaymentCategories() {
 
     if (!formData.category_name.trim()) {
       setMessage({ type: 'error', text: 'Category name is required' });
+      setSaving(false);
+      return;
+    }
+
+    if (formData.is_enabled && !formData.gateway_id) {
+      setMessage({ type: 'error', text: 'A payment gateway must be selected before enabling this payment option' });
       setSaving(false);
       return;
     }
@@ -162,6 +205,8 @@ export default function PaymentCategories() {
       settlement_time: cat.settlement_time || 'instant',
       is_enabled: cat.is_enabled,
       display_order: cat.display_order,
+      gateway_id: cat.gateway_id || '',
+      environment: cat.environment || 'test',
     });
     setShowForm(true);
     setMessage(null);
@@ -392,6 +437,68 @@ export default function PaymentCategories() {
                   Time taken to settle the payment to the receiver
                 </p>
               </div>
+
+              {/* Payment Gateway */}
+              <div>
+                <label
+                  htmlFor="gateway_id"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Payment Gateway {!formData.is_enabled && <span className="text-gray-400">(required to enable)</span>}
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <CreditCard className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <select
+                    id="gateway_id"
+                    value={formData.gateway_id}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, gateway_id: e.target.value }))
+                    }
+                    className="w-full pl-12 pr-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all appearance-none bg-white"
+                  >
+                    <option value="">Select a gateway</option>
+                    {gateways.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.gateway_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  The payment gateway used for transactions on this payment option
+                </p>
+              </div>
+
+              {/* Environment */}
+              <div>
+                <label
+                  htmlFor="environment"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Environment
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Settings2 className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <select
+                    id="environment"
+                    value={formData.environment}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, environment: e.target.value }))
+                    }
+                    className="w-full pl-12 pr-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all appearance-none bg-white"
+                  >
+                    <option value="test">Testing</option>
+                    <option value="production">Production</option>
+                  </select>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  The gateway environment to use for this payment option
+                </p>
+              </div>
             </div>
 
             {/* Checkboxes */}
@@ -540,6 +647,12 @@ export default function PaymentCategories() {
                     Settlement
                   </th>
                   <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Gateway
+                  </th>
+                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Environment
+                  </th>
+                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Card Delay
                   </th>
                   <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -556,7 +669,7 @@ export default function PaymentCategories() {
               <tbody className="divide-y divide-gray-100">
                 {filteredCategories.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center">
+                    <td colSpan={10} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center">
                         <Tag className="w-10 h-10 text-gray-300 mb-3" />
                         <p className="text-gray-500 font-medium">No categories found</p>
@@ -608,6 +721,21 @@ export default function PaymentCategories() {
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-200">
                           <Clock className="w-3.5 h-3.5" />
                           {SETTLEMENT_TIME_OPTIONS.find((o) => o.value === cat.settlement_time)?.label || 'Instant'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {cat.gateway_id ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-full border border-purple-200">
+                            <CreditCard className="w-3.5 h-3.5" />
+                            {gateways.find((g) => g.id === cat.gateway_id)?.gateway_name || 'Unknown'}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">Not set</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full border ${cat.environment === 'production' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                          {cat.environment === 'production' ? 'Production' : 'Testing'}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-center">

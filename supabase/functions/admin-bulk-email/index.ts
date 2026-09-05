@@ -19,6 +19,30 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const { admin_id, action } = body;
 
+    if (action === "process_scheduled") {
+      const now = new Date().toISOString();
+      const { data: dueCampaigns, error } = await supabase
+        .from("bulk_email_campaigns")
+        .select("*")
+        .eq("status", "scheduled")
+        .not("scheduled_at", "is", null)
+        .lte("scheduled_at", now);
+
+      if (error) {
+        return new Response(JSON.stringify({ error: "Failed to fetch scheduled campaigns" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      for (const c of (dueCampaigns || [])) {
+        await processEmailCampaign(supabaseUrl, supabaseKey, supabase, c.id, c.subject, c.body_html, c.attachments || []);
+      }
+
+      return new Response(JSON.stringify({ processed: (dueCampaigns || []).length }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!admin_id) {
       return new Response(JSON.stringify({ error: "Admin ID is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -111,6 +135,11 @@ Deno.serve(async (req: Request) => {
         }
 
         await insertRecipientRecords(supabase, "email", data.id, recipients);
+
+        if (status === "sending") {
+          await processEmailCampaign(supabaseUrl, supabaseKey, supabase, data.id, data.subject, data.body_html, data.attachments || []);
+        }
+
         return new Response(JSON.stringify({ campaign: data }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -239,3 +268,101 @@ async function insertRecipientRecords(supabase: any, campaignType: string, campa
 
 
 // redeploy
+
+async function processEmailCampaign(
+  supabaseUrl: string,
+  supabaseKey: string,
+  supabase: any,
+  campaignId: string,
+  subject: string,
+  bodyHtml: string,
+  attachments: any[],
+) {
+  await supabase.from("bulk_email_campaigns")
+    .update({ status: "sending", started_at: new Date().toISOString() })
+    .eq("id", campaignId);
+
+  const batchSize = 50;
+  let sentCount = 0;
+  let failedCount = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data: batch, error } = await supabase
+      .from("bulk_campaign_recipients")
+      .select("id, user_id, email_or_phone")
+      .eq("campaign_type", "email")
+      .eq("campaign_id", campaignId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true })
+      .limit(batchSize);
+
+    if (error || !batch || batch.length === 0) { hasMore = false; break; }
+
+    for (const recipient of batch) {
+      try {
+        const { data: user } = await supabase
+          .from("users")
+          .select("first_name, middle_name, last_name")
+          .eq("id", recipient.user_id)
+          .maybeSingle();
+
+        const firstName = user?.first_name || "";
+        const middleName = user?.middle_name || "";
+        const lastName = user?.last_name || "";
+
+        let personalizedSubject = subject || "";
+        let personalizedBody = bodyHtml || "";
+        personalizedSubject = personalizedSubject.replace(/\{first_name\}/g, firstName).replace(/\{middle_name\}/g, middleName).replace(/\{last_name\}/g, lastName);
+        personalizedBody = personalizedBody.replace(/\{first_name\}/g, firstName).replace(/\{middle_name\}/g, middleName).replace(/\{last_name\}/g, lastName);
+
+        const emailPayload: any = {
+          to: recipient.email_or_phone,
+          subject: personalizedSubject,
+          body: personalizedBody,
+          body_type: "html",
+          use_template: true,
+        };
+
+        if (attachments && attachments.length > 0) {
+          emailPayload.attachments = attachments;
+        }
+
+        const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+          body: JSON.stringify(emailPayload),
+        });
+
+        if (emailResponse.ok) {
+          sentCount++;
+          await supabase.from("bulk_campaign_recipients")
+            .update({ status: "sent", sent_at: new Date().toISOString() })
+            .eq("id", recipient.id);
+        } else {
+          failedCount++;
+          const errData = await emailResponse.json().catch(() => ({}));
+          await supabase.from("bulk_campaign_recipients")
+            .update({ status: "failed", error_message: (errData.error || "Email send failed").substring(0, 500) })
+            .eq("id", recipient.id);
+        }
+      } catch (err) {
+        failedCount++;
+        await supabase.from("bulk_campaign_recipients")
+          .update({ status: "failed", error_message: (err instanceof Error ? err.message : "Unknown error").substring(0, 500) })
+          .eq("id", recipient.id);
+      }
+    }
+
+    if (batch.length < batchSize) hasMore = false;
+  }
+
+  await supabase.from("bulk_email_campaigns")
+    .update({
+      status: "completed",
+      sent_count: sentCount,
+      failed_count: failedCount,
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", campaignId);
+}

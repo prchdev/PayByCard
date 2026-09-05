@@ -527,7 +527,7 @@ export default function MobileMakePayment() {
     setLoading(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/calculate-payment-charges`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/calculate-payment-option-charges`,
         {
           method: 'POST',
           headers: {

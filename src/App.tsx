@@ -38,7 +38,7 @@ import AdminKycVerification from './pages/admin/AdminKycVerification';
 import AdminForgotPassword from './pages/admin/AdminForgotPassword';
 import EmailSettings from './pages/admin/EmailSettings';
 import AdminChangePassword from './pages/admin/AdminChangePassword';
-import PaymentCharges from './pages/admin/PaymentCharges';
+import PaymentOption from './pages/admin/PaymentOption';
 import PaymentGatewaySettings from './pages/admin/PaymentGatewaySettings';
 import SMSSettings from './pages/admin/SMSSettings';
 import AdminUserManagement from './pages/admin/AdminUserManagement';
@@ -146,7 +146,7 @@ function App() {
           <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
           <Route path="/admin/dashboard" element={<AdminHome />} />
           <Route path="/admin/kyc-verification" element={<AdminKycVerification />} />
-          <Route path="/admin/payment-option" element={<PaymentCharges />} />
+          <Route path="/admin/payment-option" element={<PaymentOption />} />
           <Route path="/admin/payment-charges" element={<Navigate to="/admin/payment-option" replace />} />
           <Route path="/admin/payment-gateway-settings" element={<PaymentGatewaySettings />} />
           <Route path="/admin/email-settings" element={<EmailSettings />} />

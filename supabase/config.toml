@@ -108,7 +108,7 @@ verify_jwt = false
 verify_jwt = false
 [functions.auto-refund-kyc-expired]
 verify_jwt = false
-[functions.calculate-payment-charges]
+[functions.calculate-payment-option-charges]
 verify_jwt = false
 [functions.change-password]
 verify_jwt = false
@@ -142,7 +142,7 @@ verify_jwt = false
 verify_jwt = false
 [functions.get-merchant-onboarding]
 verify_jwt = false
-[functions.get-payment-categories]
+[functions.get-payment-options]
 verify_jwt = false
 [functions.get-payment-categories-list]
 verify_jwt = false
@@ -216,7 +216,7 @@ verify_jwt = false
 verify_jwt = false
 [functions.save-merchant-onboarding]
 verify_jwt = false
-[functions.save-payment-categories]
+[functions.save-payment-options]
 verify_jwt = false
 [functions.save-payment-gateways]
 verify_jwt = false

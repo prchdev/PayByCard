@@ -152,3 +152,4 @@ Deno.serve(async (req: Request) => {
 
 
 // redeploy
+// renamed from save-payment-categories

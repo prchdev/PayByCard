@@ -81,7 +81,7 @@ const MENU_SECTIONS: MenuSection[] = [
       { key: 'payment-limits', name: 'Payment Limit', path: '/admin/payment-limits', icon: 'IndianRupee' },
       { key: 'payment-gateway', name: 'Payment Gateway', path: '/admin/payment-gateway-settings', icon: 'CreditCard' },
       { key: 'payout-settings', name: 'Payout Settings', path: '/admin/payout-settings', icon: 'DollarSign' },
-      { key: 'payment-charges', name: 'Payment Option', path: '/admin/payment-option', icon: 'Tag' },
+      { key: 'payment-option', name: 'Payment Option', path: '/admin/payment-option', icon: 'Tag' },
       { key: 'payment-categories', name: 'Payment Categories', path: '/admin/payment-categories', icon: 'Tag' },
       { key: 'kyc-method', name: 'KYC Method', path: '/admin/kyc-method', icon: 'ShieldCheck' },
     ],

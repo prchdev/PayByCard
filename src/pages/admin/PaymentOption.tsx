@@ -50,7 +50,7 @@ function settlementLabel(value: string) {
 export default function PaymentCharges() {
   const navigate = useNavigate();
   const adminId = sessionStorage.getItem('adminId');
-  const { loading: permLoading, canEdit } = useAdminPermission('payment-charges');
+  const { loading: permLoading, canEdit } = useAdminPermission('payment-option');
 
   useEffect(() => {
     if (!adminId) navigate('/admin/login');
@@ -97,7 +97,7 @@ export default function PaymentCharges() {
       const id = sessionStorage.getItem('adminId');
       if (!id) throw new Error('Admin not authenticated');
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-categories`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-options`,
         {
           method: 'POST',
           headers: {
@@ -134,7 +134,7 @@ export default function PaymentCharges() {
         return;
       }
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-payment-categories`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-payment-options`,
         {
           method: 'POST',
           headers: {
@@ -172,7 +172,7 @@ export default function PaymentCharges() {
         return;
       }
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-payment-categories`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-payment-options`,
         {
           method: 'POST',
           headers: {

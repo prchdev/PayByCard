@@ -82,7 +82,7 @@ export default function PaymentGatewaySettings() {
     try {
       const adminId = sessionStorage.getItem('adminId');
       if (!adminId) return;
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-categories`;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-options`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {

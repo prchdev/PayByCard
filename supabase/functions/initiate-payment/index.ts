@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // F4: Recompute charges, GST, discount and total server-side — never trust the browser.
-    const chargesRes = await fetch(`${supabaseUrl}/functions/v1/calculate-payment-charges`, {
+    const chargesRes = await fetch(`${supabaseUrl}/functions/v1/calculate-payment-option-charges`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${supabaseKey}`,

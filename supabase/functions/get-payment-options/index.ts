@@ -127,3 +127,4 @@ Deno.serve(async (req: Request) => {
 });
 
 // redeploy
+// renamed from get-payment-categories

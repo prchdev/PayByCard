@@ -19,7 +19,8 @@ ADMIN = [
     "admin-save-email-settings", "admin-save-master-settings", "admin-save-notification",
     "admin-save-payment-category", "admin-save-surge-charge", "admin-toggle-account-status",
     "admin-toggle-user-status", "admin-update-ticket-status", "admin-update-user",
-    "save-payment-gateways", "save-payment-limits", "save-payment-categories",
+    "save-payment-gateways", "save-payment-limits", "save-payment-options",
+    "get-payment-options",
     "save-sms-settings", "save-kyc-method-settings", "update-role-permissions",
     "get-role-permissions", "get-user-permissions", "get-kyc-method-settings",
     "get-sms-settings",
@@ -35,6 +36,7 @@ USER = [
     "remove-business-info", "save-beneficiary", "save-kyc-data", "save-merchant-onboarding",
     "save-transaction-status", "save-user-bank-account", "set-default-bank-account",
     "toggle-beneficiary-status", "update-user-profile", "upload-ticket-attachment",
+    "calculate-payment-option-charges",
 ]
 
 SIGN = [

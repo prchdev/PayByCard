@@ -4,7 +4,7 @@ import {
   Mail, Plus, Save, X, AlertCircle, CheckCircle, Loader2,
   Send, Calendar, Clock, Users, Eye, Trash2, Ban, Bold, Italic,
   Underline, Link2, Image as ImageIcon, List, ListOrdered, Type,
-  ArrowLeft, ChevronLeft, ChevronRight, FileText,
+  ArrowLeft, ChevronLeft, ChevronRight, FileText, Paperclip,
   AlignLeft, AlignCenter, AlignRight, Link2Off, ZoomIn,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
@@ -37,6 +37,13 @@ interface CampaignForm {
   hourly_rate: number;
   scheduled_at: string;
   send_now: boolean;
+}
+
+interface AttachmentFile {
+  filename: string;
+  content_base64: string;
+  content_type: string;
+  size: number;
 }
 
 const RECIPIENT_FILTERS = [
@@ -85,6 +92,28 @@ const emptyForm: CampaignForm = {
   send_now: false,
 };
 
+const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024; // 5 MB per file
+const MAX_TOTAL_ATTACHMENTS = 10;
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1] || '';
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function BulkEmail() {
   const navigate = useNavigate();
   const adminId = sessionStorage.getItem('adminId');
@@ -107,6 +136,9 @@ export default function BulkEmail() {
   const [imageModal, setImageModal] = useState<{ open: boolean; src: string; align: string; width: string }>({ open: false, src: '', align: 'none', width: '' });
   const [viewMode, setViewMode] = useState<'visual' | 'code'>('visual');
   const [codeView, setCodeView] = useState('');
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+  const [attachmentLoading, setAttachmentLoading] = useState(false);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   const saveSelection = () => {
     const editor = editorRef.current;
@@ -459,6 +491,7 @@ export default function BulkEmail() {
             hourly_rate: formData.hourly_rate,
             scheduled_at: formData.send_now ? null : (formData.scheduled_at || null),
             status: newStatus,
+            attachments: attachments.map(({ filename, content_base64, content_type }) => ({ filename, content_base64, content_type })),
           }),
         }
       );
@@ -467,6 +500,7 @@ export default function BulkEmail() {
         setMessage({ type: 'success', text: `Campaign ${newStatus === 'scheduled' ? 'scheduled' : 'saved'} successfully` });
         setShowForm(false);
         setFormData(emptyForm);
+        setAttachments([]);
         setPreviewCount(null);
         fetchCampaigns();
       } else {
@@ -831,6 +865,80 @@ export default function BulkEmail() {
               )}
             </div>
 
+            {/* File Attachments */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-[#8c76f0]" /> Email Attachments
+              </label>
+              <p className="text-xs text-gray-500 mb-2">Upload up to {MAX_TOTAL_ATTACHMENTS} files (max 5 MB each). Files of any format are supported.</p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => attachmentInputRef.current?.click()}
+                  disabled={attachmentLoading || attachments.length >= MAX_TOTAL_ATTACHMENTS}
+                  className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-xl text-sm font-medium text-gray-600 hover:border-[#8c76f0] hover:text-[#8c76f0] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {attachmentLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  Add Files
+                </button>
+                <input
+                  ref={attachmentInputRef}
+                  type="file"
+                  multiple
+                  onChange={async (e) => {
+                    const files = e.target.files;
+                    if (!files || files.length === 0) return;
+                    setAttachmentLoading(true);
+                    const newAttachments: AttachmentFile[] = [];
+                    for (let i = 0; i < files.length; i++) {
+                      const file = files[i];
+                      if (attachments.length + newAttachments.length >= MAX_TOTAL_ATTACHMENTS) break;
+                      if (file.size > MAX_ATTACHMENT_SIZE) {
+                        setMessage({ type: 'error', text: `${file.name} exceeds 5 MB limit` });
+                        continue;
+                      }
+                      try {
+                        const base64 = await readFileAsBase64(file);
+                        newAttachments.push({
+                          filename: file.name,
+                          content_base64: base64,
+                          content_type: file.type || 'application/octet-stream',
+                          size: file.size,
+                        });
+                      } catch {
+                        setMessage({ type: 'error', text: `Failed to read ${file.name}` });
+                      }
+                    }
+                    setAttachments((prev) => [...prev, ...newAttachments]);
+                    setAttachmentLoading(false);
+                    if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+                  }}
+                  className="hidden"
+                />
+                {attachments.length > 0 && (
+                  <span className="text-sm text-gray-500">{attachments.length} file{attachments.length > 1 ? 's' : ''} attached</span>
+                )}
+              </div>
+              {attachments.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {attachments.map((att, idx) => (
+                    <div key={idx} className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                      <FileText className="w-4 h-4 text-[#8c76f0] flex-shrink-0" />
+                      <span className="text-sm font-medium text-gray-700 truncate flex-1">{att.filename}</span>
+                      <span className="text-xs text-gray-400 flex-shrink-0">{formatFileSize(att.size)}</span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                        className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Recipient Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -926,7 +1034,7 @@ export default function BulkEmail() {
                 <Save className="w-5 h-5" /> Save as Draft
               </button>
               <button
-                onClick={() => { setShowForm(false); setFormData(emptyForm); }}
+                onClick={() => { setShowForm(false); setFormData(emptyForm); setAttachments([]); }}
                 className="px-5 py-2.5 text-gray-500 rounded-xl font-medium hover:bg-gray-100 transition-all"
               >
                 Cancel

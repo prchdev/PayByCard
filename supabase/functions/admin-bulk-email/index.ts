@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "create" || action === "update") {
-      const { campaign_name, subject, body_html, recipient_filter, filter_days, hourly_rate, scheduled_at, status, campaign_id } = body;
+      const { campaign_name, subject, body_html, recipient_filter, filter_days, hourly_rate, scheduled_at, status, campaign_id, attachments } = body;
 
       if (!campaign_name || !subject) {
         return new Response(JSON.stringify({ error: "Campaign name and subject are required" }), {
@@ -101,6 +101,7 @@ Deno.serve(async (req: Request) => {
             scheduled_at: scheduled_at || null,
             total_recipients: recipients.length,
             created_by_admin_id: admin_id,
+            attachments: attachments || [],
           })
           .select().single();
         if (error) {
@@ -125,6 +126,7 @@ Deno.serve(async (req: Request) => {
             scheduled_at: scheduled_at || null,
             total_recipients: recipients.length,
             updated_at: new Date().toISOString(),
+            attachments: attachments || [],
           })
           .eq("id", campaign_id)
           .select().single();

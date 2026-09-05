@@ -135,13 +135,14 @@ export default function AdminKycVerification() {
 
   const handleDownloadCsv = () => {
     const headers = [
-      'First Name', 'Last Name', 'Email', 'Mobile Number', 'Joined Date',
+      'First Name', 'Middle Name', 'Last Name', 'Email', 'Mobile Number', 'Joined Date',
       'PAN Number', 'PAN Status', 'Address Proof Type', 'Address Status',
       'Business Name', 'Business PAN', 'GST Number', 'Business Status',
       'Overall Status',
     ];
     const rows = filtered.map((e) => [
       e.user.first_name,
+      e.user.middle_name ?? '',
       e.user.last_name,
       e.user.email,
       e.user.mobile_number,
@@ -302,7 +303,7 @@ export default function AdminKycVerification() {
                     {paginatedEntries.map((entry) => (
                       <tr key={entry.user.id} className="hover:bg-purple-50 transition-colors">
                         <td className="px-4 py-3">
-                          <p className="font-medium text-gray-900">{entry.user.first_name} {entry.user.last_name}</p>
+                          <p className="font-medium text-gray-900">{[entry.user.first_name, entry.user.middle_name, entry.user.last_name].filter(Boolean).join(' ')}</p>
                           <p className="text-xs text-gray-500 mt-0.5">
                             Joined {new Date(entry.user.created_at).toLocaleDateString('en-IN')}
                           </p>

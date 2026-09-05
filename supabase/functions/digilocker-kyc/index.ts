@@ -1282,7 +1282,11 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const { panRecord, addressRecord } = await writeKycRecords(supabase, userId, kycData, provider.provider_name, ipAddress);
+      const resolvedIp = ipAddress ||
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        req.headers.get("x-real-ip")?.trim() ||
+        null;
+      const { panRecord, addressRecord } = await writeKycRecords(supabase, userId, kycData, provider.provider_name, resolvedIp);
 
       try {
         const attachment = await getKycPolicyAttachment();

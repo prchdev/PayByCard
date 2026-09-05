@@ -356,7 +356,7 @@ export default function ReviewModal({ entry, onClose, onReview, onAccountAction,
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div>
             <h2 className="text-lg font-bold text-slate-900">
-              {user.first_name} {user.last_name}
+              {[user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' ')}
             </h2>
             <p className="text-sm text-slate-500">{user.email} &middot; {user.mobile_number}</p>
             <div className="flex gap-2 mt-1.5">

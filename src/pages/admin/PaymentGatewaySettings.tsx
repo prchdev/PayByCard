@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Save, AlertCircle, CheckCircle, Loader2, Building2, Settings2 } from 'lucide-react';
+import { CreditCard, Save, AlertCircle, CheckCircle, Loader2, Building2, Settings2, Power } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
 
@@ -414,11 +414,25 @@ export default function PaymentGatewaySettings() {
         <div className="space-y-6">
           {gateways.map((gateway, index) => (
             <div key={gateway.id} className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] p-6 transition-all hover:shadow-xl">
-              <div className="flex items-center gap-3 pb-4 mb-6 border-b border-gray-200">
-                <div className="w-10 h-10 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-[#8c76f0]" />
+              <div className="flex items-center justify-between pb-4 mb-6 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-[#8c76f0]" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">{gateway.gateway_name}</h2>
+                  <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${gateway.is_enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {gateway.is_enabled ? 'Enabled' : 'Disabled'}
+                  </span>
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900">{gateway.gateway_name}</h2>
+                <button
+                  type="button"
+                  onClick={() => updateGateway(index, 'is_enabled', !gateway.is_enabled)}
+                  disabled={!canEdit}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${gateway.is_enabled ? 'bg-green-500' : 'bg-gray-300'}`}
+                  aria-label={gateway.is_enabled ? 'Disable gateway' : 'Enable gateway'}
+                >
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${gateway.is_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
               </div>
 
               <div className="space-y-6">

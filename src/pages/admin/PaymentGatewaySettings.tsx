@@ -423,7 +423,7 @@ export default function PaymentGatewaySettings() {
 
               <div className="space-y-6">
                 {/* Business Details */}
-                <div className="border-t border-gray-200 pt-6">
+                <div className="pt-6">
                   <div className="flex items-center gap-2 mb-4">
                     <Building2 className="w-4 h-4 text-[#8c76f0]" />
                     <h3 className="text-sm font-semibold text-gray-900">Business Details</h3>

@@ -578,7 +578,7 @@ Deno.serve(async (req: Request) => {
           .from("merchant_onboarding")
           .update({ status: "rejected", updated_at: new Date().toISOString() })
           .eq("payment_id", payment.id)
-          .in("status", ["pending", "submitted", "expired"]);
+          .in("status", ["pending", "submitted", "expired", "rejected"]);
 
         // 4. Insert refund record in payouts table
         const payoutRef = refundRef;

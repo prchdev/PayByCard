@@ -385,10 +385,18 @@ Deno.serve(async (req: Request) => {
 
       // Log the rejection
       if (record.payment_id) {
+        // Set payment back to kyc_pending so the auto-refund cron can pick it up
+        // when the timeline expires (if the beneficiary doesn't re-submit in time).
+        await supabase
+          .from("payments")
+          .update({ status: "kyc_pending", updated_at: now })
+          .eq("id", record.payment_id)
+          .in("status", ["merchant_kyc_review", "kyc_pending"]);
+
         await supabase.from("payment_logs").insert({
           payment_id: record.payment_id,
           status: "merchant_kyc_review",
-          message: `Merchant KYC rejected by admin. Reason: ${rejectionReason || "No reason provided"}. Beneficiary notified to re-submit KYC.`,
+          message: `Merchant KYC rejected by admin. Reason: ${rejectionReason || "No reason provided"}. Beneficiary notified to re-submit KYC. Payment reverted to kyc_pending for auto-refund eligibility.`,
           metadata: { admin_id: adminId, merchant_onboarding_id: recordId },
         });
       }

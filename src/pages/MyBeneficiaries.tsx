@@ -205,7 +205,7 @@ export default function MyBeneficiaries() {
       setError('Full Name must contain only letters and spaces.'); return;
     }
     if (formData.full_name.trim().split(/\s+/).length < 2) {
-      setError('Please enter your full name (First Name and Last Name).'); return;
+      setError('Please enter beneficiary full name (First Name and Last Name).'); return;
     }
     if (formData.full_name.length > 90) {
       setError('Full Name must not exceed 90 characters.'); return;

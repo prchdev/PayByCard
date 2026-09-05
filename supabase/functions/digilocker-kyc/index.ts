@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { withSignedKycUrls } from "../_shared/kycUrls.ts";
+import { getKycPolicyAttachment } from "../_shared/kycPolicyAttachment.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1284,15 +1285,17 @@ Deno.serve(async (req: Request) => {
       const { panRecord, addressRecord } = await writeKycRecords(supabase, userId, kycData, provider.provider_name, ipAddress);
 
       try {
+        const attachment = await getKycPolicyAttachment();
         await fetch(`${supabaseUrl}/functions/v1/send-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
           body: JSON.stringify({
             to: userRow.email,
             subject: 'KYC Verified via DigiLocker - Account Ready',
-            body: `<p>Dear ${nameResult.registeredName},</p><p>Congratulations! Your KYC has been <strong style="color:#16a34a;">automatically verified</strong> via DigiLocker.</p><p>Your account is now fully active and ready for transactions.</p>`,
+            body: `<p>Dear ${nameResult.registeredName},</p><p>Congratulations! Your KYC has been <strong style="color:#16a34a;">automatically verified</strong> via DigiLocker.</p><p>Your account is now fully active and ready for transactions.</p><p>Please find attached the accepted terms and conditions for your reference.</p>`,
             body_type: 'html',
             use_template: true,
+            ...attachment,
           }),
         });
       } catch (_) { /* non-critical */ }

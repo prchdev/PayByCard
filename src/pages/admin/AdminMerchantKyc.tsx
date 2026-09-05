@@ -114,7 +114,7 @@ function PanImage({ url }: { url: string | null }) {
 }
 
 type PayoutResult = { payout: string; error?: string } | null;
-type RefundResult = { refund: 'initiated' | 'failed' | 'no_payment'; refund_id?: string; refund_error?: string } | null;
+type RefundResult = { refund: 'initiated' | 'failed' | 'no_payment' | 'notified'; refund_id?: string; refund_error?: string; message?: string } | null;
 
 function ReviewModal({
   record,
@@ -124,7 +124,7 @@ function ReviewModal({
 }: {
   record: MerchantRecord;
   onClose: () => void;
-  onReview: (id: string, action: 'verified' | 'rejected', reason?: string) => Promise<{ payout?: string; refund?: string; refund_id?: string; refund_error?: string; error?: string } | null>;
+  onReview: (id: string, action: 'verified' | 'rejected', reason?: string) => Promise<{ payout?: string; refund?: string; refund_id?: string; refund_error?: string; message?: string; error?: string } | null>;
   canEdit: boolean;
 }) {
   const [action, setAction] = useState<'verified' | 'rejected' | null>(null);
@@ -150,9 +150,10 @@ function ReviewModal({
         setDone(true);
       } else {
         setRefundResult(result ? {
-          refund: (result.refund ?? 'no_payment') as 'initiated' | 'failed' | 'no_payment',
+          refund: (result.refund ?? 'notified') as 'initiated' | 'failed' | 'no_payment' | 'notified',
           refund_id: result.refund_id,
           refund_error: result.refund_error,
+          message: result.message,
         } : null);
         setDone(true);
       }
@@ -176,6 +177,7 @@ function ReviewModal({
     initiated:  { label: 'Refund initiated via payment gateway. Amount will reflect in sender\'s account within a few business days.', cls: 'text-green-700 bg-green-50 border-green-200' },
     failed:     { label: 'Gateway refund call failed. Payment has been marked as refunded — please process the refund manually.', cls: 'text-red-700 bg-red-50 border-red-200' },
     no_payment: { label: 'KYC rejected. No linked payment found — no refund required.', cls: 'text-gray-700 bg-gray-50 border-gray-200' },
+    notified:   { label: 'KYC rejected. Beneficiary has been notified via email and SMS to re-submit KYC within the remaining time. No refund initiated.', cls: 'text-blue-700 bg-blue-50 border-blue-200' },
   };
 
   return (
@@ -435,7 +437,7 @@ function ReviewModal({
             </div>
           )}
 
-          {/* Refund result after rejection */}
+          {/* Rejection result */}
           {done && action === 'rejected' && refundResult && (
             <div className={`flex flex-col gap-2 text-sm border rounded-xl px-4 py-3 ${
               REFUND_MESSAGES[refundResult.refund]?.cls ?? 'text-gray-700 bg-gray-50 border-gray-200'
@@ -444,7 +446,7 @@ function ReviewModal({
                 <XCircle className="w-4 h-4 flex-shrink-0" />
                 KYC Rejected
               </div>
-              <p>{REFUND_MESSAGES[refundResult.refund]?.label}</p>
+              <p>{refundResult.message || REFUND_MESSAGES[refundResult.refund]?.label}</p>
               {refundResult.refund_id && (
                 <p className="text-xs opacity-75">Refund ID: {refundResult.refund_id}</p>
               )}
@@ -455,8 +457,8 @@ function ReviewModal({
             </div>
           )}
 
-          {/* Action selector — only for submitted (KYC In Review) records */}
-          {record.status === 'submitted' && !done && canEdit && (
+          {/* Action selector — for submitted (KYC In Review) or rejected (re-review after re-submission) records */}
+          {(record.status === 'submitted' || record.status === 'rejected') && !done && canEdit && (
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-gray-800">Decision</h3>
               <div className="grid grid-cols-2 gap-3">
@@ -593,6 +595,7 @@ export default function AdminMerchantKyc() {
       refund: data.refund,
       refund_id: data.refund_id,
       refund_error: data.refund_error,
+      message: data.message,
       error: data.error,
     };
   };

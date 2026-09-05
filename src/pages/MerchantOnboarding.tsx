@@ -880,7 +880,7 @@ export default function MerchantOnboarding() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<'pending' | 'verified' | 'expired' | 'refunded' | 'error'>('pending');
+  const [status, setStatus] = useState<'pending' | 'verified' | 'expired' | 'refunded' | 'rejected' | 'error'>('pending');
   const [data, setData] = useState<OnboardingData | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -913,6 +913,13 @@ export default function MerchantOnboarding() {
       if (result.status === 'verified') { setStatus('verified'); }
       else if (result.status === 'expired') { setStatus('expired'); }
       else if (result.status === 'refunded') { setStatus('refunded'); }
+      else if (result.status === 'rejected') {
+        setStatus('rejected');
+        setData(result.data);
+        setEmail(result.data.email || '');
+        setMobile(result.data.mobile || '');
+        setPanNumber(result.data.pan_number || '');
+      }
       else {
         setStatus('pending'); setData(result.data);
         setEmail(result.data.email || '');
@@ -1037,6 +1044,40 @@ export default function MerchantOnboarding() {
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Payment Refunded</h2>
             <p className="text-gray-600">This payment has been refunded to the sender.</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (status === 'rejected') {
+      const rejectionReason = (data as any)?.rejection_reason || 'Your KYC submission did not meet our requirements.';
+      const expiresAt = (data as any)?.expires_at;
+      const remainingTime = expiresAt
+        ? new Date(expiresAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+        : '';
+      return (
+        <div className="flex-1 py-10 px-4">
+          <div className="max-w-lg mx-auto space-y-4">
+            <div className="bg-white rounded-2xl border-2 border-red-200 p-8 text-center shadow-xl">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <XCircle className="w-8 h-8 text-red-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">KYC Rejected</h2>
+              <p className="text-gray-600 mb-4">Your KYC submission has been rejected for the following reason:</p>
+              <p className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 text-sm mb-4">{rejectionReason}</p>
+              <p className="text-gray-600 mb-2">Please re-submit your KYC with the correct details.</p>
+              {remainingTime && (
+                <p className="text-amber-700 text-sm font-medium">
+                  You have until {remainingTime} to complete your KYC. After that, the payment will be automatically refunded to the sender.
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => { setStatus('pending'); setSubmitted(false); }}
+              className="w-full px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg"
+            >
+              Re-submit KYC
+            </button>
           </div>
         </div>
       );

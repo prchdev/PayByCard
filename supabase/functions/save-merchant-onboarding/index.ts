@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (record.status !== "pending") {
+    if (record.status !== "pending" && record.status !== "rejected") {
       return new Response(
         JSON.stringify({ error: "This form has already been submitted or expired" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

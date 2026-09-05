@@ -55,6 +55,39 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (record.status === "rejected") {
+      const now = new Date();
+      const expiresAt = new Date(record.expires_at);
+      const expired = now > expiresAt;
+
+      if (expired) {
+        return new Response(
+          JSON.stringify({ status: "expired", message: "This link has expired" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          status: "rejected",
+          message: "KYC was rejected. Please re-submit.",
+          data: {
+            id: record.id,
+            sender_name: record.sender_name,
+            category_name: record.category_name,
+            beneficiary_name: record.beneficiary_name,
+            email: record.email,
+            mobile: record.mobile,
+            pan_number: record.pan_number,
+            pan_photo_url: record.pan_photo_url,
+            expires_at: record.expires_at,
+            rejection_reason: record.rejection_reason || null,
+          },
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const now = new Date();
     const expiresAt = new Date(record.expires_at);
 

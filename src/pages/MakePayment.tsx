@@ -719,7 +719,7 @@ export default function MakePayment() {
             userId,
             beneficiaryId: selectedBeneficiary?.id,
             businessCategoryId: selectedCategory?.id,
-            paymentOptionId: selectedPaymentOption.category_id,
+            paymentOptionId: selectedPaymentOption.id,
             gatewayId: selectedPaymentOption.gateway_id,
             cardType: selectedPaymentOption.card_type,
             amount: chargesDetails?.amount,

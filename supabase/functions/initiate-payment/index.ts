@@ -85,8 +85,8 @@ Deno.serve(async (req: Request) => {
       },
       body: JSON.stringify({
         amount: parsedAmount,
-        payment_option_id: paymentOptionId,
-        business_category_id: businessCategoryId || null,
+        categoryId: paymentOptionId,
+        gatewayId: gatewayId,
       }),
     });
     if (!chargesRes.ok) {

@@ -14,6 +14,7 @@ const CATEGORIES = {
     'Dashboard Data is Not Loading Properly',
     'Not Getting Notification Emails',
     'Not Getting Notification SMS',
+    'Delete Account',
   ],
   'KYC Related': [
     'KYC Pending for Long Time',

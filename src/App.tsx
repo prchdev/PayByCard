@@ -59,21 +59,6 @@ import KycMethodSettings from './pages/admin/KycMethodSettings';
 import DashboardNotification from './pages/admin/DashboardNotification';
 import AdminMerchantKyc from './pages/admin/AdminMerchantKyc';
 import DigiLockerCallback from './pages/DigiLockerCallback';
-import MobileHome from './pages/mobile/MobileHome';
-import MobileLogin from './pages/mobile/MobileLogin';
-import MobileRegister from './pages/mobile/MobileRegister';
-import MobileVerifyOTP from './pages/mobile/MobileVerifyOTP';
-import MobileForgotPassword from './pages/mobile/MobileForgotPassword';
-import MobileDashboard from './pages/mobile/MobileDashboard';
-import MobileMakePayment from './pages/mobile/MobileMakePayment';
-import MobileMyTransactions from './pages/mobile/MobileMyTransactions';
-import MobileMyBeneficiaries from './pages/mobile/MobileMyBeneficiaries';
-import MobileMyBankAccounts from './pages/mobile/MobileMyBankAccounts';
-import MobileKYCVerification from './pages/mobile/MobileKYCVerification';
-import MobileHelpSupport from './pages/mobile/MobileHelpSupport';
-import MobileChangePassword from './pages/mobile/MobileChangePassword';
-import MobileMore from './pages/mobile/MobileMore';
-
 function MainLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -171,22 +156,6 @@ function App() {
           <Route path="/admin/bulk-sms" element={<BulkSMS />} />
           <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
           <Route path="/digilocker-callback" element={<DigiLockerCallback />} />
-
-          {/* Mobile app routes */}
-          <Route path="/mobile" element={<MobileHome />} />
-          <Route path="/mobile/login" element={<MobileLogin />} />
-          <Route path="/mobile/register" element={<MobileRegister />} />
-          <Route path="/mobile/verify-otp" element={<MobileVerifyOTP />} />
-          <Route path="/mobile/forgot-password" element={<MobileForgotPassword />} />
-          <Route path="/mobile/dashboard" element={<MobileDashboard />} />
-          <Route path="/mobile/make-payment" element={<MobileMakePayment />} />
-          <Route path="/mobile/my-transactions" element={<MobileMyTransactions />} />
-          <Route path="/mobile/my-beneficiaries" element={<MobileMyBeneficiaries />} />
-          <Route path="/mobile/my-bank-accounts" element={<MobileMyBankAccounts />} />
-          <Route path="/mobile/kyc-verification" element={<MobileKYCVerification />} />
-          <Route path="/mobile/help-support" element={<MobileHelpSupport />} />
-          <Route path="/mobile/change-password" element={<MobileChangePassword />} />
-          <Route path="/mobile/more" element={<MobileMore />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

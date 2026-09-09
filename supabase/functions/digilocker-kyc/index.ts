@@ -990,16 +990,23 @@ async function fetchDigiLockerData(
     } else {
       try {
         const xml = await fetchDocumentXml(accessToken, dlDoc.uri, 'dl');
-        const parsed = parseDlXml(xml);
+        let parsed = parseDlXml(xml);
         console.log('[DL] parseDlXml result:', JSON.stringify({ name: parsed.name, dob: parsed.dob, dlNumber: parsed.dlNumber, district: parsed.district, state: parsed.state, pincode: parsed.pincode, house: parsed.house, locality: parsed.locality }));
-        // Accept if we have any address data (house may hold a full address string)
+        if (!parsed.district && !parsed.pincode && !parsed.house && !parsed.locality) {
+          console.error('DL XML parsed but no address fields. Trying generic parser. XML snippet:', xml.slice(0, 500));
+          const genericParsed = parseCertificateAddressXml(xml);
+          if (hasAddress(genericParsed)) {
+            parsed = { ...genericParsed, dlNumber: parsed.dlNumber };
+            console.log('[DL] generic parser succeeded:', JSON.stringify({ district: parsed.district, state: parsed.state, pincode: parsed.pincode, house: parsed.house }));
+          }
+        }
         if (parsed.district || parsed.pincode || parsed.house || parsed.locality) {
           addrProofType = 'driving_license';
           addrIdNumber = parsed.dlNumber || extractCertIdNumber(xml, 'dl');
           addrRawXml = xml;
           addrParsed = parsed;
         } else {
-          console.error('DL XML parsed but no address fields found. XML snippet:', xml.slice(0, 500));
+          console.error('DL XML: both parsers failed to extract address. Full XML length:', xml.length);
           dlAttemptedButFailed = true;
         }
       } catch (e) {

@@ -288,8 +288,11 @@ async function digiLockerTokenExchange(
 }
 
 // ── DigiLocker direct: fetch issued documents list ────────────────────────────
-async function fetchIssuedDocuments(accessToken: string): Promise<any[]> {
-  const res = await fetch(`${DIGILOCKER_API}/oauth2/2/files/issued`, {
+async function fetchIssuedDocuments(accessToken: string, isV2: boolean = false): Promise<any[]> {
+  const endpoint = isV2
+    ? `${DIGILOCKER_API}/oauth2/2/files/issued`
+    : `${DIGILOCKER_API}/oauth2/1/files/issued`;
+  const res = await fetch(endpoint, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
@@ -306,8 +309,11 @@ async function fetchIssuedDocuments(accessToken: string): Promise<any[]> {
 }
 
 // ── DigiLocker direct: fetch a document XML by URI ───────────────────────────
-async function fetchDocumentXml(accessToken: string, uri: string, label: string): Promise<string> {
-  const res = await fetch(`${DIGILOCKER_API}/oauth2/1/xml/${encodeURIComponent(uri)}`, {
+async function fetchDocumentXml(accessToken: string, uri: string, label: string, isV2: boolean = false): Promise<string> {
+  const endpoint = isV2
+    ? `${DIGILOCKER_API}/oauth2/2/xml/${encodeURIComponent(uri)}`
+    : `${DIGILOCKER_API}/oauth2/1/xml/${encodeURIComponent(uri)}`;
+  const res = await fetch(endpoint, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
@@ -357,8 +363,11 @@ async function storeXmlFile(
 }
 
 // ── DigiLocker direct: fetch eAadhaar XML ────────────────────────────────────
-async function fetchEAadhaarXml(accessToken: string): Promise<string> {
-  const res = await fetch(`${DIGILOCKER_API}/oauth2/3/xml/eaadhaar`, {
+async function fetchEAadhaarXml(accessToken: string, isV2: boolean = false): Promise<string> {
+  const endpoint = isV2
+    ? `${DIGILOCKER_API}/oauth2/2/xml/eaadhaar`
+    : `${DIGILOCKER_API}/oauth2/3/xml/eaadhaar`;
+  const res = await fetch(endpoint, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
@@ -475,8 +484,11 @@ function parsePanXml(xml: string) {
 }
 
 // ── DigiLocker direct: fetch user details ──────────────────────────────────
-async function fetchUserDetails(accessToken: string): Promise<{ name: string; dob: string; gender: string }> {
-  const res = await fetch(`${DIGILOCKER_API}/oauth2/1/user`, {
+async function fetchUserDetails(accessToken: string, isV2: boolean = false): Promise<{ name: string; dob: string; gender: string }> {
+  const endpoint = isV2
+    ? `${DIGILOCKER_API}/oauth2/2/user`
+    : `${DIGILOCKER_API}/oauth2/1/user`;
+  const res = await fetch(endpoint, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   let data: any;
@@ -498,6 +510,7 @@ async function fetchDigiLockerData(
   merchantId: string,
   codeVerifier?: string,
 ): Promise<KycData> {
+  const isV2 = !!codeVerifier;
   const tokenData = await digiLockerTokenExchange(apiKey, apiSecret, authCode, redirectUri, codeVerifier);
   const { access_token: accessToken, eaadhaar: eaadhaarFlag } = tokenData;
 
@@ -508,7 +521,7 @@ async function fetchDigiLockerData(
     .filter((s: string) => s.startsWith('issued/'))
     .map((s: string) => s.replace('issued/', ''));
 
-  const docs = await fetchIssuedDocuments(accessToken);
+  const docs = await fetchIssuedDocuments(accessToken, isV2);
 
   const allUris = new Set(docs.map((d: any) => d.uri).filter(Boolean));
   for (const uri of scopeUris) {
@@ -551,14 +564,14 @@ async function fetchDigiLockerData(
   let aadhaarRawXml: string | null = null;
 
   try {
-    const xml = await fetchEAadhaarXml(accessToken);
+    const xml = await fetchEAadhaarXml(accessToken, isV2);
     aadhaarRawXml = xml;
     aadhaarParsed = parseAadhaarXml(xml);
   } catch { /* requires special partner privilege or eaadhaar not authorised */ }
 
   if (!aadhaarParsed && aadhaarDoc?.uri) {
     try {
-      const xml = await fetchDocumentXml(accessToken, aadhaarDoc.uri, 'aadhaar');
+      const xml = await fetchDocumentXml(accessToken, aadhaarDoc.uri, 'aadhaar', isV2);
       aadhaarRawXml = xml;
       aadhaarParsed = parseAadhaarXml(xml);
     } catch { /* ignore */ }
@@ -568,7 +581,7 @@ async function fetchDigiLockerData(
   let userDetailsDob = '';
   if (!aadhaarParsed) {
     try {
-      const ud = await fetchUserDetails(accessToken);
+      const ud = await fetchUserDetails(accessToken, isV2);
       userDetailsName = ud.name;
       userDetailsDob = normalizeDob(ud.dob);
     } catch { /* non-fatal */ }
@@ -578,7 +591,7 @@ async function fetchDigiLockerData(
   let panRawXml: string | null = null;
   if (panDoc?.uri) {
     try {
-      const xml = await fetchDocumentXml(accessToken, panDoc.uri, 'pan');
+      const xml = await fetchDocumentXml(accessToken, panDoc.uri, 'pan', isV2);
       panRawXml = xml;
       panParsed = parsePanXml(xml);
     } catch { /* ignore */ }
@@ -599,7 +612,7 @@ async function fetchDigiLockerData(
 
   if (!addrParsed && passportDoc?.uri) {
     try {
-      const xml = await fetchDocumentXml(accessToken, passportDoc.uri, 'passport');
+      const xml = await fetchDocumentXml(accessToken, passportDoc.uri, 'passport', isV2);
       const parsed = parseCertificateAddressXml(xml);
       if (parsed.district || parsed.state || parsed.pincode || parsed.house) {
         addrProofType = 'passport';
@@ -612,7 +625,7 @@ async function fetchDigiLockerData(
 
   if (!addrParsed && dlDoc?.uri) {
     try {
-      const xml = await fetchDocumentXml(accessToken, dlDoc.uri, 'dl');
+      const xml = await fetchDocumentXml(accessToken, dlDoc.uri, 'dl', isV2);
       const parsed = parseCertificateAddressXml(xml);
       if (parsed.district || parsed.state || parsed.pincode || parsed.house) {
         addrProofType = 'driving_license';
@@ -625,7 +638,7 @@ async function fetchDigiLockerData(
 
   if (!addrParsed && voterDoc?.uri) {
     try {
-      const xml = await fetchDocumentXml(accessToken, voterDoc.uri, 'voterid');
+      const xml = await fetchDocumentXml(accessToken, voterDoc.uri, 'voterid', isV2);
       const parsed = parseCertificateAddressXml(xml);
       if (parsed.district || parsed.state || parsed.pincode || parsed.house) {
         addrProofType = 'voter_id';
@@ -813,8 +826,9 @@ Deno.serve(async (req: Request) => {
         const pkceParams = codeChallenge
           ? `&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256`
           : '';
+        const oauthVersion = codeChallenge ? '2' : '1';
         const authUrl =
-          `${DIGILOCKER_API}/oauth2/1/authorize` +
+          `${DIGILOCKER_API}/oauth2/${oauthVersion}/authorize` +
           `?response_type=code&client_id=${apiKey}` +
           `&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}` +
           pkceParams;

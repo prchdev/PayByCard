@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { SESSION_HEADER } from "../_shared/session.ts";
+import { SESSION_HEADER, readSessionToken } from "../_shared/session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,8 +14,15 @@ const ALLOWED_FILE_KEYS = new Set([
   "pan_photo",
   "address_proof_front",
   "address_proof_back",
+  "address_front",
+  "address_back",
   "business_pan_photo",
+  "company_pan_photo",
   "gst_certificate",
+  "inc_certificate",
+  "loa",
+  "moa",
+  "aoa",
   "cancelled_cheque",
   "business_photo",
   "additional_document",
@@ -77,13 +84,8 @@ Deno.serve(async (req: Request) => {
     }
 
     // F12: userId comes from the verified session token, not the request body.
-    const token = req.headers.get(SESSION_HEADER);
-    const userId = token
-      ? (() => {
-          const parts = token.split(".");
-          return parts.length >= 4 ? parts[1] : null;
-        })()
-      : null;
+    const session = await readSessionToken(req.headers.get(SESSION_HEADER));
+    const userId = session?.kind === "user" ? session.id : null;
 
     if (!userId) {
       return new Response(JSON.stringify({ error: "Authentication required" }), {

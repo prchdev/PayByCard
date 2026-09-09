@@ -34,9 +34,25 @@ export function useKycData(userId: string | null) {
     }
   }, [userId]);
 
+  const refresh = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/get-kyc-data`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch KYC data');
+      setKycData(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
+    }
+  }, [userId]);
+
   useEffect(() => { fetchKycData(); }, [fetchKycData]);
 
-  return { kycData, loading, error, refetch: fetchKycData };
+  return { kycData, loading, error, refetch: fetchKycData, refresh };
 }
 
 export async function uploadKycFile(

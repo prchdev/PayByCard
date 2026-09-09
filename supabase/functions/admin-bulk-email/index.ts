@@ -335,7 +335,7 @@ async function processEmailCampaignBatch(
         subject: personalizedSubject,
         body: personalizedBody,
         body_type: "html",
-        use_template: true,
+        use_template: false,
       };
 
       if (campaign.attachments && campaign.attachments.length > 0) {

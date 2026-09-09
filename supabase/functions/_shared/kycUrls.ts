@@ -16,6 +16,23 @@ const URL_PATTERN = new RegExp(
   "g",
 );
 
+function extractPath(fullUrl: string): string | null {
+  let rawPath: string | null = null;
+  if (fullUrl.includes(PUBLIC_MARKER)) {
+    rawPath = fullUrl.split(PUBLIC_MARKER)[1];
+  } else if (fullUrl.includes(SIGN_MARKER)) {
+    rawPath = fullUrl.split(SIGN_MARKER)[1];
+  }
+  if (!rawPath) return null;
+  let path = rawPath.split("?")[0];
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    // keep the raw form
+  }
+  return path;
+}
+
 export async function signKycUrlsInText(text: string): Promise<string> {
   if (!text || (!text.includes(PUBLIC_MARKER) && !text.includes(SIGN_MARKER))) return text;
 
@@ -27,29 +44,23 @@ export async function signKycUrlsInText(text: string): Promise<string> {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  const signedResults = await Promise.all(
+    found.map(async (fullUrl) => {
+      const path = extractPath(fullUrl);
+      if (!path) return null;
+      try {
+        const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGN_TTL_SECONDS);
+        return data?.signedUrl ? { original: fullUrl, signed: data.signedUrl } : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+
   let out = text;
-  for (const fullUrl of found) {
-    let path: string | null = null;
-    if (fullUrl.includes(PUBLIC_MARKER)) {
-      const rawPath = fullUrl.split(PUBLIC_MARKER)[1];
-      if (!rawPath) continue;
-      path = rawPath.split("?")[0];
-    } else if (fullUrl.includes(SIGN_MARKER)) {
-      const rawPath = fullUrl.split(SIGN_MARKER)[1];
-      if (!rawPath) continue;
-      path = rawPath.split("?")[0];
-    }
-    if (!path) continue;
-    try {
-      path = decodeURIComponent(path);
-    } catch {
-      // keep the raw form
-    }
-    try {
-      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGN_TTL_SECONDS);
-      if (data?.signedUrl) out = out.split(fullUrl).join(data.signedUrl);
-    } catch {
-      // if signing fails the original (non-working) URL is left in place
+  for (const result of signedResults) {
+    if (result) {
+      out = out.split(result.original).join(result.signed);
     }
   }
   return out;

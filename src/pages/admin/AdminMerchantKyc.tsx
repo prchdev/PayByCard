@@ -200,9 +200,9 @@ function ReviewModal({
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Payment Info */}
+          {/* Payment & Bank Info */}
           <div className="bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-[#8c76f0]/30 rounded-2xl p-4">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Payment Details</h3>
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Payment &amp; Bank Details</h3>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <p className="text-gray-500 text-xs">Sender</p>
@@ -219,6 +219,22 @@ function ReviewModal({
               <div>
                 <p className="text-gray-500 text-xs">Amount</p>
                 <p className="font-medium text-gray-900">{record.amount != null ? `₹${Number(record.amount).toFixed(2)}` : '—'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">Account Number</p>
+                <p className="font-medium text-gray-900 font-mono">{record.bank_account_number || '—'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">IFSC Code</p>
+                <p className="font-medium text-gray-900 font-mono">{record.bank_ifsc || '—'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">Bank Name</p>
+                <p className="font-medium text-gray-900">{record.bank_name || '—'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">Branch Name</p>
+                <p className="font-medium text-gray-900">{record.bank_branch || '—'}</p>
               </div>
             </div>
           </div>
@@ -243,24 +259,6 @@ function ReviewModal({
                 <p className="text-gray-500 text-xs">PAN Number</p>
                 <p className="font-medium text-gray-900 font-mono tracking-wider">{record.pan_number || '—'}</p>
               </div>
-              {record.bank_name && (
-                <div>
-                  <p className="text-gray-500 text-xs">Bank</p>
-                  <p className="font-medium text-gray-900">{record.bank_name}</p>
-                </div>
-              )}
-              {record.bank_account_number && (
-                <div>
-                  <p className="text-gray-500 text-xs">Account No.</p>
-                  <p className="font-medium text-gray-900 font-mono">{record.bank_account_number}</p>
-                </div>
-              )}
-              {record.bank_ifsc && (
-                <div>
-                  <p className="text-gray-500 text-xs">IFSC</p>
-                  <p className="font-medium text-gray-900 font-mono">{record.bank_ifsc}</p>
-                </div>
-              )}
               <div>
                 <p className="text-gray-500 text-xs">Status</p>
                 <StatusBadge status={record.status} />

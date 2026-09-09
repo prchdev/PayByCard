@@ -42,7 +42,6 @@ function downloadTemplate() {
 }
 
 function parseAmount(raw: string): number {
-  // Strip "INR " prefix, commas, and whitespace
   const cleaned = raw.replace(/INR/i, '').replace(/,/g, '').trim();
   return parseFloat(cleaned);
 }
@@ -64,21 +63,19 @@ function parseXlsx(file: File, callback: (rows: ParsedRow[], headerError?: strin
       const rows: ParsedRow[] = [];
       for (let i = 0; i < jsonRows.length; i++) {
         const r = jsonRows[i];
-        // Try multiple possible header variations
         const crn = String(r['CRN'] ?? r['crn'] ?? '').trim();
         const txnDate = String(r['Transaction Date'] ?? r['transaction_date'] ?? r['TransactionDate'] ?? '').trim();
         const utr = String(r['UTR'] ?? r['utr'] ?? '').trim();
         const amountRaw = String(r['Amount'] ?? r['amount'] ?? '').trim();
         const status = String(r['Status'] ?? r['status'] ?? '').trim();
 
-        // Skip completely empty rows
         if (!crn && !txnDate && !utr && !amountRaw && !status) continue;
 
         const reference = crn.replace(/-/g, '');
         const amount = parseAmount(amountRaw);
 
         const row: ParsedRow = {
-          row_number: i + 2, // +2 because Excel row 1 is header, row 2 is first data
+          row_number: i + 2,
           crn,
           reference,
           transaction_date: txnDate,
@@ -88,7 +85,6 @@ function parseXlsx(file: File, callback: (rows: ParsedRow[], headerError?: strin
           status,
         };
 
-        // Client-side validation
         if (!crn) row.clientError = 'CRN is empty';
         else if (crn === '-') row.clientError = 'CRN is "-" (no reference)';
         else if (!txnDate) row.clientError = 'Transaction Date is empty';
@@ -130,13 +126,13 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
   const [summary, setSummary] = useState<{ total: number; succeeded: number; failed: number } | null>(null);
   const [showErrors, setShowErrors] = useState(true);
   const [apiError, setApiError] = useState('');
-  const [preview, setPreview] = useState<{ toUpdate: ParsedRow[]; skipped: ParsedRow[] } | null>(null);
-  const [confirming, setConfirming] = useState(false);
+  const [checkingDb, setCheckingDb] = useState(false);
+  const [dbChecked, setDbChecked] = useState(false);
+  const [eligibleRows, setEligibleRows] = useState<ParsedRow[]>([]);
+  const [ineligibleRows, setIneligibleRows] = useState<ParsedRow[]>([]);
 
   const clientErrorRows = parsedRows.filter(r => r.clientError);
   const hasClientErrors = clientErrorRows.length > 0;
-
-  // Rows eligible for update: Status is "Successful" and no client errors
   const successfulRows = parsedRows.filter(r => !r.clientError && r.status.toLowerCase() === 'successful');
   const failedStatusRows = parsedRows.filter(r => !r.clientError && r.status.toLowerCase() !== 'successful');
 
@@ -151,7 +147,9 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
     setResults(null);
     setSummary(null);
     setApiError('');
-    setPreview(null);
+    setDbChecked(false);
+    setEligibleRows([]);
+    setIneligibleRows([]);
 
     parseXlsx(file, (rows, headerError) => {
       if (headerError) { setParseError(headerError); setParsedRows([]); return; }
@@ -172,10 +170,10 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
     e.target.value = '';
   };
 
-  // Step 1: Generate preview by calling backend with dry_run
-  const handlePreview = async () => {
-    if (successfulRows.length === 0) return;
-    setConfirming(true);
+  // Automatically check DB status after parsing
+  const checkDbStatus = useCallback(async (rowsToCheck: ParsedRow[]) => {
+    if (rowsToCheck.length === 0) return;
+    setCheckingDb(true);
     setApiError('');
     try {
       const res = await fetch(
@@ -186,7 +184,7 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
           body: JSON.stringify({
             adminId,
             dry_run: true,
-            rows: successfulRows.map(r => ({
+            rows: rowsToCheck.map(r => ({
               reference: r.reference,
               payout_date: r.transaction_date,
               utr_reference: r.utr,
@@ -196,36 +194,41 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
         }
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Preview failed');
+      if (!res.ok) throw new Error(data.error || 'Database check failed');
 
-      // Backend returns which rows can be updated and which will be skipped
-      const toUpdate: ParsedRow[] = [];
-      const skipped: ParsedRow[] = [];
-      const previewMap = new Map<string, string>();
+      const previewMap = new Map<string, { action: string; reason?: string; current_status?: string }>();
       (data.preview || []).forEach((p: { reference: string; action: string; reason?: string; current_status?: string }) => {
-        previewMap.set(p.reference, p.reason || p.action);
+        previewMap.set(p.reference, p);
       });
 
-      successfulRows.forEach(r => {
-        const previewResult = previewMap.get(r.reference);
-        if (previewResult && previewResult !== 'will_update') {
-          skipped.push({ ...r, clientError: previewResult });
+      const eligible: ParsedRow[] = [];
+      const ineligible: ParsedRow[] = [];
+      rowsToCheck.forEach(r => {
+        const dbResult = previewMap.get(r.reference);
+        if (dbResult && dbResult.action === 'will_update') {
+          eligible.push(r);
         } else {
-          toUpdate.push(r);
+          ineligible.push({ ...r, clientError: dbResult?.reason || 'Not eligible for update' });
         }
       });
 
-      setPreview({ toUpdate, skipped });
+      setEligibleRows(eligible);
+      setIneligibleRows(ineligible);
+      setDbChecked(true);
     } catch (err) {
-      setApiError(err instanceof Error ? err.message : 'Preview failed');
+      setApiError(err instanceof Error ? err.message : 'Database check failed');
     } finally {
-      setConfirming(false);
+      setCheckingDb(false);
     }
-  };
+  }, [adminId]);
 
-  // Step 2: Actually process after confirmation
+  // Trigger DB check automatically when successful rows are available
+  if (successfulRows.length > 0 && !dbChecked && !checkingDb && !apiError) {
+    checkDbStatus(successfulRows);
+  }
+
   const handleProcess = async () => {
-    if (!preview || preview.toUpdate.length === 0) return;
+    if (eligibleRows.length === 0) return;
     setProcessing(true);
     setApiError('');
     try {
@@ -236,7 +239,7 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
           headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             adminId,
-            rows: preview.toUpdate.map(r => ({
+            rows: eligibleRows.map(r => ({
               reference: r.reference,
               payout_date: r.transaction_date,
               utr_reference: r.utr,
@@ -260,11 +263,13 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
   const resetFile = () => {
     setParsedRows([]);
     setParseError('');
-    setPreview(null);
     setResults(null);
     setSummary(null);
     setApiError('');
     setFileName('');
+    setDbChecked(false);
+    setEligibleRows([]);
+    setIneligibleRows([]);
   };
 
   const resultFailed = results?.filter(r => !r.success) ?? [];
@@ -310,7 +315,7 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
           )}
 
           {/* Drop zone */}
-          {!results && !preview && (
+          {!results && (
             <div
               onDragOver={e => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
@@ -350,8 +355,16 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
             </div>
           )}
 
-          {/* Parsed rows preview (before generating confirmation preview) */}
-          {parsedRows.length > 0 && !results && !preview && (
+          {/* Loading state while checking DB */}
+          {checkingDb && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 text-[#8c76f0] animate-spin mr-2" />
+              <p className="text-sm text-gray-600">Checking transaction status in database...</p>
+            </div>
+          )}
+
+          {/* Parsed rows with DB-checked results */}
+          {parsedRows.length > 0 && !results && !checkingDb && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-gray-700">
@@ -359,7 +372,17 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
                   {hasClientErrors && (
                     <span className="ml-2 text-red-600 font-semibold">· {clientErrorRows.length} with errors</span>
                   )}
-                  <span className="ml-2 text-green-600 font-semibold">· {successfulRows.length} Successful</span>
+                  {dbChecked && (
+                    <>
+                      <span className="ml-2 text-green-600 font-semibold">· {eligibleRows.length} eligible for update</span>
+                      {ineligibleRows.length > 0 && (
+                        <span className="ml-2 text-amber-600 font-semibold">· {ineligibleRows.length} already completed/refunded</span>
+                      )}
+                    </>
+                  )}
+                  {!dbChecked && successfulRows.length > 0 && (
+                    <span className="ml-2 text-gray-500 font-semibold">· {successfulRows.length} Successful (checking...)</span>
+                  )}
                   {failedStatusRows.length > 0 && (
                     <span className="ml-2 text-gray-500 font-semibold">· {failedStatusRows.length} other status (skipped)</span>
                   )}
@@ -397,10 +420,62 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
                 </div>
               )}
 
-              {successfulRows.length > 0 && (
+              {/* Eligible rows (DB confirmed not completed/refunded) */}
+              {dbChecked && eligibleRows.length > 0 && (
+                <div className="border border-green-200 rounded-xl overflow-hidden">
+                  <div className="px-4 py-2 bg-green-50 border-b border-green-200 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <p className="text-xs font-semibold text-green-800">{eligibleRows.length} transactions eligible for update</p>
+                  </div>
+                  <div className="overflow-x-auto max-h-52 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          {['#', 'CRN', 'Txn Date', 'UTR', 'Amount', 'Status'].map(h => (
+                            <th key={h} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {eligibleRows.map(r => (
+                          <tr key={r.row_number} className="hover:bg-green-50/30">
+                            <td className="px-3 py-2 text-gray-400">{r.row_number}</td>
+                            <td className="px-3 py-2 font-mono font-semibold text-[#8c76f0]">{r.crn}</td>
+                            <td className="px-3 py-2 text-gray-700">{r.transaction_date}</td>
+                            <td className="px-3 py-2 font-mono text-gray-700">{r.utr}</td>
+                            <td className="px-3 py-2 font-semibold text-gray-900">₹{r.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-3 py-2"><span className="text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full text-xs font-medium">{r.status}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Ineligible rows (already completed/refunded/not found) */}
+              {dbChecked && ineligibleRows.length > 0 && (
+                <div className="border border-amber-200 rounded-xl overflow-hidden">
+                  <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                    <p className="text-xs font-semibold text-amber-800">{ineligibleRows.length} transactions will be skipped (already completed/refunded or not found)</p>
+                  </div>
+                  <div className="divide-y divide-amber-100 max-h-40 overflow-y-auto">
+                    {ineligibleRows.map(r => (
+                      <div key={r.row_number} className="px-4 py-2 flex items-start gap-3">
+                        <span className="text-xs font-mono font-semibold text-gray-700 whitespace-nowrap">{r.crn}</span>
+                        <span className="text-xs text-amber-700 flex-1">{r.clientError}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Show all successful rows before DB check completes */}
+              {!dbChecked && successfulRows.length > 0 && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                    <p className="text-xs font-semibold text-gray-600">{successfulRows.length} rows with "Successful" status — eligible for update</p>
+                    <p className="text-xs font-semibold text-gray-600">{successfulRows.length} rows with "Successful" status — checking database...</p>
                   </div>
                   <div className="overflow-x-auto max-h-52 overflow-y-auto">
                     <table className="w-full text-xs">
@@ -427,71 +502,6 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Confirmation preview — shows what will and won't be updated */}
-          {preview && !results && (
-            <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-                <p className="text-sm font-semibold text-blue-800">Review before updating</p>
-                <p className="text-xs text-blue-700 mt-1">Confirm which transactions will be updated. Rows already Completed or Refunded will be skipped.</p>
-              </div>
-
-              {/* Will update */}
-              <div className="border border-green-200 rounded-xl overflow-hidden">
-                <div className="px-4 py-2 bg-green-50 border-b border-green-200 flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  <p className="text-xs font-semibold text-green-800">{preview.toUpdate.length} transactions will be updated</p>
-                </div>
-                {preview.toUpdate.length > 0 ? (
-                  <div className="overflow-x-auto max-h-44 overflow-y-auto">
-                    <table className="w-full text-xs">
-                      <thead className="bg-gray-50 sticky top-0">
-                        <tr>
-                          {['CRN', 'Txn Date', 'UTR', 'Amount'].map(h => (
-                            <th key={h} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {preview.toUpdate.map(r => (
-                          <tr key={r.row_number} className="hover:bg-green-50/30">
-                            <td className="px-3 py-2 font-mono font-semibold text-[#8c76f0]">{r.crn}</td>
-                            <td className="px-3 py-2 text-gray-700">{r.transaction_date}</td>
-                            <td className="px-3 py-2 font-mono text-gray-700">{r.utr}</td>
-                            <td className="px-3 py-2 font-semibold text-gray-900">₹{r.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="px-4 py-3 text-sm text-gray-500">No transactions to update.</p>
-                )}
-              </div>
-
-              {/* Will be skipped */}
-              {preview.skipped.length > 0 && (
-                <div className="border border-amber-200 rounded-xl overflow-hidden">
-                  <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600" />
-                    <p className="text-xs font-semibold text-amber-800">{preview.skipped.length} transactions will be skipped</p>
-                  </div>
-                  <div className="divide-y divide-amber-100 max-h-40 overflow-y-auto">
-                    {preview.skipped.map(r => (
-                      <div key={r.row_number} className="px-4 py-2 flex items-start gap-3">
-                        <span className="text-xs font-mono font-semibold text-gray-700 whitespace-nowrap">{r.crn}</span>
-                        <span className="text-xs text-amber-700 flex-1">{r.clientError}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <button onClick={() => setPreview(null)} className="text-xs text-gray-500 hover:text-gray-700 underline">
-                Back to parsed rows
-              </button>
             </div>
           )}
 
@@ -562,29 +572,20 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
           >
             {results ? 'Close' : 'Cancel'}
           </button>
-          {!results && !preview && (
-            <button
-              onClick={handlePreview}
-              disabled={confirming || successfulRows.length === 0}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-[#8c76f0] to-[#7c63e0] hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {confirming ? (
-                <><Loader2 className="w-4 h-4 animate-spin" />Checking {successfulRows.length} transactions...</>
-              ) : (
-                <><FileText className="w-4 h-4" />Preview {successfulRows.length} Update{successfulRows.length !== 1 ? 's' : ''}</>
-              )}
-            </button>
-          )}
-          {preview && !results && (
+          {!results && (
             <button
               onClick={handleProcess}
-              disabled={processing || preview.toUpdate.length === 0}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-green-600 to-green-700 hover:opacity-90 transition-opacity disabled:opacity-50"
+              disabled={processing || !dbChecked || eligibleRows.length === 0}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-[#8c76f0] to-[#7c63e0] hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {processing ? (
-                <><Loader2 className="w-4 h-4 animate-spin" />Processing {preview.toUpdate.length} update{preview.toUpdate.length !== 1 ? 's' : ''}...</>
+                <><Loader2 className="w-4 h-4 animate-spin" />Processing {eligibleRows.length} update{eligibleRows.length !== 1 ? 's' : ''}...</>
+              ) : !dbChecked ? (
+                <><Loader2 className="w-4 h-4 animate-spin" />Checking database...</>
+              ) : eligibleRows.length === 0 ? (
+                <><XCircle className="w-4 h-4" />No eligible transactions</>
               ) : (
-                <><CheckCircle className="w-4 h-4" />Confirm {preview.toUpdate.length} Update{preview.toUpdate.length !== 1 ? 's' : ''}</>
+                <><CheckCircle className="w-4 h-4" />Confirm {eligibleRows.length} Update{eligibleRows.length !== 1 ? 's' : ''}</>
               )}
             </button>
           )}

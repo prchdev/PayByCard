@@ -396,9 +396,17 @@ async function digiLockerTokenExchange(
 
 // ── DigiLocker direct: fetch issued documents list ────────────────────────────
 async function fetchIssuedDocuments(accessToken: string): Promise<any[]> {
-  const res = await fetch(`${DIGILOCKER_API}/oauth2/2/files/issued`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let res: Response;
+  try {
+    res = await fetch(`${DIGILOCKER_API}/oauth2/2/files/issued`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   let data: any;
   try { data = await res.json(); } catch { data = {}; }
@@ -412,13 +420,22 @@ async function fetchIssuedDocuments(accessToken: string): Promise<any[]> {
 
 // ── DigiLocker direct: fetch a document XML by URI ───────────────────────────
 async function fetchDocumentXml(accessToken: string, uri: string, label: string): Promise<string> {
-  const res = await fetch(`${DIGILOCKER_API}/oauth2/1/xml/${encodeURIComponent(uri)}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let res: Response;
+  try {
+    res = await fetch(`${DIGILOCKER_API}/oauth2/1/xml/${encodeURIComponent(uri)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`Failed to fetch ${label} document (${uri}): ${errText}`);
+    console.error(`[fetchDocumentXml] ${label} HTTP ${res.status} for uri=${uri}:`, errText.slice(0, 500));
+    throw new Error(`Failed to fetch ${label} document (${uri}): HTTP ${res.status} ${errText.slice(0, 200)}`);
   }
 
   const outerXml = await res.text();
@@ -460,9 +477,17 @@ async function storeXmlFile(
 
 // ── DigiLocker direct: fetch eAadhaar XML via dedicated endpoint ──────────────
 async function fetchEAadhaarXml(accessToken: string): Promise<string> {
-  const res = await fetch(`${DIGILOCKER_API}/oauth2/3/xml/eaadhaar`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let res: Response;
+  try {
+    res = await fetch(`${DIGILOCKER_API}/oauth2/3/xml/eaadhaar`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     const errText = await res.text();
@@ -811,9 +836,17 @@ function parsePanXml(xml: string) {
 
 // ── DigiLocker direct: fetch user details ────────────────────────────────────
 async function fetchUserDetails(accessToken: string): Promise<{ name: string; dob: string; gender: string }> {
-  const res = await fetch(`${DIGILOCKER_API}/oauth2/1/user`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let res: Response;
+  try {
+    res = await fetch(`${DIGILOCKER_API}/oauth2/1/user`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
   let data: any;
   try { data = await res.json(); } catch { data = {}; }
   return { name: data.name || '', dob: data.dob || '', gender: data.gender || '' };
@@ -990,7 +1023,12 @@ async function fetchDigiLockerData(
   }
 
   if (!addrParsed) {
-    throw new Error(dlAttemptedButFailed ? 'DRIVING_LICENSE_UNAVAILABLE' : 'ADDRESS_PROOF_UNAVAILABLE');
+    const hadOtherProofs = !!(aadhaarDoc || passportDoc || voterDoc);
+    console.error('[fetchDigiLockerData] address proof failed. docs found:', JSON.stringify({
+      aadhaar: !!aadhaarDoc, pan: !!panDoc, passport: !!passportDoc, dl: !!dlDoc, voter: !!voterDoc,
+      dlHadUri: !!(dlDoc?.uri), dlAttemptedButFailed, hadOtherProofs,
+    }));
+    throw new Error(dlAttemptedButFailed && !hadOtherProofs ? 'DRIVING_LICENSE_UNAVAILABLE' : 'ADDRESS_PROOF_UNAVAILABLE');
   }
 
   const addrFileKey = addrProofType === 'passport' ? 'passport'

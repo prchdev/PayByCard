@@ -21,7 +21,7 @@ const PROCESSABLE_STATUSES = new Set([
 
 interface BulkRow {
   reference: string;
-  payout_date: string;   // MM/DD/YYYY
+  payout_date: string;   // DD/MM/YYYY
   utr_reference: string;
   confirmed_amount: string;
 }
@@ -34,18 +34,31 @@ interface RowResult {
   payment_reference?: string;
 }
 
-// Convert MM/DD/YYYY → YYYY-MM-DD; returns null on invalid
-function parseDate(mmddyyyy: string): string | null {
-  const parts = mmddyyyy.trim().split("/");
+interface PreviewResult {
+  reference: string;
+  action: "will_update" | "skip";
+  reason?: string;
+  current_status?: string;
+}
+
+// Convert DD/MM/YYYY → YYYY-MM-DD; returns null on invalid
+function parseDate(ddmmyyyy: string): string | null {
+  const parts = ddmmyyyy.trim().split("/");
   if (parts.length !== 3) return null;
-  const [mm, dd, yyyy] = parts;
-  if (!mm || !dd || !yyyy) return null;
-  const month = parseInt(mm, 10);
+  const [dd, mm, yyyy] = parts;
+  if (!dd || !mm || !yyyy) return null;
   const day = parseInt(dd, 10);
+  const month = parseInt(mm, 10);
   const year = parseInt(yyyy, 10);
-  if (isNaN(month) || isNaN(day) || isNaN(year)) return null;
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
   if (month < 1 || month > 12 || day < 1 || day > 31 || year < 2000) return null;
   return `${yyyy}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+// Parse amount that may be prefixed with "INR " and contain commas
+function parseAmount(raw: string): number {
+  const cleaned = String(raw).replace(/INR/i, "").replace(/,/g, "").trim();
+  return parseFloat(cleaned);
 }
 
 function fmt(amount: number | string): string {
@@ -102,6 +115,31 @@ async function sendSettledSms(supabase: any, payment: any, confirmedAmount: numb
   } catch (_) {}
 }
 
+// Look up a payment by reference (with hyphens removed) and return it + eligibility info
+async function checkPayment(
+  supabase: any,
+  reference: string,
+): Promise<{ payment: any | null; error?: string; skipReason?: string }> {
+  const { data: payment, error: fetchErr } = await supabase
+    .from("payments")
+    .select("*, payment_gateway_settings(*), beneficiaries(*)")
+    .ilike("payment_reference", reference)
+    .maybeSingle();
+
+  if (fetchErr) return { payment: null, error: `DB error: ${fetchErr.message}` };
+  if (!payment) return { payment: null, skipReason: `Payment reference not found` };
+
+  if (payment.status === "completed") return { payment, skipReason: `Already completed` };
+  if (payment.status === "refunded") return { payment, skipReason: `Already refunded` };
+  if (payment.status === "cancelled") return { payment, skipReason: `Transaction failed/cancelled` };
+
+  if (!PROCESSABLE_STATUSES.has(payment.status) && !payment.auto_payout_failed) {
+    return { payment, skipReason: `Status "${payment.status}" not eligible for update` };
+  }
+
+  return { payment };
+}
+
 async function processRow(
   supabase: any,
   row: BulkRow,
@@ -113,42 +151,25 @@ async function processRow(
   const dateRaw = row.payout_date?.trim();
   const amtRaw = row.confirmed_amount?.toString().trim();
 
-  // ── Field-level validation ────────────────────────────────────────────────
   if (!ref) return { row_number: rowNumber, reference: ref || "", success: false, error: "Reference is required" };
-  if (!dateRaw) return { row_number: rowNumber, reference: ref, success: false, error: "Payout Date is required" };
-  if (!utr) return { row_number: rowNumber, reference: ref, success: false, error: "UTR / Reference Number is required" };
-  if (!amtRaw) return { row_number: rowNumber, reference: ref, success: false, error: "Confirmed Amount is required" };
+  if (!dateRaw) return { row_number: rowNumber, reference: ref, success: false, error: "Transaction Date is required" };
+  if (!utr) return { row_number: rowNumber, reference: ref, success: false, error: "UTR is required" };
+  if (!amtRaw) return { row_number: rowNumber, reference: ref, success: false, error: "Amount is required" };
 
   const payoutDateIso = parseDate(dateRaw);
   if (!payoutDateIso) {
-    return { row_number: rowNumber, reference: ref, success: false, error: `Invalid Payout Date "${dateRaw}" — expected MM/DD/YYYY (e.g. 06/15/2026)` };
+    return { row_number: rowNumber, reference: ref, success: false, error: `Invalid Transaction Date "${dateRaw}" — expected DD/MM/YYYY (e.g. 08/09/2026)` };
   }
 
-  const confirmedAmount = parseFloat(amtRaw.replace(/,/g, ""));
+  const confirmedAmount = parseAmount(amtRaw);
   if (isNaN(confirmedAmount) || confirmedAmount <= 0) {
-    return { row_number: rowNumber, reference: ref, success: false, error: `Invalid Confirmed Amount "${amtRaw}" — must be a positive number` };
+    return { row_number: rowNumber, reference: ref, success: false, error: `Invalid Amount "${amtRaw}" — must be a positive number` };
   }
 
-  // ── Look up payment ───────────────────────────────────────────────────────
-  const { data: payment, error: fetchErr } = await supabase
-    .from("payments")
-    .select("*, payment_gateway_settings(*), beneficiaries(*)")
-    .ilike("payment_reference", ref)
-    .maybeSingle();
-
-  if (fetchErr) return { row_number: rowNumber, reference: ref, success: false, error: `DB error: ${fetchErr.message}` };
-  if (!payment) return { row_number: rowNumber, reference: ref, success: false, error: `Payment reference "${ref}" not found` };
-
-  // ── Status check ──────────────────────────────────────────────────────────
-  if (payment.status === "completed") {
-    return { row_number: rowNumber, reference: ref, success: false, error: `Payment "${ref}" is already completed` };
-  }
-  if (payment.status === "refunded" || payment.status === "cancelled") {
-    return { row_number: rowNumber, reference: ref, success: false, error: `Payment "${ref}" has status "${payment.status}" — cannot process payout` };
-  }
-  if (!PROCESSABLE_STATUSES.has(payment.status) && !payment.auto_payout_failed) {
-    return { row_number: rowNumber, reference: ref, success: false, error: `Payment "${ref}" has status "${payment.status}" — not eligible for manual payout` };
-  }
+  const { payment, error, skipReason } = await checkPayment(supabase, ref);
+  if (error) return { row_number: rowNumber, reference: ref, success: false, error };
+  if (!payment) return { row_number: rowNumber, reference: ref, success: false, error: skipReason || "Payment not found" };
+  if (skipReason) return { row_number: rowNumber, reference: ref, success: false, error: skipReason };
 
   // ── Duplicate payout check ────────────────────────────────────────────────
   const { data: existingPayout } = await supabase
@@ -159,7 +180,7 @@ async function processRow(
     .maybeSingle();
 
   if (existingPayout) {
-    return { row_number: rowNumber, reference: ref, success: false, error: `Payout already completed for payment "${ref}"` };
+    return { row_number: rowNumber, reference: ref, success: false, error: `Payout already completed for this payment` };
   }
 
   // ── Check if a pending payout record exists to update ────────────────────
@@ -286,7 +307,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { adminId, rows } = await req.json();
+    const { adminId, rows, dry_run } = await req.json();
 
     if (!adminId) {
       return new Response(JSON.stringify({ error: "Admin ID is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -305,6 +326,31 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ── Dry run: return preview without modifying anything ──────────────────
+    if (dry_run) {
+      const preview: PreviewResult[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i] as BulkRow;
+        const ref = row.reference?.trim();
+        if (!ref) {
+          preview.push({ reference: "", action: "skip", reason: "Reference is empty" });
+          continue;
+        }
+
+        const { payment, skipReason } = await checkPayment(supabase, ref);
+        if (skipReason) {
+          preview.push({ reference: ref, action: "skip", reason: skipReason, current_status: payment?.status });
+        } else {
+          preview.push({ reference: ref, action: "will_update", current_status: payment?.status });
+        }
+      }
+      return new Response(
+        JSON.stringify({ preview }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Actual processing ─────────────────────────────────────────────────────
     const results: RowResult[] = [];
     for (let i = 0; i < rows.length; i++) {
       const result = await processRow(supabase, rows[i] as BulkRow, i + 1, adminId);

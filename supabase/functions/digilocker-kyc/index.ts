@@ -729,6 +729,14 @@ function parseDlXml(xml: string): {
     || ga('CertificateData', 'dlno')
     || '';
 
+  // Accumulate address fields across all strategies — first non-empty value wins
+  const result = { name, dob, dlNumber, house: '', street: '', locality: '', vtc: '', district: '', state: '', pincode: '' };
+  const fill = (r: typeof result) => {
+    for (const k of ['house', 'street', 'locality', 'vtc', 'district', 'state', 'pincode'] as const) {
+      if (!result[k] && r[k]) result[k] = r[k];
+    }
+  };
+
   // ── Strategy 1: POA element with attributes ──────────────────────────────
   const poaTagRe = /<POA[\s\S]*?(?:\/>|>)/gi;
   let pm: RegExpExecArray | null;
@@ -742,7 +750,7 @@ function parseDlXml(xml: string): {
     const state    = gEl(t, 'state');
     const pincode  = gEl(t, 'pincode') || gEl(t, 'pin') || gEl(t, 'pc');
     if (district || state || pincode || house) {
-      return { name, dob, dlNumber, house, street, locality, vtc, district, state, pincode };
+      fill({ name, dob, dlNumber, house, street, locality, vtc, district, state, pincode });
     }
   }
 
@@ -758,7 +766,7 @@ function parseDlXml(xml: string): {
     const state    = gEl(t, 'state');
     const pincode  = gEl(t, 'pincode') || gEl(t, 'pin') || gEl(t, 'pc');
     if (district || state || pincode || house) {
-      return { name, dob, dlNumber, house, street, locality, vtc, district, state, pincode };
+      fill({ name, dob, dlNumber, house, street, locality, vtc, district, state, pincode });
     }
   }
 
@@ -775,14 +783,14 @@ function parseDlXml(xml: string): {
     const state    = gEl(el, 'state');
     const pincode  = gEl(el, 'pin') || gEl(el, 'pc') || gEl(el, 'pincode');
     if (district || state || pincode || house) {
-      return { name, dob, dlNumber, house, street, locality, vtc, district, state, pincode };
+      fill({ name, dob, dlNumber, house, street, locality, vtc, district, state, pincode });
     }
 
     // presentaddress / permanentaddress as unstructured string fallback
     const addrStr = gEl(el, 'presentaddress') || gEl(el, 'permanentaddress');
     if (addrStr) {
       const p = parseAddressLine1(addrStr);
-      return { name, dob, dlNumber, house: p.address || addrStr, street: '', locality: p.locality, vtc: '', district: p.district, state: p.state, pincode: p.pincode };
+      fill({ name, dob, dlNumber, house: p.address || addrStr, street: '', locality: p.locality, vtc: '', district: p.district, state: p.state, pincode: p.pincode });
     }
   }
 
@@ -795,10 +803,10 @@ function parseDlXml(xml: string): {
   const txtLocality = getTextEl('Locality') || getTextEl('Area') || getTextEl('Address3');
   const txtVtc      = getTextEl('VTC')      || getTextEl('PostOffice') || getTextEl('SubDistrict');
   if (txtDistrict || txtState || txtPincode || txtHouse) {
-    return { name, dob, dlNumber, house: txtHouse, street: txtStreet, locality: txtLocality, vtc: txtVtc, district: txtDistrict, state: txtState, pincode: txtPincode };
+    fill({ name, dob, dlNumber, house: txtHouse, street: txtStreet, locality: txtLocality, vtc: txtVtc, district: txtDistrict, state: txtState, pincode: txtPincode });
   }
 
-  return { name, dob, dlNumber, house: '', street: '', locality: '', vtc: '', district: '', state: '', pincode: '' };
+  return result;
 }
 
 function extractCertIdNumber(xml: string, doctype: 'dl' | 'passport' | 'voter_id'): string {
@@ -992,12 +1000,12 @@ async function fetchDigiLockerData(
         const xml = await fetchDocumentXml(accessToken, dlDoc.uri, 'dl');
         let parsed = parseDlXml(xml);
         console.log('[DL] parseDlXml result:', JSON.stringify({ name: parsed.name, dob: parsed.dob, dlNumber: parsed.dlNumber, district: parsed.district, state: parsed.state, pincode: parsed.pincode, house: parsed.house, locality: parsed.locality }));
-        if (!parsed.district && !parsed.pincode && !parsed.house && !parsed.locality) {
-          console.error('DL XML parsed but no address fields. Trying generic parser. XML snippet:', xml.slice(0, 500));
+        if (!parsed.state || (!parsed.district && !parsed.pincode && !parsed.house && !parsed.locality)) {
+          console.error('DL XML missing state or address fields. Trying generic parser. XML snippet:', xml.slice(0, 500));
           const genericParsed = parseCertificateAddressXml(xml);
           if (hasAddress(genericParsed)) {
-            parsed = { ...genericParsed, dlNumber: parsed.dlNumber };
-            console.log('[DL] generic parser succeeded:', JSON.stringify({ district: parsed.district, state: parsed.state, pincode: parsed.pincode, house: parsed.house }));
+            parsed = { ...parsed, ...genericParsed, dlNumber: parsed.dlNumber || extractCertIdNumber(xml, 'dl') };
+            console.log('[DL] generic parser merged:', JSON.stringify({ district: parsed.district, state: parsed.state, pincode: parsed.pincode, house: parsed.house }));
           }
         }
         if (parsed.district || parsed.pincode || parsed.house || parsed.locality) {

@@ -613,7 +613,16 @@ async function fetchDigiLockerData(
   if (!addrParsed && dlDoc?.uri) {
     try {
       const xml = await fetchDocumentXml(accessToken, dlDoc.uri, 'dl');
-      const parsed = parseCertificateAddressXml(xml);
+      let parsed = parseCertificateAddressXml(xml);
+      if (!parsed.state) {
+        const stateText = xml.match(/<State[^>]*>([^<]+)<\/State>/i)?.[1]?.trim() || '';
+        const state = attrInTag(xml, 'DrivingLicence', 'state')
+          || attrInTag(xml, 'Address', 'state')
+          || attrInTag(xml, 'Address2', 'state')
+          || attrInTag(xml, 'Poa', 'state')
+          || stateText;
+        if (state) parsed = { ...parsed, state };
+      }
       if (parsed.district || parsed.state || parsed.pincode || parsed.house) {
         addrProofType = 'driving_license';
         addrIdNumber = attrInTag(xml, 'Certificate', 'number') || '';

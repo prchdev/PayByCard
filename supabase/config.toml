@@ -84,6 +84,7 @@ verify_jwt = false
 verify_jwt = false
 [functions.admin-reset-password]
 verify_jwt = false
+
 [functions.admin-save-email-settings]
 verify_jwt = false
 [functions.admin-save-master-settings]

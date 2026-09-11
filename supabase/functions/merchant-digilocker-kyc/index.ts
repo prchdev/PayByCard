@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { withSignedKycUrls } from "../_shared/kycUrls.ts";
+import { lookupStateFromPincode } from "../_shared/pincodeLookup.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -665,6 +666,18 @@ async function fetchDigiLockerData(
       : Promise.resolve(null),
   ]);
 
+  // ── Fallback: derive state from pincode if missing (common with DL documents) ──
+  let resolvedState = (addrParsed as any)?.state || '';
+  let resolvedCity = (addrParsed as any)?.district || (addrParsed as any)?.vtc || '';
+  if (!resolvedState && (addrParsed as any)?.pincode) {
+    const pinLookup = await lookupStateFromPincode((addrParsed as any).pincode);
+    if (pinLookup.state) {
+      resolvedState = pinLookup.state;
+      if (!resolvedCity) resolvedCity = pinLookup.district;
+      console.log('[fetchDigiLockerData] state derived from pincode:', (addrParsed as any).pincode, '->', resolvedState);
+    }
+  }
+
   const addressParts = [
     (addrParsed as any)?.house,
     (addrParsed as any)?.street,
@@ -676,8 +689,8 @@ async function fetchDigiLockerData(
     full_name:          panParsed?.name || aadhaarParsed?.name || userDetailsName || tokenName,
     dob:                panParsed?.dob  || aadhaarParsed?.dob  || userDetailsDob  || tokenDob,
     address:            addressParts.join(', '),
-    city:               (addrParsed as any)?.district || (addrParsed as any)?.vtc || '',
-    state:              (addrParsed as any)?.state    || '',
+    city:               resolvedCity,
+    state:              resolvedState,
     pincode:            (addrParsed as any)?.pincode  || '',
     id_number:          addrIdNumber,
     address_proof_type: addrProofType,

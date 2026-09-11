@@ -135,6 +135,7 @@ export default function MakePayment() {
 
   const [selectedBeneficiary, setSelectedBeneficiary] = useState<Beneficiary | null>(null);
   const [amount, setAmount] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [selectedCategory, setSelectedCategory] = useState<PaymentCategory | null>(null);
   const [selectedGateway, setSelectedGateway] = useState<PaymentGateway | null>(null);
   const [selectedPaymentOption, setSelectedPaymentOption] = useState<PaymentOption | null>(null);
@@ -503,16 +504,17 @@ export default function MakePayment() {
     const maxSize = 1024 * 1024;
 
     if (!validTypes.includes(file.type)) {
-      setMessage({ type: 'error', text: 'Only PNG, JPEG, and PDF files are allowed' });
+      setFieldErrors(prev => ({ ...prev, billFile: 'Only PNG, JPEG, and PDF files are allowed' }));
       return;
     }
 
     if (file.size > maxSize) {
-      setMessage({ type: 'error', text: 'File size must be less than 1 MB' });
+      setFieldErrors(prev => ({ ...prev, billFile: 'File size must be less than 1 MB' }));
       return;
     }
 
     setBillFile(file);
+    setFieldErrors(prev => { const next = { ...prev }; delete next.billFile; return next; });
     setMessage(null);
   };
 
@@ -565,39 +567,38 @@ export default function MakePayment() {
 
   const handleNext = async () => {
     setMessage(null);
+    setFieldErrors({});
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (currentStep === 1) {
       if (!selectedBeneficiary) {
-        setMessage({ type: 'error', text: 'Please select a beneficiary' });
+        setFieldErrors({ beneficiary: 'Please select a beneficiary' });
         return;
       }
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      if (!amount || !selectedCategory) {
-        setMessage({ type: 'error', text: 'Please fill in all required fields' });
+      const errors: Record<string, string> = {};
+      if (!amount) errors.amount = 'Please enter an amount';
+      if (!selectedCategory) errors.category = 'Please select a payment category';
+
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
         return;
       }
 
       const amountValue = parseFloat(amount);
       if (isNaN(amountValue) || amountValue <= 0) {
-        setMessage({ type: 'error', text: 'Please enter a valid amount' });
+        setFieldErrors({ amount: 'Please enter a valid amount' });
         return;
       }
 
       if (paymentLimits) {
         if (amountValue < paymentLimits.min_amount) {
-          setMessage({
-            type: 'error',
-            text: `Amount must be at least ₹${paymentLimits.min_amount.toFixed(2)}`
-          });
+          setFieldErrors({ amount: `Amount must be at least ₹${paymentLimits.min_amount.toFixed(2)}` });
           return;
         }
         if (amountValue > paymentLimits.max_amount) {
-          setMessage({
-            type: 'error',
-            text: `Amount cannot exceed ₹${paymentLimits.max_amount.toFixed(2)}`
-          });
+          setFieldErrors({ amount: `Amount cannot exceed ₹${paymentLimits.max_amount.toFixed(2)}` });
           return;
         }
       }
@@ -605,7 +606,7 @@ export default function MakePayment() {
       setCurrentStep(3);
     } else if (currentStep === 3) {
       if (!selectedPaymentOption) {
-        setMessage({ type: 'error', text: 'Please select a payment option' });
+        setFieldErrors({ paymentOption: 'Please select a payment option' });
         return;
       }
 
@@ -1401,28 +1402,28 @@ export default function MakePayment() {
           onClose={() => setIsMobileMenuOpen(false)}
         />
 
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8">
           <div className="max-w-4xl mx-auto">
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-900">Make Payment</h1>
               <p className="text-gray-600 mt-1">Complete the payment in simple steps</p>
             </div>
 
-            <div className="mb-8">
+            <div className="mb-6 sm:mb-8">
               <div className="flex items-center justify-between">
                 {[1, 2, 3, 4].map((step) => (
                   <div key={step} className="flex items-center flex-1">
                     <div className="flex items-center">
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold text-sm sm:text-base ${
                           currentStep >= step
                             ? 'bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white'
                             : 'bg-gray-200 text-gray-500'
                         }`}
                       >
-                        {currentStep > step ? <CheckCircle className="w-6 h-6" /> : step}
+                        {currentStep > step ? <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6" /> : step}
                       </div>
-                      <div className="ml-3 hidden md:block">
+                      <div className="ml-2 sm:ml-3 hidden sm:block">
                         <p className={`text-sm font-medium ${currentStep >= step ? 'text-[#8c76f0]' : 'text-gray-500'}`}>
                           Step {step}
                         </p>
@@ -1436,7 +1437,7 @@ export default function MakePayment() {
                     </div>
                     {step < 4 && (
                       <div
-                        className={`flex-1 h-1 mx-4 rounded ${
+                        className={`flex-1 h-1 mx-2 sm:mx-4 rounded ${
                           currentStep > step ? 'bg-[#8c76f0]' : 'bg-gray-200'
                         }`}
                       />
@@ -1465,7 +1466,7 @@ export default function MakePayment() {
               </div>
             )}
 
-            <div className="bg-white rounded-2xl border-2 border-gray-300 p-6">
+            <div className="bg-white rounded-2xl border-2 border-gray-300 p-4 sm:p-6">
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
@@ -1478,6 +1479,9 @@ export default function MakePayment() {
                     </div>
                   </div>
 
+                  {fieldErrors.beneficiary && (
+                    <p className="text-sm text-red-600 font-medium mt-2">{fieldErrors.beneficiary}</p>
+                  )}
                   {beneficiaries.length === 0 ? (
                     <div className="text-center py-12">
                       <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -1555,14 +1559,17 @@ export default function MakePayment() {
                         type="number"
                         id="amount"
                         value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
+                        onChange={(e) => { setAmount(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.amount; return n; }); }}
                         min={paymentLimits?.min_amount || 0}
                         max={paymentLimits?.max_amount || 999999}
                         step="0.01"
-                        className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                        className={`w-full pl-10 pr-4 py-2.5 border-2 rounded-xl focus:ring-4 focus:ring-purple-50 outline-none transition-all ${fieldErrors.amount ? 'border-red-500' : 'border-gray-300 focus:border-[#8c76f0]'}`}
                         placeholder="0.00"
                       />
                     </div>
+                    {fieldErrors.amount && (
+                      <p className="text-sm text-red-600 font-medium mt-1">{fieldErrors.amount}</p>
+                    )}
                     {paymentLimits && (
                       <div className="mt-2 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-400 rounded-lg p-3.5 shadow-sm">
                         <div className="flex items-start gap-2.5">
@@ -1600,9 +1607,10 @@ export default function MakePayment() {
                         const category = paymentCategories.find(c => c.id === categoryId);
                         if (category) {
                           setSelectedCategory(category);
+                          setFieldErrors(prev => { const n = {...prev}; delete n.category; return n; });
                         }
                       }}
-                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                      className={`w-full px-4 py-2.5 border-2 rounded-xl focus:ring-4 focus:ring-purple-50 outline-none transition-all ${fieldErrors.category ? 'border-red-500' : 'border-gray-300 focus:border-[#8c76f0]'}`}
                     >
                       <option value="">Select a category</option>
                       {paymentCategories.map((category) => (
@@ -1611,6 +1619,9 @@ export default function MakePayment() {
                         </option>
                       ))}
                     </select>
+                    {fieldErrors.category && (
+                      <p className="text-sm text-red-600 font-medium mt-1">{fieldErrors.category}</p>
+                    )}
                     {selectedCategory && (selectedCategory.receiver_kyc_required || selectedCategory.new_card_payment_delay_hours > 0) && (
                       <div className="mt-3 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
                         <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -1635,11 +1646,15 @@ export default function MakePayment() {
                     </label>
                     <p className="text-xs text-gray-500 mb-2">PNG, JPEG, or PDF. Max size: 1 MB</p>
 
+                    {fieldErrors.billFile && (
+                      <p className="text-sm text-red-600 font-medium mb-2">{fieldErrors.billFile}</p>
+                    )}
                     {!billFile ? (
                       <label className="block">
-                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-[#8c76f0] transition-colors">
+                        <div className={`border-2 border-dashed rounded-xl p-4 sm:p-6 text-center cursor-pointer hover:border-[#8c76f0] transition-colors ${fieldErrors.billFile ? 'border-red-400' : 'border-gray-300'}`}>
                           <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                          <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
+                          <p className="text-sm text-gray-600">Tap to upload</p>
+                          <p className="text-xs text-gray-400 mt-1">PNG, JPEG, or PDF</p>
                           <input
                             type="file"
                             accept=".png,.jpg,.jpeg,.pdf"
@@ -1649,11 +1664,11 @@ export default function MakePayment() {
                         </div>
                       </label>
                     ) : (
-                      <div className="border-2 border-gray-300 rounded-xl p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <FileText className="w-8 h-8 text-[#8c76f0]" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{billFile.name}</p>
+                      <div className="border-2 border-gray-300 rounded-xl p-3 sm:p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                          <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-[#8c76f0] flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{billFile.name}</p>
                             <p className="text-xs text-gray-500">
                               {(billFile.size / 1024).toFixed(2)} KB
                             </p>
@@ -1661,7 +1676,7 @@ export default function MakePayment() {
                         </div>
                         <button
                           onClick={removeFile}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
                         >
                           <X className="w-5 h-5 text-gray-500" />
                         </button>
@@ -1683,6 +1698,9 @@ export default function MakePayment() {
                     </div>
                   </div>
 
+                  {fieldErrors.paymentOption && (
+                    <p className="text-sm text-red-600 font-medium">{fieldErrors.paymentOption}</p>
+                  )}
                   {paymentOptions.length === 0 ? (
                     <div className="text-center py-12">
                       <CreditCard className="w-16 h-16 text-gray-300 mx-auto mb-4" />

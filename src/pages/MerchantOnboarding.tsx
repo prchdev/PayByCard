@@ -884,7 +884,7 @@ export default function MerchantOnboarding() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<'pending' | 'verified' | 'expired' | 'refunded' | 'rejected' | 'error'>('pending');
+  const [status, setStatus] = useState<'pending' | 'verified' | 'expired' | 'refunded' | 'rejected' | 'payment_unavailable' | 'error'>('pending');
   const [data, setData] = useState<OnboardingData | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -917,6 +917,7 @@ export default function MerchantOnboarding() {
       if (result.status === 'verified') { setStatus('verified'); }
       else if (result.status === 'expired') { setStatus('expired'); }
       else if (result.status === 'refunded') { setStatus('refunded'); }
+      else if (result.status === 'payment_unavailable') { setStatus('payment_unavailable'); setErrorMessage(result.message || 'KYC is no longer available for this transaction.'); }
       else if (result.status === 'rejected') {
         setStatus('rejected');
         setData(result.data);
@@ -1157,6 +1158,20 @@ export default function MerchantOnboarding() {
             >
               Re-submit KYC
             </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (status === 'payment_unavailable') {
+      return (
+        <div className="flex-1 flex items-center justify-center px-4">
+          <div className="max-w-md w-full bg-white rounded-2xl border-2 border-gray-200 p-8 text-center shadow-xl">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <XCircle className="w-8 h-8 text-gray-500" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">KYC Unavailable</h2>
+            <p className="text-gray-600">{errorMessage}</p>
           </div>
         </div>
       );

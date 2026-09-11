@@ -61,6 +61,25 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Check linked payment status — block KYC if transaction is Completed, Refunded, or Failed
+    const blockedPaymentStatuses = ['completed', 'refunded', 'failed'];
+    if (record.payment_id) {
+      const { data: payment } = await supabase
+        .from("payments")
+        .select("status")
+        .eq("id", record.payment_id)
+        .maybeSingle();
+      if (payment && blockedPaymentStatuses.includes((payment.status || '').toLowerCase())) {
+        return new Response(
+          JSON.stringify({
+            status: "payment_unavailable",
+            message: `This payment has been marked as ${payment.status}. KYC is no longer available for this transaction.`,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     if (record.status === "verified") {
       return new Response(
         JSON.stringify({ status: "verified", message: "KYC already completed" }),

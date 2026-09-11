@@ -170,6 +170,8 @@ function SectionReview({ title, recordId, table, status, rejectionReason, onRevi
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [optimisticStatus, setOptimisticStatus] = useState<KycStatus | null>(null);
+  const displayStatus = optimisticStatus ?? status;
 
   const handleAction = async (action: 'verified' | 'rejected') => {
     if (!recordId) {
@@ -184,6 +186,7 @@ function SectionReview({ title, recordId, table, status, rejectionReason, onRevi
 
     setSubmitting(true);
     setError(null);
+    setOptimisticStatus(action);
 
     try {
       const surgeCharge = isBusinessSection && surgeChargeRef ? surgeChargeRef.current : undefined;
@@ -192,20 +195,21 @@ function SectionReview({ title, recordId, table, status, rejectionReason, onRevi
       setRejReason('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Review failed');
+      setOptimisticStatus(null);
     } finally {
       setSubmitting(false);
     }
   };
 
   const canReview =
-    status === 'verification_pending' ||
-    (hasDocuments && (status === 'pending' || !status));
+    displayStatus === 'verification_pending' ||
+    (hasDocuments && (displayStatus === 'pending' || !displayStatus));
 
   return (
     <div className="border border-slate-200 rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
         <span className="font-semibold text-slate-700 text-sm">{title}</span>
-        <KycStatusBadge status={status} />
+        <KycStatusBadge status={displayStatus} />
       </div>
 
       <div className="p-4 space-y-4">
@@ -217,13 +221,13 @@ function SectionReview({ title, recordId, table, status, rejectionReason, onRevi
           </div>
         )}
 
-        {rejectionReason && status === 'rejected' && (
+        {rejectionReason && displayStatus === 'rejected' && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
             <span className="font-medium">Rejection reason:</span> {rejectionReason}
           </div>
         )}
 
-        {canReview && (
+        {canReview && !optimisticStatus && (
           <div className="space-y-3 pt-2 border-t border-slate-100">
             {showRejectInput && (
               <div>
@@ -243,15 +247,15 @@ function SectionReview({ title, recordId, table, status, rejectionReason, onRevi
                 onClick={() => handleAction('verified')}
                 className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
               >
-                <CheckCircle className="w-4 h-4" />
-                Approve
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                {submitting ? 'Approving...' : 'Approve'}
               </button>
               <button
                 disabled={submitting || !canEdit}
                 onClick={() => showRejectInput ? handleAction('rejected') : setShowRejectInput(true)}
                 className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
               >
-                <XCircle className="w-4 h-4" />
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
                 {showRejectInput ? 'Confirm Reject' : 'Reject'}
               </button>
               {showRejectInput && (
@@ -352,7 +356,7 @@ export default function ReviewModal({ entry, onClose, onReview, onAccountAction,
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div>
             <h2 className="text-lg font-bold text-slate-900">
-              {user.first_name} {user.last_name}
+              {[user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' ')}
             </h2>
             <p className="text-sm text-slate-500">{user.email} &middot; {user.mobile_number}</p>
             <div className="flex gap-2 mt-1.5">

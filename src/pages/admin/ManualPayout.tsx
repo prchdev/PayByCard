@@ -24,6 +24,7 @@ import {
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
 import BulkPayoutModal from './BulkPayoutModal';
+import { downloadAxisBankPayoutTemplate } from '../../utils/axisBankExport';
 
 interface PayoutRecord {
   id: string;
@@ -49,7 +50,7 @@ interface PayoutRecord {
   card_type?: string | null;
   gateway_environment?: string | null;
   sender: { full_name: string; email: string; mobile: string } | null;
-  beneficiary: { beneficiary_name: string; account_number: string; ifsc_code: string; bank_name: string } | null;
+  beneficiary: { beneficiary_name: string; account_number: string; ifsc_code: string; bank_name: string; mobile?: string | null; email?: string | null } | null;
   gateway: { gateway_name: string } | null;
   merchant_kyc: { status: string; pan_number: string; pan_photo_url: string } | null;
   kyc_required?: boolean;
@@ -113,7 +114,7 @@ function statusBadgeClass(s: string | null | undefined): string {
 function downloadCSV(records: PayoutRecord[]) {
   const headers = [
     'Reference', 'Gateway', 'Payment Status', 'Sender Name', 'Sender Email', 'Sender Mobile',
-    'Beneficiary Name', 'Bank Name', 'Account Number', 'IFSC Code',
+    'Beneficiary Name', 'Beneficiary Mobile', 'Beneficiary Email', 'Bank Name', 'Account Number', 'IFSC Code',
     'Base Amount', 'Charges', 'GST', 'Net Payout Amount',
     'Payout Mode', 'Settlement Time', 'Gateway Settlement Status', 'Date',
   ];
@@ -135,6 +136,8 @@ function downloadCSV(records: PayoutRecord[]) {
     p.sender?.email || '',
     p.sender?.mobile || '',
     p.beneficiary?.beneficiary_name || p.account_holder_name || '',
+    p.beneficiary?.mobile || '',
+    p.beneficiary?.email || '',
     p.beneficiary?.bank_name || p.bank_name || '',
     p.beneficiary?.account_number || p.account_number || '',
     p.beneficiary?.ifsc_code || p.ifsc_code || '',
@@ -232,6 +235,7 @@ export default function ManualPayout() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [axisExporting, setAxisExporting] = useState(false);
 
   const adminId = sessionStorage.getItem('adminId') ?? localStorage.getItem('adminId');
 
@@ -277,6 +281,40 @@ export default function ManualPayout() {
   };
 
   const closeModal = () => setModal({ open: false, payout: null, action: 'confirm' });
+
+  const handleAxisBankExport = async () => {
+    if (filtered.length === 0) return;
+    setAxisExporting(true);
+    setError('');
+    try {
+      const settingsRes = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-get-master-settings`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminId }),
+        }
+      );
+      const settingsData = await settingsRes.json();
+      if (!settingsRes.ok) throw new Error(settingsData.error || 'Failed to fetch master settings');
+      const companyBankAccount = settingsData.settings?.bank_account_number;
+      if (!companyBankAccount) throw new Error('Company bank account number is not configured in Master Settings.');
+
+      const axisRows = filtered.map((p) => ({
+        amount: p.net_amount || p.amount,
+        beneficiaryName: p.beneficiary?.beneficiary_name || p.account_holder_name || '',
+        beneficiaryAccountNumber: p.beneficiary?.account_number || p.account_number || '',
+        beneficiaryIfsc: p.beneficiary?.ifsc_code || p.ifsc_code || '',
+        paymentReference: p.payment_reference || p.payout_reference || '',
+      }));
+
+      await downloadAxisBankPayoutTemplate(axisRows, companyBankAccount);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate Axis Bank payout file');
+    } finally {
+      setAxisExporting(false);
+    }
+  };
 
   const handleProcess = async () => {
     if (!modal.payout) return;
@@ -358,6 +396,14 @@ export default function ManualPayout() {
               </button>
             )}
             <button
+              onClick={handleAxisBankExport}
+              disabled={loading || filtered.length === 0 || axisExporting}
+              className="flex items-center gap-2 px-4 py-2 border-2 border-blue-400 rounded-xl text-sm font-medium text-blue-600 hover:bg-blue-50 transition-all disabled:opacity-50"
+            >
+              {axisExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              Axis Bank Payout
+            </button>
+            <button
               onClick={() => downloadCSV(filtered)}
               disabled={loading || filtered.length === 0}
               className="flex items-center gap-2 px-4 py-2 border-2 border-gray-300 rounded-xl text-sm font-medium text-gray-600 hover:border-green-500 hover:bg-green-50 transition-all disabled:opacity-50"
@@ -436,7 +482,7 @@ export default function ManualPayout() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {['Reference', 'Gateway', 'Status', 'Gateway Sttlmt', 'Sender', 'Beneficiary', 'Bank / IFSC', 'Amount', 'Payout Mode', 'Settlement', 'Date', 'Remark', 'Actions'].map(h => (
+                    {['Reference', 'Gateway', 'Status', 'Gateway Sttlmt', 'Sender', 'Beneficiary', 'Beneficiary Contact', 'Bank / IFSC', 'Amount', 'Payout Mode', 'Settlement', 'Date', 'Remark', 'Actions'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -473,6 +519,14 @@ export default function ManualPayout() {
                       <td className="px-4 py-3">
                         <p className="font-medium text-gray-900">{payout.beneficiary?.beneficiary_name || payout.account_holder_name || '—'}</p>
                         <p className="text-xs text-gray-500">{payout.beneficiary?.bank_name || payout.bank_name || ''}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        {(payout.beneficiary?.mobile || payout.beneficiary?.email) ? (
+                          <>
+                            {payout.beneficiary?.mobile && <p className="text-xs text-gray-700">{payout.beneficiary.mobile}</p>}
+                            {payout.beneficiary?.email && <p className="text-xs text-gray-500">{payout.beneficiary.email}</p>}
+                          </>
+                        ) : <span className="text-gray-400 text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         <p className="font-mono text-xs text-gray-700">{payout.beneficiary?.account_number || payout.account_number || '—'}</p>

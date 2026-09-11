@@ -94,18 +94,56 @@ Deno.serve(async (req: Request) => {
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    // When filtering by display status, we need to map back to DB statuses
-    // For simplicity: filter by raw DB status when it maps 1:1, otherwise fetch all and filter in memory
-    const needsInMemoryFilter = status && ["settlement_pending", "completed"].includes(status);
-    if (status && status !== "all" && !needsInMemoryFilter) {
-      query = query.eq("status", status);
+    // Determine which DB statuses to query for the requested display status filter
+    // Some display statuses map 1:1 to a DB status; others depend on payout data
+    // and must be resolved in-memory after enrichment.
+    let dbStatuses: string[] | null = null;
+    let needsInMemoryFilter = false;
+
+    if (status && status !== "all") {
+      switch (status) {
+        case "completed":
+          // "completed" can come from payment.status = "completed" OR
+          // settlement_pending + payout completed. Fetch both and filter in-memory.
+          dbStatuses = ["completed", "settlement_pending"];
+          needsInMemoryFilter = true;
+          break;
+        case "settlement_pending":
+          // Includes both settlement_pending and settlement_in_progress DB statuses,
+          // but only those whose payout has NOT completed yet.
+          dbStatuses = ["settlement_pending", "settlement_in_progress"];
+          needsInMemoryFilter = true;
+          break;
+        case "kyc_pending":
+          // Includes kyc_pending and merchant_kyc_review at DB level
+          dbStatuses = ["kyc_pending", "merchant_kyc_review"];
+          break;
+        case "failed":
+          // Includes both failed and cancelled
+          dbStatuses = ["failed", "cancelled"];
+          break;
+        default:
+          // 1:1 mapping (processing, refunded, refund_pending, etc.)
+          dbStatuses = [status];
+          break;
+      }
+    }
+
+    if (dbStatuses) {
+      query = query.in("status", dbStatuses);
+    }
+
+    // For in-memory filters we need ALL matching records (no pagination) so we
+    // can correctly filter and then paginate the enriched results.
+    if (needsInMemoryFilter) {
+      query = query.range(0, 9999);
     }
 
     const { data: payments, error, count } = await query;
 
     if (error) {
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -160,8 +198,27 @@ Deno.serve(async (req: Request) => {
     });
 
     // Apply in-memory filter for display statuses that depend on payout
-    if (status && status !== "all") {
+    if (needsInMemoryFilter && status && status !== "all") {
       enriched = enriched.filter((p: any) => p.display_status === status);
+    }
+
+    // When we fetched all records for in-memory filtering, paginate the
+    // filtered results manually so the page/limit contract is preserved.
+    if (needsInMemoryFilter) {
+      const filteredTotal = enriched.length;
+      const totalPages = Math.max(1, Math.ceil(filteredTotal / limit));
+      const startIdx = (page - 1) * limit;
+      const paged = enriched.slice(startIdx, startIdx + limit);
+      return new Response(
+        JSON.stringify({
+          payments: paged,
+          total: filteredTotal,
+          page,
+          limit,
+          totalPages,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(
@@ -181,3 +238,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+
+// redeploy

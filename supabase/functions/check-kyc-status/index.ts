@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
+import { withSignedKycUrls } from "../_shared/kycUrls.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -129,3 +130,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+
+// redeploy

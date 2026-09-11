@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X, Lock, Shield, Home, FileCheck, Users, Mail, MessageSquare, CreditCard, IndianRupee, LayoutDashboard, DollarSign, Tag, Settings, Wallet, AlertTriangle, Undo2, BarChart2, UserSearch, ScanFace, ShieldCheck } from 'lucide-react';
+import { LogOut, Menu, X, Lock, Shield, Home, FileCheck, Users, Mail, MessageSquare, CreditCard, IndianRupee, LayoutDashboard, DollarSign, Tag, Settings, Wallet, AlertTriangle, Undo2, BarChart2, UserSearch, ScanFace, ShieldCheck, Bell, Send, Smartphone } from 'lucide-react';
 import Footer from '../../components/Footer';
 import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import SessionTimeoutModal from '../../components/SessionTimeoutModal';
@@ -39,7 +39,71 @@ const ICON_MAP: Record<string, any> = {
   UserSearch,
   ScanFace,
   ShieldCheck,
+  Bell,
+  Send,
+  Smartphone,
 };
+
+interface MenuSection {
+  label: string;
+  items: { key: string; name: string; path: string; icon: string }[];
+};
+
+const MENU_SECTIONS: MenuSection[] = [
+  {
+    label: '',
+    items: [
+      { key: 'dashboard', name: 'Dashboard', path: '/admin/dashboard', icon: 'LayoutDashboard' },
+    ],
+  },
+  {
+    label: 'Regular Usage',
+    items: [
+      { key: 'kyc', name: 'KYC Verification', path: '/admin/kyc-verification', icon: 'FileCheck' },
+      { key: 'merchant-kyc', name: 'Merchant KYC', path: '/admin/merchant-kyc', icon: 'ScanFace' },
+      { key: 'user-summary', name: 'User Summary', path: '/admin/user-summary', icon: 'UserSearch' },
+      { key: 'manual-payout', name: 'Manual Payout', path: '/admin/manual-payout', icon: 'Wallet' },
+      { key: 'reports', name: 'Reports', path: '/admin/reports', icon: 'BarChart2' },
+    ],
+  },
+  {
+    label: 'Help & Support',
+    items: [
+      { key: 'support-tickets', name: 'Support Ticket', path: '/admin/support-tickets', icon: 'MessageSquare' },
+    ],
+  },
+  {
+    label: 'Master Configuration',
+    items: [
+      { key: 'master-settings', name: 'Master Settings', path: '/admin/master-settings', icon: 'Settings' },
+      { key: 'email', name: 'Email Settings', path: '/admin/email-settings', icon: 'Mail' },
+      { key: 'sms', name: 'SMS Settings', path: '/admin/sms-settings', icon: 'Send' },
+      { key: 'payment-limits', name: 'Payment Limit', path: '/admin/payment-limits', icon: 'IndianRupee' },
+      { key: 'payment-gateway', name: 'Payment Gateway', path: '/admin/payment-gateway-settings', icon: 'CreditCard' },
+      { key: 'payout-settings', name: 'Payout Settings', path: '/admin/payout-settings', icon: 'DollarSign' },
+      { key: 'payment-option', name: 'Payment Option', path: '/admin/payment-option', icon: 'Tag' },
+      { key: 'payment-categories', name: 'Payment Categories', path: '/admin/payment-categories', icon: 'Tag' },
+      { key: 'kyc-method', name: 'KYC Method', path: '/admin/kyc-method', icon: 'ShieldCheck' },
+      { key: 'dashboard-notification', name: 'Dashboard Notification', path: '/admin/dashboard-notification', icon: 'Bell' },
+    ],
+  },
+  {
+    label: 'Marketing',
+    items: [
+      { key: 'bulk-email', name: 'Bulk Email', path: '/admin/bulk-email', icon: 'Mail' },
+      { key: 'bulk-sms', name: 'Bulk SMS', path: '/admin/bulk-sms', icon: 'MessageSquare' },
+      { key: 'mobile-notifications', name: 'Mobile Notifications', path: '/admin/mobile-notifications', icon: 'Smartphone' },
+    ],
+  },
+  {
+    label: 'Admin User Management',
+    items: [
+      { key: 'users', name: 'Admin Management', path: '/admin/user-management', icon: 'Users' },
+      { key: 'role-permissions', name: 'Roles Permission', path: '/admin/role-permissions', icon: 'Shield' },
+      { key: 'change-password', name: 'Change Password', path: '/admin/change-password', icon: 'Lock' },
+    ],
+  },
+];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
@@ -140,6 +204,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const visibleKeys = new Set(menuItems.map((i) => i.page_key));
+  const canEdit = (key: string) => menuItems.find((i) => i.page_key === key)?.can_edit ?? false;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-purple-50 to-white">
       {showWarning && (
@@ -206,37 +273,57 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Sidebar */}
         <aside className={`
           fixed lg:sticky top-20 left-0 h-[calc(100vh-80px)]
-          w-52 flex-shrink-0 bg-white border-r border-gray-200 z-40
+          w-56 flex-shrink-0 bg-white border-r border-gray-200 z-40
           transform transition-transform duration-200 ease-in-out
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
-          <nav className="p-3 space-y-0.5 overflow-y-auto h-full pb-6">
+          <nav className="p-3 overflow-y-auto h-full pb-6">
             {loading ? (
               <div className="flex items-center justify-center p-4">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8c76f0]"></div>
               </div>
             ) : (
-              menuItems.map((item) => {
-                const Icon = ICON_MAP[item.icon] || Home;
-                const active = isActive(item.page_path);
+              MENU_SECTIONS.map((section, sIdx) => {
+                const sectionItems = section.items.filter(
+                  (item) => item.key === 'dashboard' || item.key === 'change-password' || visibleKeys.has(item.key)
+                );
+
+                if (sectionItems.length === 0) return null;
+
                 return (
-                  <button
-                    key={item.page_key}
-                    onClick={() => {
-                      navigate(item.page_path);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`
-                      w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
-                      ${active
-                        ? 'bg-gradient-to-r from-purple-50 to-violet-50 text-[#8c76f0] border-2 border-[#8c76f0]'
-                        : 'text-gray-700 hover:bg-gray-50 border-2 border-transparent'
-                      }
-                    `}
-                  >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate text-xs">{item.page_name}</span>
-                  </button>
+                  <div key={sIdx} className={sIdx > 0 ? 'mt-4' : ''}>
+                    {section.label && (
+                      <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                        {section.label}
+                      </p>
+                    )}
+                    <div className="space-y-0.5">
+                      {sectionItems.map((item) => {
+                        const Icon = ICON_MAP[item.icon] || Home;
+                        const active = isActive(item.page_path);
+                        const editable = canEdit(item.key);
+                        return (
+                          <button
+                            key={item.key}
+                            onClick={() => {
+                              navigate(item.path);
+                              setMobileMenuOpen(false);
+                            }}
+                            className={`
+                              w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+                              ${active
+                                ? 'bg-gradient-to-r from-purple-50 to-violet-50 text-[#8c76f0] border-2 border-[#8c76f0]'
+                                : 'text-gray-700 hover:bg-gray-50 border-2 border-transparent'
+                              }
+                            `}
+                          >
+                            <Icon className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate text-xs">{item.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })
             )}

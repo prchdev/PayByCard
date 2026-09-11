@@ -70,6 +70,7 @@ interface TxRecord {
   company_address: string | null;
   receiver_pan: string | null;
   gateway_settlement_status?: string | null;
+  invoice_number?: number | null;
 }
 
 const STATUS_OPTIONS = [
@@ -170,10 +171,10 @@ function downloadCSV(rows: TxRecord[]) {
     'Sender Name', 'Sender Email', 'Sender Mobile', 'Sender PAN',
     'Company Name', 'Company PAN', 'Company GST Number', 'Company Address',
     // Beneficiary Details
-    'Beneficiary Name', 'Beneficiary PAN', 'Beneficiary Bank', 'Beneficiary Account', 'Beneficiary IFSC',
+    'Beneficiary Name', 'Beneficiary Email', 'Beneficiary Mobile', 'Beneficiary PAN', 'Beneficiary Bank', 'Beneficiary Account', 'Beneficiary IFSC',
     // Payment Details
     'Category', 'Payment Option', 'Gateway', 'Environment',
-    'Base Amount (INR)', 'Platform Charges (INR)', 'CGST 9% (INR)', 'SGST 9% (INR)', 'Total Charged (INR)',
+    'Base Amount (INR)', 'Platform Charges (INR)', 'CGST 9% (INR)', 'SGST 9% (INR)', 'IGST 18% (INR)', 'Total Charged (INR)',
     // Gateway
     'Gateway Transaction Ref', 'Gateway Settlement Status',
     // Payout / Settlement Details
@@ -188,8 +189,13 @@ function downloadCSV(rows: TxRecord[]) {
     const bene = r.beneficiary_details || {};
     const payout = r.payout;
     const gstTotal = parseFloat(r.gst || '0');
-    const cgst = (gstTotal / 2).toFixed(2);
-    const sgst = (gstTotal / 2).toFixed(2);
+    const payerAddrCSV = r.business_kyc_verified
+      ? (r.company_address || r.sender_address || '')
+      : (r.sender_address || '');
+    const isMHCSV = isMaharashtraState(payerAddrCSV.match(/\b(Maharashtra|MH)\b/i)?.[0]);
+    const cgstCSV = isMHCSV ? (gstTotal / 2).toFixed(2) : '0.00';
+    const sgstCSV = isMHCSV ? (gstTotal / 2).toFixed(2) : '0.00';
+    const igstCSV = isMHCSV ? '0.00' : gstTotal.toFixed(2);
     const isRefund = ds === 'refunded';
 
     const refundDate = isRefund && payout?.completed_at ? fmtDate(payout.completed_at) : '';
@@ -213,6 +219,8 @@ function downloadCSV(rows: TxRecord[]) {
       r.business_kyc_verified ? (r.company_address || '') : '',
       // Beneficiary
       bene.full_name || '',
+      bene.email || '',
+      bene.mobile || '',
       r.receiver_pan || '',
       bene.bank_name || '',
       bene.bank_account || '',
@@ -224,8 +232,9 @@ function downloadCSV(rows: TxRecord[]) {
       r.gateway_environment || '',
       r.amount,
       r.charges,
-      cgst,
-      sgst,
+      cgstCSV,
+      sgstCSV,
+      igstCSV,
       r.total_amount,
       r.gateway_transaction_id || '',
       // Gateway settlement
@@ -266,6 +275,12 @@ interface CompanyInfo {
   company_logo_url: string | null;
 }
 
+function isMaharashtraState(stateText: string | null | undefined): boolean {
+  if (!stateText) return false;
+  const s = stateText.trim().toLowerCase();
+  return s === 'maharashtra' || s === 'mh';
+}
+
 function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): string {
   const bene = r.beneficiary_details || {};
   const ds = r.display_status || r.status;
@@ -280,7 +295,15 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
   const gst = parseFloat(r.gst || '0');
   const cgst = gst / 2;
   const sgst = gst / 2;
-  const total = parseFloat(r.total_amount || '0');
+  const igst = gst;
+  const totalCharged = charges + gst;
+  // Determine if payer is in Maharashtra for SGST vs IGST
+  const payerStateRaw = r.business_kyc_verified
+    ? (r.company_address || r.sender_address || '')
+    : (r.sender_address || '');
+  const isMH = isMaharashtraState(payerStateRaw.match(/\b(Maharashtra|MH)\b/i)?.[0]);
+  const invYear = new Date(r.completed_at || r.created_at).getFullYear();
+  const invoiceNumDisplay = r.invoice_number ? `PAY-${invYear}-${r.invoice_number}` : null;
   const logoHtml = co.company_logo_url
     ? `<img src="${co.company_logo_url}" alt="${co.company_name}" style="height:44px;object-fit:contain;margin-bottom:4px;" />`
     : `<span style="font-size:20px;font-weight:800;color:#1e293b;letter-spacing:-0.5px;">${co.company_name}</span>`;
@@ -312,10 +335,14 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
         </div>
       </td>
       <td style="vertical-align:top;text-align:right;">
-        <div style="font-size:26px;font-weight:800;color:#0f172a;letter-spacing:-1px;margin-bottom:8px;">INVOICE</div>
+        <div style="font-size:26px;font-weight:800;color:#0f172a;letter-spacing:-1px;margin-bottom:8px;">TAX INVOICE</div>
         <table style="border-collapse:collapse;margin-left:auto;font-size:11.5px;">
-          <tr>
+          ${invoiceNumDisplay ? `<tr>
             <td style="padding:3px 0;color:#64748b;padding-right:12px;">Invoice No.</td>
+            <td style="padding:3px 0;font-weight:700;font-family:Courier New,monospace;">${invoiceNumDisplay}</td>
+          </tr>` : ''}
+          <tr>
+            <td style="padding:3px 0;color:#64748b;padding-right:12px;">Order No.</td>
             <td style="padding:3px 0;font-weight:700;font-family:Courier New,monospace;">${r.payment_reference}</td>
           </tr>
           <tr>
@@ -382,8 +409,7 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
             : r.category_details.settlement_time) : ''}
           ${row('Payment Option', option)}
           ${row('Gateway', r.gateway_name || '—')}
-          ${r.gateway_transaction_id ? row('Gateway Tx ID', r.gateway_transaction_id, true) : ''}
-          ${r.gateway_environment ? row('Environment', r.gateway_environment.charAt(0).toUpperCase() + r.gateway_environment.slice(1)) : ''}
+${r.gateway_environment ? row('Environment', r.gateway_environment.charAt(0).toUpperCase() + r.gateway_environment.slice(1)) : ''}
         </table>
       </td>
       <!-- Right: Beneficiary -->
@@ -391,7 +417,7 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Beneficiary Details</div>
         <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
           ${row('Name', bene.full_name || '—', false, true)}
-          ${r.receiver_pan ? row('PAN Number', r.receiver_pan, true) : ''}
+          ${row('PAN Number', r.receiver_pan || '—', true)}
           ${row('Bank', bene.bank_name || '—')}
           ${row('Account No.', bene.bank_account || '—', true)}
           ${row('IFSC Code', bene.ifsc || '—', true)}
@@ -414,31 +440,60 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
       <tbody>
         <tr>
           <td style="padding:7px 8px;font-size:12px;border-bottom:1px solid #e2e8f0;">
-            Payment Transfer — ${r.category_details?.category_name || 'Service'} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
-            <span style="font-size:10.5px;color:#64748b;">To: ${bene.full_name || '—'} · ${bene.bank_account || ''} · ${bene.ifsc || ''}</span>
+            Platform Fees &#8212; ${r.category_details?.category_name || 'Service'} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
+            <span style="font-size:10.5px;color:#64748b;">To: ${bene.full_name || '—'} · ${bene.bank_account || ''} · ${bene.ifsc || ''}</span><br/>
+            <span style="font-size:10.5px;color:#64748b;">Amount: ₹${fmt(baseAmt)}</span>
           </td>
-          <td style="padding:7px 8px;text-align:right;font-size:12px;border-bottom:1px solid #e2e8f0;">₹${fmt(baseAmt)}</td>
+          <td style="padding:7px 8px;text-align:right;font-size:12px;border-bottom:1px solid #e2e8f0;">₹${fmt(charges)}</td>
         </tr>
-        <tr>
-          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">Service Charges</td>
-          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">₹${fmt(charges)}</td>
-        </tr>
-        <tr>
+        ${isMH ? `<tr>
           <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">CGST (9%)</td>
           <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">₹${fmt(cgst)}</td>
         </tr>
         <tr>
           <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">SGST (9%)</td>
           <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">₹${fmt(sgst)}</td>
-        </tr>
+        </tr>` : `<tr>
+          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">IGST (18%)</td>
+          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">₹${fmt(igst)}</td>
+        </tr>`}
         <tr style="background:#0f172a;">
           <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#fff;">TOTAL CHARGED</td>
-          <td style="padding:10px 8px;text-align:right;font-size:16px;font-weight:800;color:#fff;">₹${fmt(total)}</td>
+          <td style="padding:10px 8px;text-align:right;font-size:16px;font-weight:800;color:#fff;">₹${fmt(totalCharged)}</td>
         </tr>
       </tbody>
     </table>
   </div>
 
+
+  <!-- Additional Details -->
+  <div style="margin-bottom:24px;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Additional Details</div>
+    <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
+      <thead>
+        <tr style="background:#e2e8f0;">
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;width:30%;">Type</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;width:20%;">Gateway / Mode</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;width:25%;">Date &amp; Time</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;">Reference No.</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:7px 10px;font-size:11.5px;font-weight:600;">PayIn Transaction</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${r.gateway_name || '&#8212;'}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${fmtDate(r.completed_at || r.created_at)}</td>
+          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${r.gateway_transaction_id || r.payment_reference}</td>
+        </tr>
+        <tr>
+          <td style="padding:7px 10px;font-size:11.5px;font-weight:600;">${isRefund ? 'Refund Transaction' : 'PayOut Transaction'}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${isRefund ? (r.gateway_name || '&#8212;') : (r.payout_mode ? formatPayoutMode(r.payout_mode) : '&#8212;')}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${isRefund ? (payout?.completed_at ? fmtDate(payout.completed_at) : '&#8212;') : (payout?.completed_at ? fmtDate(payout.completed_at) : (payout?.payout_date ? payout.payout_date : '&#8212;'))}</td>
+          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${payout?.utr_number || payout?.payout_reference_number || '&#8212;'}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
   <!-- Footer -->
   <div style="border-top:1px solid #e2e8f0;padding-top:16px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
@@ -521,14 +576,23 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
   const charges = parseFloat(r.charges || '0');
   const gstTotal = parseFloat(r.gst || '0');
   const halfGst = parseFloat((gstTotal / 2).toFixed(2));
-  const total = parseFloat(r.total_amount || '0');
+  const totalCharged = parseFloat((charges + gstTotal).toFixed(2));
+  const baseAmt = parseFloat(r.amount || '0');
+
+  const invYear = new Date(r.completed_at || r.created_at).getFullYear();
+  const invoiceNo = r.invoice_number ? `PAY-${invYear}-${r.invoice_number}` : r.payment_reference;
 
   const supplierGstin = (co.gst_number || '').toUpperCase().trim();
   // Use buyer's company GSTIN for B2B when business KYC verified
   const buyerGstin = (r.business_kyc_verified && r.company_gst ? r.company_gst : '').toUpperCase().trim();
   const supplierStateCode = supplierGstin.slice(0, 2);
   const buyerStateCode = buyerGstin ? buyerGstin.slice(0, 2) : supplierStateCode;
-  const isInterState = buyerGstin ? supplierStateCode !== buyerStateCode : false;
+  // Also check payer address for Maharashtra state to decide SGST vs IGST
+  const payerAddrForState = r.business_kyc_verified
+    ? (r.company_address || r.sender_address || '')
+    : (r.sender_address || '');
+  const isMHFromAddress = isMaharashtraState(payerAddrForState.match(/\b(Maharashtra|MH)\b/i)?.[0]);
+  const isInterState = buyerGstin ? supplierStateCode !== buyerStateCode : !isMHFromAddress;
   const posCode = buyerGstin ? buyerStateCode : supplierStateCode;
 
   const txDate = r.created_at ? new Date(r.created_at) : new Date();
@@ -574,11 +638,12 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
     { Nm: 'BeneficiaryBank', Val: bene.bank_name || '' },
     { Nm: 'BeneficiaryAccount', Val: bene.bank_account || '' },
     { Nm: 'IFSC', Val: bene.ifsc || '' },
-    { Nm: 'BaseTransferAmount', Val: parseFloat(r.amount || '0').toFixed(2) },
-    { Nm: 'ServiceCharges', Val: charges.toFixed(2) },
+    { Nm: 'TransferAmount', Val: baseAmt.toFixed(2) },
+    { Nm: 'PlatformFees', Val: charges.toFixed(2) },
     { Nm: 'Gateway', Val: r.gateway_name || '' },
     { Nm: 'PaymentOption', Val: r.selected_payment_option?.card_type || r.card_type || '' },
     { Nm: 'Category', Val: r.category_details?.category_name || '' },
+    { Nm: 'OrderNo', Val: r.payment_reference },
   ];
   if (r.sender_pan) attribs.push({ Nm: 'PayerPAN', Val: r.sender_pan });
   if (r.receiver_pan) attribs.push({ Nm: 'BeneficiaryPAN', Val: r.receiver_pan });
@@ -600,7 +665,7 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
     },
     DocDtls: {
       Typ: docType,
-      No: r.payment_reference,
+      No: invoiceNo,
       Dt: docDate,
     },
     SellerDtls: {
@@ -635,7 +700,7 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
     ItemList: [
       {
         SlNo: '1',
-        PrdDesc: `Payment Transfer Service - ${r.category_details?.category_name || 'Fund Transfer'}`,
+        PrdDesc: `Platform Fees - ${r.category_details?.category_name || 'Fund Transfer'}`,
         IsServc: 'Y',
         HsnCd: '998399',
         Barcde: null,
@@ -659,7 +724,7 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
         StateCesNonAdvlAmt: 0,
         OthChrg: 0,
         TotItemVal: itemTotal,
-        OrdLineRef: r.payment_reference,
+        OrdLineRef: invoiceNo,
         OrgCntry: null,
         PrdSlNo: null,
         BchDtls: null,
@@ -676,7 +741,7 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
       Discount: 0,
       OthChrg: 0,
       RndOffAmt: 0,
-      TotInvVal: parseFloat(total.toFixed(2)),
+      TotInvVal: totalCharged,
       TotInvValFc: 0,
     },
     PayDtls: {
@@ -689,14 +754,14 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
       CrTrn: '',
       DirDr: '',
       CrDay: 0,
-      PaidAmt: isRefund ? 0 : parseFloat(total.toFixed(2)),
+      PaidAmt: isRefund ? 0 : totalCharged,
       PaymtDue: 0,
     },
     RefDtls: isRefund
       ? {
-          InvRm: `Refund for transaction ${r.payment_reference}`,
+          InvRm: `Refund for transaction ${invoiceNo}`,
           DocPerdDtls: null,
-          PrecDocDtls: [{ InvNo: r.payment_reference, InvDt: docDate, OthRefNo: r.gateway_transaction_id || '' }],
+          PrecDocDtls: [{ InvNo: invoiceNo, InvDt: docDate, OthRefNo: r.gateway_transaction_id || r.payment_reference || '' }],
           ContrDtls: null,
         }
       : null,
@@ -704,7 +769,7 @@ function buildEInvoiceJSON(r: TxRecord, co: CompanyInfo): object {
       {
         Url: co.website_url || 'https://paybycard.in',
         Docs: docRefs,
-        Info: amountInWords(parseFloat(total.toFixed(2))),
+        Info: amountInWords(totalCharged),
       },
     ],
     EwbDtls: null,
@@ -1291,7 +1356,7 @@ export default function AdminReports() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Reference, name..."
+              placeholder="Reference, name, invoice no..."
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
@@ -1374,6 +1439,11 @@ export default function AdminReports() {
                       <tr key={r.id} className="hover:bg-purple-50/30 transition-colors">
                         <td className="px-4 py-3">
                           <span className="font-mono text-xs font-semibold text-[#8c76f0]">{r.payment_reference}</span>
+                          {r.invoice_number && (
+                            <p className="text-xs text-emerald-600 font-mono font-semibold mt-0.5">
+                              PAY-{new Date(r.created_at).getFullYear()}-{r.invoice_number}
+                            </p>
+                          )}
                           {r.gateway_transaction_id && (
                             <p className="text-xs text-gray-400 font-mono mt-0.5 max-w-[100px] truncate">{r.gateway_transaction_id}</p>
                           )}

@@ -41,14 +41,21 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (!user) {
+      // F21: Return the same success response whether or not the email exists,
+      // so an attacker cannot enumerate accounts.
       return new Response(
-        JSON.stringify({ error: "No account found with this email" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: true, message: "If an account exists with this email, OTPs have been sent." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    const mobileOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    // F19: Use crypto.getRandomValues for security-critical codes.
+    const emailOtpArr = new Uint32Array(1);
+    const mobileOtpArr = new Uint32Array(1);
+    crypto.getRandomValues(emailOtpArr);
+    crypto.getRandomValues(mobileOtpArr);
+    const emailOtp = (100000 + (emailOtpArr[0] % 900000)).toString();
+    const mobileOtp = (100000 + (mobileOtpArr[0] % 900000)).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
     await supabase
@@ -151,3 +158,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// redeploy

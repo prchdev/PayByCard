@@ -85,6 +85,9 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   const coPan   = d._company_pan   || "";
   const coCin   = d._company_cin   || "";
 
+  const invYear = d.invoice_year || new Date().getFullYear();
+  const invoiceNumDisplay = d.invoice_number ? `PAY-${invYear}-${d.invoice_number}` : null;
+
   let y = 50; // current Y from top of page
 
   // ── HEADER: company info (left) + INVOICE title (right) ───────────────────
@@ -95,16 +98,16 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   y += 12;
   if (coPhone) { T(coPhone, ML, y + 9, 8, reg, GRAY); y += 12; }
 
-  // INVOICE on right
+  // TAX INVOICE on right
   const invTitleSz = 22;
-  T("INVOICE", RX - TW("INVOICE", invTitleSz, bld), 50 + invTitleSz - 2, invTitleSz, bld);
+  T("TAX INVOICE", RX - TW("TAX INVOICE", invTitleSz, bld), 50 + invTitleSz - 2, invTitleSz, bld);
 
   // Meta rows on right
   let ry = 50 + invTitleSz + 4;
-  const metaRows: [string, string][] = [
-    ["Invoice No.", d.payment_reference || "—"],
-    ["Invoice Date", d.date || "—"],
-  ];
+  const metaRows: [string, string][] = [];
+  if (invoiceNumDisplay) metaRows.push(["Invoice No.", invoiceNumDisplay]);
+  metaRows.push(["Order No.", d.payment_reference || "—"]);
+  metaRows.push(["Invoice Date", d.date || "—"]);
   if (d.completed_at) metaRows.push(["Completed", fmtDate(d.completed_at)]);
   for (const [lbl, val] of metaRows) {
     T(lbl, RX - 220, ry + 8, 8, reg, GRAY);
@@ -183,8 +186,8 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
 
   const bnRows: [string, string, boolean][] = [
     ["Name", trunc(d.receiver_name || "—", 22), true],
+    ["PAN Number", d.receiver_pan || "—", false],
   ];
-  if (d.receiver_pan) bnRows.push(["PAN Number", d.receiver_pan, false]);
   bnRows.push(["Bank", trunc(d.receiver_bank || "—", 22), false]);
   bnRows.push(["Account No.", trunc(d.receiver_account || "—", 20), false]);
   bnRows.push(["IFSC Code", trunc(d.receiver_ifsc || "—", 16), false]);
@@ -226,7 +229,16 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   const gst      = parseFloat(String(d.gst || 0));
   const cgst     = gst / 2;
   const sgst     = gst / 2;
+  const igst     = gst;
   const total    = parseFloat(String(d.total_amount || baseAmt));
+
+  // Determine if payer is in Maharashtra for SGST vs IGST
+  const payerStateRaw = d.business_kyc_verified
+    ? (d.company_address || d.sender_address || "")
+    : (d.sender_address || "");
+  const isMH = isMaharashtraState(
+    payerStateRaw.match(/\b(Maharashtra|MH)\b/i)?.[0]
+  );
 
   // Table header row
   R(ML, y, CW, 18, rgb(0.886, 0.898, 0.914));
@@ -234,22 +246,22 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   T("Amount (INR)", RX - TW("Amount (INR)", 8, bld) - 8, y + 13, 8, bld, GRAY);
   y += 18;
 
-  // Description line 1: transfer + sub-line with beneficiary
-  const tranDesc = `Payment Transfer - ${d.category_name || "Service"}`;
+  // Description line 1: Platform Fees + sub-lines for beneficiary and transfer amount
+  const tranDesc = `Platform Fees - ${d.category_name || "Service"}`;
   const tranSub  = `To: ${d.receiver_name || "—"} · ${trunc(d.receiver_account || "", 16)} · ${d.receiver_ifsc || ""}`;
-  const tranVal  = `Rs. ${fmtAmt(baseAmt)}`;
-  R(ML, y, CW, 24, BGFAINT);
-  L(ML, y + 24, RX, y + 24, 0.5, LGRAY);
+  const tranAmtLine = `Amount: Rs. ${fmtAmt(baseAmt)}`;
+  const tranVal  = `Rs. ${fmtAmt(charges)}`;
+  R(ML, y, CW, 32, BGFAINT);
+  L(ML, y + 32, RX, y + 32, 0.5, LGRAY);
   T(trunc(tranDesc, 55), ML + 8, y + 12, 9, reg, DARK);
   T(trunc(tranSub, 65), ML + 8, y + 21, 7.5, reg, GRAY);
+  T(trunc(tranAmtLine, 45), ML + 8, y + 29, 7.5, reg, GRAY);
   T(tranVal, RX - TW(tranVal, 9) - 8, y + 12, 9, reg, GRAY);
-  y += 24;
+  y += 32;
 
-  const simpleRows = [
-    ["Service Charges", `Rs. ${fmtAmt(charges)}`],
-    ["CGST (9%)", `Rs. ${fmtAmt(cgst)}`],
-    ["SGST (9%)", `Rs. ${fmtAmt(sgst)}`],
-  ];
+  const simpleRows = isMH
+    ? [["CGST (9%)", `Rs. ${fmtAmt(cgst)}`], ["SGST (9%)", `Rs. ${fmtAmt(sgst)}`]]
+    : [["IGST (18%)", `Rs. ${fmtAmt(igst)}`]];
   for (const [desc, val] of simpleRows) {
     R(ML, y, CW, 16, BGFAINT);
     L(ML, y + 16, RX, y + 16, 0.5, LGRAY);
@@ -259,7 +271,8 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   }
 
   // Total row
-  const totalStr = `Rs. ${fmtAmt(total)}`;
+  const totalCharged = charges + gst;
+  const totalStr = `Rs. ${fmtAmt(totalCharged)}`;
   R(ML, y, CW, 22, TOT_BG);
   T("TOTAL CHARGED", ML + 8, y + 16, 11, bld, WHITE);
   T(totalStr, RX - TW(totalStr, 13, bld) - 8, y + 16, 13, bld, WHITE);
@@ -355,13 +368,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const [userRes, panRes, bizRes, addrRes, payoutRes, beneRes, companyRes] = await Promise.all([
+    const [userRes, panRes, bizRes, addrRes, payoutRes, beneRes, merchantRes, companyRes] = await Promise.all([
       supabase.from("users").select("first_name, last_name, middle_name, email, mobile_number").eq("id", payment.user_id).maybeSingle(),
       supabase.from("kyc_pan_verification").select("pan_number").eq("user_id", payment.user_id).eq("status", "verified").maybeSingle(),
       supabase.from("kyc_business_info").select("company_name, company_pan, gst_number, address, status").eq("user_id", payment.user_id).eq("status", "approved").maybeSingle(),
       supabase.from("kyc_address_proof").select("address, city, state, pincode").eq("user_id", payment.user_id).eq("status", "verified").maybeSingle(),
       supabase.from("payouts").select("status, payout_reference, utr_number, completed_at, payout_date, payout_reference_number, payout_confirmed_amount").eq("payment_id", payment.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       payment.beneficiary_id ? supabase.from("beneficiaries").select("pan_number").eq("id", payment.beneficiary_id).maybeSingle() : Promise.resolve({ data: null }),
+      supabase.from("merchant_onboarding").select("pan_number").eq("payment_id", payment.id).neq("pan_number", "").limit(1).maybeSingle(),
       supabase.from("master_settings").select("company_name, address, cin, gst_number, pan, company_logo_url, website_url, support_email, phone_number").limit(1).maybeSingle(),
     ]);
 
@@ -408,6 +422,8 @@ Deno.serve(async (req: Request) => {
       _company_cin:     co?.cin             || "U62099MH2025PTC462923",
       // Invoice meta
       payment_reference: payment.payment_reference,
+      invoice_number:    payment.invoice_number ?? null,
+      invoice_year:      new Date(payment.completed_at || payment.created_at).getFullYear(),
       date:              fmtDate(payment.created_at),
       completed_at:      payment.completed_at,
       // Sender
@@ -423,7 +439,7 @@ Deno.serve(async (req: Request) => {
       company_address:     biz?.address       || null,
       // Beneficiary
       receiver_name:    bene.full_name    || "—",
-      receiver_pan:     beneRes.data?.pan_number || null,
+      receiver_pan:     beneRes.data?.pan_number || merchantRes.data?.pan_number || null,
       receiver_bank:    bene.bank_name    || "—",
       receiver_account: bene.bank_account || "—",
       receiver_ifsc:    bene.ifsc         || "—",
@@ -441,7 +457,7 @@ Deno.serve(async (req: Request) => {
       total_amount: payment.total_amount || payment.amount,
       // Payout
       payout_status:           payout?.status          || null,
-      gateway_ref:             payment.gateway_transaction_id || null,
+      gateway_ref:             payment.gateway_transaction_id || payment.payment_reference || null,
       utr_number:              payout?.utr_number || payout?.payout_reference_number || null,
       payout_reference:        payout?.payout_reference || null,
       payout_date:             payoutDate,
@@ -467,3 +483,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// redeploy

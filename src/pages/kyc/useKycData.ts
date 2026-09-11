@@ -34,9 +34,25 @@ export function useKycData(userId: string | null) {
     }
   }, [userId]);
 
+  const refresh = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/get-kyc-data`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch KYC data');
+      setKycData(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
+    }
+  }, [userId]);
+
   useEffect(() => { fetchKycData(); }, [fetchKycData]);
 
-  return { kycData, loading, error, refetch: fetchKycData };
+  return { kycData, loading, error, refetch: fetchKycData, refresh };
 }
 
 export async function uploadKycFile(
@@ -44,8 +60,8 @@ export async function uploadKycFile(
   userId: string,
   fileKey: string
 ): Promise<string> {
-  if (file.size > 1024 * 1024) {
-    throw new Error(`File "${file.name}" exceeds the 1 MB limit (${(file.size / (1024 * 1024)).toFixed(2)} MB).`);
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error(`File "${file.name}" exceeds the 5 MB limit (${(file.size / (1024 * 1024)).toFixed(2)} MB).`);
   }
   const formData = new FormData();
   formData.append('file', file);
@@ -54,7 +70,10 @@ export async function uploadKycFile(
 
   const res = await fetch(`${SUPABASE_URL}/functions/v1/upload-kyc-file`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    headers: {
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      'x-pbc-session': sessionStorage.getItem('pbc_session') || '',
+    },
     body: formData,
   });
   const data = await res.json();

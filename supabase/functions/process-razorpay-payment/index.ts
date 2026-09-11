@@ -179,15 +179,28 @@ Deno.serve(async (req: Request) => {
     const detectedCardType = card_type.toLowerCase();
     const categoryName = payment.card_type?.toLowerCase() || "";
 
+    // Look up per-payment-option Razorpay checkout configuration
+    let checkoutConfigId: string | null = null;
+
+    if (payment.payment_category_id) {
+      const { data: razorpayConfig } = await supabase
+        .from("razorpay_payment_configs")
+        .select("checkout_config_id")
+        .eq("payment_gateway_id", gateway.id)
+        .eq("payment_option_id", payment.payment_category_id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (razorpayConfig?.checkout_config_id) {
+        checkoutConfigId = razorpayConfig.checkout_config_id;
+      }
+    }
+
     let allowedMethods: string[] = [];
 
     if (categoryName.includes("amex") || categoryName.includes("american express") || categoryName.includes("diners")) {
       allowedMethods = ["amex"];
-    } else if (categoryName.includes("visa")) {
-      allowedMethods = ["card"];
-    } else if (categoryName.includes("master")) {
-      allowedMethods = ["card"];
-    } else if (categoryName.includes("rupay")) {
+    } else if (categoryName.includes("visa") || categoryName.includes("master") || categoryName.includes("rupay")) {
       allowedMethods = ["card"];
     } else if (detectedCardType === "amex" || detectedCardType === "diners") {
       allowedMethods = ["amex"];
@@ -195,12 +208,8 @@ Deno.serve(async (req: Request) => {
       allowedMethods = ["card"];
     }
 
-    const method = allowedMethods[0] || "card";
-
-    const allowedCardTypes =
-      method === "amex"
-        ? ["amex", "diners"]
-        : ["visa", "mastercard", "rupay"];
+    const orderMethod = allowedMethods[0] || "card";
+    const allowedCardTypes = orderMethod === "amex" ? ["amex", "diners"] : ["visa", "mastercard", "rupay"];
 
     const orderData: any = {
       amount: Math.round(parseFloat(payment.total_amount) * 100),
@@ -211,8 +220,13 @@ Deno.serve(async (req: Request) => {
         user_id: user.id,
         card_type: allowedCardTypes.join(",")
       },
-      method: method
+      method: orderMethod
     };
+
+    // Use per-option checkout config if defined; otherwise Razorpay uses the default config
+    if (checkoutConfigId) {
+      orderData.checkout_config_id = checkoutConfigId;
+    }
 
     // Payment Split: configure Razorpay Route transfer at order creation time
     const payoutMode = gateway.payout_mode;
@@ -327,3 +341,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// redeploy

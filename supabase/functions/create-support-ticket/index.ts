@@ -93,8 +93,11 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("Exception in create-support-ticket:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Internal server error" }),
+      JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
+
+
+// redeploy

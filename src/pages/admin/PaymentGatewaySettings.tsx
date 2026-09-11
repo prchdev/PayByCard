@@ -1,8 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Save, AlertCircle, CheckCircle, Loader2, Percent, Building2, Key } from 'lucide-react';
+import { CreditCard, Save, AlertCircle, CheckCircle, Loader2, Building2, Settings2, Power } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
+
+interface PaymentOption {
+  id: string;
+  category_name: string;
+}
+
+interface RazorpayConfig {
+  payment_option_id: string;
+  checkout_config_id: string;
+  is_active: boolean;
+}
+
+interface PhonePeConfig {
+  payment_option_id: string;
+  card_types: string[];
+  networks: string[];
+  variants: string[];
+  geo_scopes: string[];
+  is_active: boolean;
+}
+
+const PHONEPE_CARD_TYPES = ['CREDIT_CARD', 'DEBIT_CARD'];
+const PHONEPE_NETWORKS = ['VISA', 'MASTER_CARD', 'RUPAY', 'AMEX', 'DINERS_CLUB'];
+const PHONEPE_VARIANTS = ['CONSUMER', 'PREMIUM', 'SUPER_PREMIUM', 'CORPORATE'];
+const PHONEPE_GEO_SCOPES = ['DOMESTIC', 'INTERNATIONAL'];
 
 interface PaymentGateway {
   id: string;
@@ -18,29 +43,12 @@ interface PaymentGateway {
   supported_cards: string[];
   instant_settlement_cards: string[];
   default_payment_cards: string[];
-  instant_settlement_charges: Record<string, number>;
   gst_percentage: number;
-  visa_charges: number;
-  mastercard_charges: number;
-  rupay_charges: number;
-  amex_charges: number;
-  diners_charges: number;
-  payout_charges_inr: number;
   registered_name: string;
   gst_number: string;
-  payout_mode: string;
-  test_payout_client_id: string;
-  test_payout_client_secret: string;
-  production_payout_client_id: string;
-  production_payout_client_secret: string;
-  test_payout_account_number: string;
-  production_payout_account_number: string;
-  test_cashfree_2fa_public_key: string;
-  production_cashfree_2fa_public_key: string;
 }
 
-const ALLOWED_GATEWAYS = ['RazorPay', 'CashFree', 'PayU'];
-const PAYOUT_GATEWAYS = ['RazorPay', 'CashFree', 'PayU'];
+const ALLOWED_GATEWAYS = ['RazorPay', 'CashFree', 'PayU', 'PhonePe'];
 
 export default function PaymentGatewaySettings() {
   const navigate = useNavigate();
@@ -57,10 +65,199 @@ export default function PaymentGatewaySettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [paymentOptions, setPaymentOptions] = useState<PaymentOption[]>([]);
+  const [razorpayConfigs, setRazorpayConfigs] = useState<Record<string, RazorpayConfig>>({});
+  const [phonepeConfigs, setPhonepeConfigs] = useState<Record<string, PhonePeConfig>>({});
+  const [phonepeConfigsLoading, setPhonepeConfigsLoading] = useState(false);
+  const [phonepeConfigsSaving, setPhonepeConfigsSaving] = useState(false);
+  const [configsLoading, setConfigsLoading] = useState(false);
+  const [configsSaving, setConfigsSaving] = useState(false);
 
   useEffect(() => {
     fetchGateways();
+    fetchPaymentOptions();
   }, []);
+
+  const fetchPaymentOptions = async () => {
+    try {
+      const adminId = sessionStorage.getItem('adminId');
+      if (!adminId) return;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-options`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ admin_id: adminId }),
+      });
+      const data = await response.json();
+      if (response.ok && data.categories) {
+        setPaymentOptions(data.categories.map((c: any) => ({ id: c.id, category_name: c.category_name })));
+      }
+    } catch {
+      // silent fail — configs are optional
+    }
+  };
+
+  const fetchRazorpayConfigs = async (gatewayId: string) => {
+    setConfigsLoading(true);
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/razorpay-payment-configs?gateway_id=${gatewayId}`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok && data.configs) {
+        const map: Record<string, RazorpayConfig> = {};
+        for (const c of data.configs) {
+          map[c.payment_option_id] = {
+            payment_option_id: c.payment_option_id,
+            checkout_config_id: c.checkout_config_id || '',
+            is_active: c.is_active !== false,
+          };
+        }
+        setRazorpayConfigs(map);
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setConfigsLoading(false);
+    }
+  };
+
+  const updateRazorpayConfig = (optionId: string, field: keyof RazorpayConfig, value: any) => {
+    setRazorpayConfigs(prev => ({
+      ...prev,
+      [optionId]: {
+        payment_option_id: optionId,
+        checkout_config_id: prev[optionId]?.checkout_config_id || '',
+        is_active: prev[optionId]?.is_active ?? true,
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveRazorpayConfigs = async (gatewayId: string) => {
+    setConfigsSaving(true);
+    setMessage(null);
+    try {
+      const configs = Object.values(razorpayConfigs);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/razorpay-payment-configs`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ gateway_id: gatewayId, configs }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Razorpay payment configurations saved successfully' });
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to save Razorpay configurations' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'An error occurred while saving Razorpay configurations' });
+    } finally {
+      setConfigsSaving(false);
+    }
+  };
+
+  const fetchPhonepeConfigs = async (gatewayId: string) => {
+    setPhonepeConfigsLoading(true);
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/phonepe-payment-configs?gateway_id=${gatewayId}`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok && data.configs) {
+        const map: Record<string, PhonePeConfig> = {};
+        for (const c of data.configs) {
+          map[c.payment_option_id] = {
+            payment_option_id: c.payment_option_id,
+            card_types: c.card_types || [],
+            networks: c.networks || [],
+            variants: c.variants || [],
+            geo_scopes: c.geo_scopes || [],
+            is_active: c.is_active !== false,
+          };
+        }
+        setPhonepeConfigs(map);
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setPhonepeConfigsLoading(false);
+    }
+  };
+
+  const updatePhonepeConfig = (optionId: string, field: keyof PhonePeConfig, value: any) => {
+    setPhonepeConfigs(prev => ({
+      ...prev,
+      [optionId]: {
+        payment_option_id: optionId,
+        card_types: prev[optionId]?.card_types || [],
+        networks: prev[optionId]?.networks || [],
+        variants: prev[optionId]?.variants || [],
+        geo_scopes: prev[optionId]?.geo_scopes || [],
+        is_active: prev[optionId]?.is_active ?? true,
+        [field]: value,
+      },
+    }));
+  };
+
+  const togglePhonepeMultiSelect = (optionId: string, field: 'card_types' | 'networks' | 'variants' | 'geo_scopes', value: string) => {
+    setPhonepeConfigs(prev => {
+      const current = prev[optionId] || {
+        payment_option_id: optionId,
+        card_types: [],
+        networks: [],
+        variants: [],
+        geo_scopes: [],
+        is_active: true,
+      };
+      const arr = current[field] as string[];
+      const newArr = arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value];
+      return {
+        ...prev,
+        [optionId]: { ...current, [field]: newArr },
+      };
+    });
+  };
+
+  const savePhonepeConfigs = async (gatewayId: string) => {
+    setPhonepeConfigsSaving(true);
+    setMessage(null);
+    try {
+      const configs = Object.values(phonepeConfigs);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/phonepe-payment-configs`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ gateway_id: gatewayId, configs }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'PhonePe payment configurations saved successfully' });
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to save PhonePe configurations' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'An error occurred while saving PhonePe configurations' });
+    } finally {
+      setPhonepeConfigsSaving(false);
+    }
+  };
 
   const fetchGateways = async () => {
     try {
@@ -91,27 +288,23 @@ export default function PaymentGatewaySettings() {
             test_api_secret: gw.test_api_secret || '',
             production_api_key: gw.production_api_key || '',
             production_api_secret: gw.production_api_secret || '',
-            instant_settlement_charges: gw.instant_settlement_charges || {},
             gst_percentage: gw.gst_percentage || 18,
-            visa_charges: gw.visa_charges || 0,
-            mastercard_charges: gw.mastercard_charges || 0,
-            rupay_charges: gw.rupay_charges || 0,
-            amex_charges: gw.amex_charges || 0,
-            diners_charges: gw.diners_charges || 0,
-            payout_charges_inr: gw.payout_charges_inr || 0,
             registered_name: gw.registered_name || '',
             gst_number: gw.gst_number || '',
-            payout_mode: gw.payout_mode || 'payment_split',
-            test_payout_client_id: gw.test_payout_client_id || '',
-            test_payout_client_secret: gw.test_payout_client_secret || '',
-            production_payout_client_id: gw.production_payout_client_id || '',
-            production_payout_client_secret: gw.production_payout_client_secret || '',
-            test_payout_account_number: gw.test_payout_account_number || '',
-            production_payout_account_number: gw.production_payout_account_number || '',
-            test_cashfree_2fa_public_key: gw.test_cashfree_2fa_public_key || '',
-            production_cashfree_2fa_public_key: gw.production_cashfree_2fa_public_key || '',
           }));
         setGateways(gatewaysData);
+
+        // Fetch Razorpay per-option configs if RazorPay gateway exists
+        const razorpayGw = gatewaysData.find((gw: any) => gw.gateway_name === 'RazorPay');
+        if (razorpayGw) {
+          fetchRazorpayConfigs(razorpayGw.id);
+        }
+
+        // Fetch PhonePe per-option configs if PhonePe gateway exists
+        const phonepeGw = gatewaysData.find((gw: any) => gw.gateway_name === 'PhonePe');
+        if (phonepeGw) {
+          fetchPhonepeConfigs(phonepeGw.id);
+        }
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to load payment gateways' });
       }
@@ -175,20 +368,7 @@ export default function PaymentGatewaySettings() {
 
   const updateGateway = (index: number, field: keyof PaymentGateway, value: any) => {
     const updated = [...gateways];
-    if (field === 'is_enabled' && value === true) {
-      updated.forEach((gw, i) => { if (i !== index) updated[i] = { ...updated[i], is_enabled: false }; });
-    }
     updated[index] = { ...updated[index], [field]: value };
-    setGateways(updated);
-  };
-
-  const updateCharge = (index: number, chargeType: 'instant_settlement_charges', card: string, value: string) => {
-    const updated = [...gateways];
-    const numValue = parseFloat(value) || 0;
-    updated[index][chargeType] = {
-      ...updated[index][chargeType],
-      [card]: numValue
-    };
     setGateways(updated);
   };
 
@@ -234,65 +414,30 @@ export default function PaymentGatewaySettings() {
         <div className="space-y-6">
           {gateways.map((gateway, index) => (
             <div key={gateway.id} className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] p-6 transition-all hover:shadow-xl">
-              <div className="flex items-center gap-3 pb-4 mb-6 border-b border-gray-200">
-                <div className="w-10 h-10 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-[#8c76f0]" />
+              <div className="flex items-center justify-between pb-4 mb-6 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-[#8c76f0]" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">{gateway.gateway_name}</h2>
+                  <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${gateway.is_enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {gateway.is_enabled ? 'Enabled' : 'Disabled'}
+                  </span>
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900">{gateway.gateway_name}</h2>
+                <button
+                  type="button"
+                  onClick={() => updateGateway(index, 'is_enabled', !gateway.is_enabled)}
+                  disabled={!canEdit}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${gateway.is_enabled ? 'bg-green-500' : 'bg-gray-300'}`}
+                  aria-label={gateway.is_enabled ? 'Disable gateway' : 'Enable gateway'}
+                >
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${gateway.is_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
               </div>
 
               <div className="space-y-6">
-                {/* Environment and Enabled */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label htmlFor={`environment-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                      Environment
-                    </label>
-                    <select
-                      id={`environment-${index}`}
-                      value={gateway.environment}
-                      onChange={(e) => updateGateway(index, 'environment', e.target.value)}
-                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                    >
-                      <option value="Testing">Testing</option>
-                      <option value="Production">Production</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor={`payout-mode-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                      Payout Mode
-                    </label>
-                    <select
-                      id={`payout-mode-${index}`}
-                      value={gateway.payout_mode}
-                      onChange={(e) => updateGateway(index, 'payout_mode', e.target.value)}
-                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                    >
-                      <option value="payment_split">Payment Split</option>
-                      <option value="manual">Manual Payout</option>
-                      <option value="payout">Auto Payout</option>
-                    </select>
-                  </div>
-
-                  <div className="flex items-end pb-2">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        id={`enabled-${index}`}
-                        checked={gateway.is_enabled}
-                        onChange={(e) => updateGateway(index, 'is_enabled', e.target.checked)}
-                        className="w-5 h-5 text-white bg-white border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#8c76f0] focus:ring-offset-0 checked:bg-[#8c76f0] checked:border-[#8c76f0] checked:hover:bg-[#7a66d9] checked:hover:border-[#7a66d9] transition-colors cursor-pointer"
-                      />
-                      <label htmlFor={`enabled-${index}`} className="text-sm font-medium text-gray-700 cursor-pointer">
-                        Enabled
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Business Details */}
-                <div className="border-t border-gray-200 pt-6">
+                <div className="pt-6">
                   <div className="flex items-center gap-2 mb-4">
                     <Building2 className="w-4 h-4 text-[#8c76f0]" />
                     <h3 className="text-sm font-semibold text-gray-900">Business Details</h3>
@@ -393,170 +538,236 @@ export default function PaymentGatewaySettings() {
                   </div>
                 </div>
 
-                {/* Payout API Credentials — CashFree, RazorPay, PayU */}
-                {PAYOUT_GATEWAYS.includes(gateway.gateway_name) && (
+                {/* Razorpay Per-Payment-Option Configuration */}
+                {gateway.gateway_name === 'RazorPay' && (
                   <div className="border-t border-gray-200 pt-6">
                     <div className="flex items-center gap-2 mb-1">
-                      <Key className="w-4 h-4 text-[#8c76f0]" />
-                      <h3 className="text-sm font-semibold text-gray-900">Payout API Credentials</h3>
+                      <Settings2 className="w-4 h-4 text-[#8c76f0]" />
+                      <h3 className="text-sm font-semibold text-gray-900">Payment Option Configurations</h3>
                     </div>
-                    <p className="text-xs text-gray-500 mb-5">
-                      {gateway.gateway_name === 'CashFree'
-                        ? 'Cashfree Payout API uses separate credentials from the Payment Gateway API.'
-                        : gateway.gateway_name === 'RazorPay'
-                        ? 'RazorPay X Payout API credentials and source account number for fund transfers.'
-                        : 'Payout API credentials for fund transfer operations.'}
+                    <p className="text-xs text-gray-500 mb-4">
+                      Configure a Razorpay Checkout Config ID for each payment option. If a payment option is not configured below, the default Razorpay checkout configuration is used.
                     </p>
 
-                    {/* Test Payout Credentials */}
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">Test</span>
-                        <span className="text-xs text-gray-500">Used when Environment is set to Testing</span>
+                    {configsLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Loading configurations...
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor={`test-payout-client-id-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                            {gateway.gateway_name === 'RazorPay' ? 'Test Payout Key ID' : 'Test Payout Client ID'}
-                          </label>
-                          <input
-                            type="text"
-                            id={`test-payout-client-id-${index}`}
-                            value={gateway.test_payout_client_id}
-                            onChange={(e) => updateGateway(index, 'test_payout_client_id', e.target.value)}
-                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                            placeholder={gateway.gateway_name === 'RazorPay' ? 'rzp_test_...' : 'Enter Test Payout Client ID'}
-                          />
+                    ) : paymentOptions.length === 0 ? (
+                      <p className="text-sm text-gray-400 italic">No payment options available. Create payment options first in the Payment Categories page.</p>
+                    ) : (
+                      <>
+                        <div className="space-y-3">
+                          {paymentOptions.map((option) => {
+                            const config = razorpayConfigs[option.id];
+                            const isEnabled = config?.is_active ?? false;
+                            return (
+                              <div key={option.id} className={`rounded-xl border-2 p-4 transition-all ${isEnabled ? 'border-[#8c76f0] bg-purple-50/30' : 'border-gray-200 bg-gray-50/50'}`}>
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={isEnabled}
+                                      onChange={(e) => updateRazorpayConfig(option.id, 'is_active', e.target.checked)}
+                                      className="w-4 h-4 text-white bg-white border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#8c76f0] checked:bg-[#8c76f0] checked:border-[#8c76f0] transition-colors cursor-pointer"
+                                    />
+                                    <span className="text-sm font-medium text-gray-900">{option.category_name}</span>
+                                  </div>
+                                </div>
+                                {isEnabled && (
+                                  <div className="pl-7">
+                                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Checkout Config ID</label>
+                                    <input
+                                      type="text"
+                                      value={config?.checkout_config_id || ''}
+                                      onChange={(e) => updateRazorpayConfig(option.id, 'checkout_config_id', e.target.value)}
+                                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-50 outline-none transition-all text-sm"
+                                      placeholder="e.g. config_1234567890"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      The Razorpay Checkout Config ID to use for this payment option. Leave empty to use the default configuration.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div>
-                          <label htmlFor={`test-payout-client-secret-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                            {gateway.gateway_name === 'RazorPay' ? 'Test Payout Key Secret' : 'Test Payout Client Secret'}
-                          </label>
-                          <input
-                            type="password"
-                            id={`test-payout-client-secret-${index}`}
-                            value={gateway.test_payout_client_secret}
-                            onChange={(e) => updateGateway(index, 'test_payout_client_secret', e.target.value)}
-                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                            placeholder="Enter Test Payout Client Secret"
-                          />
+                        <div className="mt-4">
+                          <button
+                            onClick={() => saveRazorpayConfigs(gateway.id)}
+                            disabled={configsSaving || !canEdit}
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {configsSaving ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="w-4 h-4" />
+                                Save Configurations
+                              </>
+                            )}
+                          </button>
                         </div>
-                        {gateway.gateway_name === 'RazorPay' && (
-                          <div className="md:col-span-2">
-                            <label htmlFor={`test-payout-account-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                              Test Payout Account Number
-                            </label>
-                            <input
-                              type="text"
-                              id={`test-payout-account-${index}`}
-                              value={gateway.test_payout_account_number}
-                              onChange={(e) => updateGateway(index, 'test_payout_account_number', e.target.value)}
-                              className="w-full md:w-1/2 px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                              placeholder="RazorPay X test account number"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Production Payout Credentials */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">Production</span>
-                        <span className="text-xs text-gray-500">Used when Environment is set to Production</span>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor={`prod-payout-client-id-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                            {gateway.gateway_name === 'RazorPay' ? 'Production Payout Key ID' : 'Production Payout Client ID'}
-                          </label>
-                          <input
-                            type="text"
-                            id={`prod-payout-client-id-${index}`}
-                            value={gateway.production_payout_client_id}
-                            onChange={(e) => updateGateway(index, 'production_payout_client_id', e.target.value)}
-                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                            placeholder={gateway.gateway_name === 'RazorPay' ? 'rzp_live_...' : 'Enter Production Payout Client ID'}
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor={`prod-payout-client-secret-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                            {gateway.gateway_name === 'RazorPay' ? 'Production Payout Key Secret' : 'Production Payout Client Secret'}
-                          </label>
-                          <input
-                            type="password"
-                            id={`prod-payout-client-secret-${index}`}
-                            value={gateway.production_payout_client_secret}
-                            onChange={(e) => updateGateway(index, 'production_payout_client_secret', e.target.value)}
-                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                            placeholder="Enter Production Payout Client Secret"
-                          />
-                        </div>
-                        {gateway.gateway_name === 'RazorPay' && (
-                          <div className="md:col-span-2">
-                            <label htmlFor={`prod-payout-account-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                              Production Payout Account Number
-                            </label>
-                            <input
-                              type="text"
-                              id={`prod-payout-account-${index}`}
-                              value={gateway.production_payout_account_number}
-                              onChange={(e) => updateGateway(index, 'production_payout_account_number', e.target.value)}
-                              className="w-full md:w-1/2 px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                              placeholder="RazorPay X production account number"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Cashfree 2FA Public Key */}
-                    {gateway.gateway_name === 'CashFree' && (
-                      <div className="mt-6">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">2FA</span>
-                          <span className="text-xs text-gray-500">RSA public key for Cashfree Payout OTP verification (optional)</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label htmlFor={`test-2fa-key-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                              Test 2FA Public Key
-                            </label>
-                            <textarea
-                              id={`test-2fa-key-${index}`}
-                              value={gateway.test_cashfree_2fa_public_key}
-                              onChange={(e) => updateGateway(index, 'test_cashfree_2fa_public_key', e.target.value)}
-                              rows={5}
-                              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all font-mono text-xs resize-y"
-                              placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----"
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor={`prod-2fa-key-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
-                              Production 2FA Public Key
-                            </label>
-                            <textarea
-                              id={`prod-2fa-key-${index}`}
-                              value={gateway.production_cashfree_2fa_public_key}
-                              onChange={(e) => updateGateway(index, 'production_cashfree_2fa_public_key', e.target.value)}
-                              rows={5}
-                              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all font-mono text-xs resize-y"
-                              placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----"
-                            />
-                          </div>
-                        </div>
-                      </div>
+                      </>
                     )}
                   </div>
                 )}
 
-                {/* Card Charges */}
-                <div className="border-t-2 border-gray-200 pt-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Percent className="w-5 h-5 text-[#8c76f0]" />
-                    <h3 className="text-base font-semibold text-gray-900">Card Charges Configuration</h3>
-                  </div>
+                {/* PhonePe Per-Payment-Option Configuration */}
+                {gateway.gateway_name === 'PhonePe' && (
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Settings2 className="w-4 h-4 text-[#8c76f0]" />
+                      <h3 className="text-sm font-semibold text-gray-900">Payment Option Configurations</h3>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-4">
+                      Configure PhonePe payment mode constraints for each payment option. If a payment option is not configured below, the default PhonePe checkout is used (no paymentModeConfig sent to PhonePe API).
+                    </p>
 
+                    {phonepeConfigsLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Loading configurations...
+                      </div>
+                    ) : paymentOptions.length === 0 ? (
+                      <p className="text-sm text-gray-400 italic">No payment options available. Create payment options first in the Payment Categories page.</p>
+                    ) : (
+                      <>
+                        <div className="space-y-3">
+                          {paymentOptions.map((option) => {
+                            const config = phonepeConfigs[option.id];
+                            const isEnabled = config?.is_active ?? false;
+                            return (
+                              <div key={option.id} className={`rounded-xl border-2 p-4 transition-all ${isEnabled ? 'border-[#8c76f0] bg-purple-50/30' : 'border-gray-200 bg-gray-50/50'}`}>
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={isEnabled}
+                                      onChange={(e) => updatePhonepeConfig(option.id, 'is_active', e.target.checked)}
+                                      className="w-4 h-4 text-white bg-white border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#8c76f0] checked:bg-[#8c76f0] checked:border-[#8c76f0] transition-colors cursor-pointer"
+                                    />
+                                    <span className="text-sm font-medium text-gray-900">{option.category_name}</span>
+                                  </div>
+                                </div>
+                                {isEnabled && (
+                                  <div className="pl-7 space-y-4">
+                                    {/* Card Types */}
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Card Types</label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {PHONEPE_CARD_TYPES.map((ct) => {
+                                          const selected = (config?.card_types || []).includes(ct);
+                                          return (
+                                            <button
+                                              key={ct}
+                                              type="button"
+                                              onClick={() => togglePhonepeMultiSelect(option.id, 'card_types', ct)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${selected ? 'border-[#8c76f0] bg-[#8c76f0] text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-[#8c76f0]/50'}`}
+                                            >
+                                              {ct.replace(/_/g, ' ')}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                    {/* Networks */}
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Networks</label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {PHONEPE_NETWORKS.map((n) => {
+                                          const selected = (config?.networks || []).includes(n);
+                                          return (
+                                            <button
+                                              key={n}
+                                              type="button"
+                                              onClick={() => togglePhonepeMultiSelect(option.id, 'networks', n)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${selected ? 'border-[#8c76f0] bg-[#8c76f0] text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-[#8c76f0]/50'}`}
+                                            >
+                                              {n.replace(/_/g, ' ')}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                    {/* Variants */}
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Variants</label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {PHONEPE_VARIANTS.map((v) => {
+                                          const selected = (config?.variants || []).includes(v);
+                                          return (
+                                            <button
+                                              key={v}
+                                              type="button"
+                                              onClick={() => togglePhonepeMultiSelect(option.id, 'variants', v)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${selected ? 'border-[#8c76f0] bg-[#8c76f0] text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-[#8c76f0]/50'}`}
+                                            >
+                                              {v.replace(/_/g, ' ')}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                    {/* Geo Scopes */}
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Geo Scopes</label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {PHONEPE_GEO_SCOPES.map((g) => {
+                                          const selected = (config?.geo_scopes || []).includes(g);
+                                          return (
+                                            <button
+                                              key={g}
+                                              type="button"
+                                              onClick={() => togglePhonepeMultiSelect(option.id, 'geo_scopes', g)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${selected ? 'border-[#8c76f0] bg-[#8c76f0] text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-[#8c76f0]/50'}`}
+                                            >
+                                              {g}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                    <p className="text-xs text-gray-400">
+                                      If all fields are left empty, no paymentModeConfig is sent to PhonePe and the default checkout is used.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="mt-4">
+                          <button
+                            onClick={() => savePhonepeConfigs(gateway.id)}
+                            disabled={phonepeConfigsSaving || !canEdit}
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {phonepeConfigsSaving ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="w-4 h-4" />
+                                Save Configurations
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* GST Configuration */}
+                <div className="border-t-2 border-gray-200 pt-6">
                   <div className="mb-4">
                     <label htmlFor={`gst-${index}`} className="block text-sm font-medium text-gray-700 mb-2">
                       GST Percentage (%)
@@ -572,82 +783,6 @@ export default function PaymentGatewaySettings() {
                       className="w-full md:w-48 px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
                       placeholder="18.00"
                     />
-                  </div>
-
-                  {/* Group 1: Visa / MasterCard / RuPay */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-800 mb-4 px-3 py-1.5 bg-gray-100 rounded-lg inline-block">
-                      Visa / MasterCard / RuPay
-                    </h4>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <CardChargeGroup
-                        label="Visa"
-                        index={index}
-                        normalValue={gateway.visa_charges}
-                        instantValue={gateway.instant_settlement_charges['Visa'] || 0}
-                        onNormalChange={(val) => updateGateway(index, 'visa_charges', val)}
-                        onInstantChange={(val) => updateCharge(index, 'instant_settlement_charges', 'Visa', String(val))}
-                      />
-                      <CardChargeGroup
-                        label="MasterCard"
-                        index={index}
-                        normalValue={gateway.mastercard_charges}
-                        instantValue={gateway.instant_settlement_charges['MasterCard'] || 0}
-                        onNormalChange={(val) => updateGateway(index, 'mastercard_charges', val)}
-                        onInstantChange={(val) => updateCharge(index, 'instant_settlement_charges', 'MasterCard', String(val))}
-                      />
-                      <CardChargeGroup
-                        label="RuPay"
-                        index={index}
-                        normalValue={gateway.rupay_charges}
-                        instantValue={gateway.instant_settlement_charges['Rupay'] || 0}
-                        onNormalChange={(val) => updateGateway(index, 'rupay_charges', val)}
-                        onInstantChange={(val) => updateCharge(index, 'instant_settlement_charges', 'Rupay', String(val))}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Group 2: AmEx / Diners */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-800 mb-4 px-3 py-1.5 bg-gray-100 rounded-lg inline-block">
-                      American Express / Diners Club
-                    </h4>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <CardChargeGroup
-                        label="American Express"
-                        index={index}
-                        normalValue={gateway.amex_charges}
-                        instantValue={gateway.instant_settlement_charges['American Express'] || 0}
-                        onNormalChange={(val) => updateGateway(index, 'amex_charges', val)}
-                        onInstantChange={(val) => updateCharge(index, 'instant_settlement_charges', 'American Express', String(val))}
-                      />
-                      <CardChargeGroup
-                        label="Diners Club"
-                        index={index}
-                        normalValue={gateway.diners_charges}
-                        instantValue={gateway.instant_settlement_charges['Dinner Club'] || 0}
-                        onNormalChange={(val) => updateGateway(index, 'diners_charges', val)}
-                        onInstantChange={(val) => updateCharge(index, 'instant_settlement_charges', 'Dinner Club', String(val))}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Payout Charges */}
-                  <div>
-                    <label htmlFor={`payout-${index}`} className="block text-sm font-semibold text-gray-900 mb-2">
-                      PayOut Charges Per Transaction (INR)
-                    </label>
-                    <input
-                      type="number"
-                      id={`payout-${index}`}
-                      value={gateway.payout_charges_inr}
-                      onChange={(e) => updateGateway(index, 'payout_charges_inr', parseFloat(e.target.value) || 0)}
-                      step="0.01"
-                      min="0"
-                      className="w-full md:w-64 px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                      placeholder="0.00"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Flat fee charged per payout transaction</p>
                   </div>
                 </div>
               </div>
@@ -676,55 +811,5 @@ export default function PaymentGatewaySettings() {
         </div>
       </div>
     </AdminLayout>
-  );
-}
-
-function CardChargeGroup({
-  label,
-  index,
-  normalValue,
-  instantValue,
-  onNormalChange,
-  onInstantChange,
-}: {
-  label: string;
-  index: number;
-  normalValue: number;
-  instantValue: number;
-  onNormalChange: (val: number) => void;
-  onInstantChange: (val: number) => void;
-}) {
-  return (
-    <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-      <label className="block text-sm font-medium text-gray-800 mb-3">{label}</label>
-      <div className="space-y-3">
-        <div>
-          <label className="block text-xs text-gray-600 mb-1">Normal Settlement (%)</label>
-          <input
-            type="number"
-            value={normalValue}
-            onChange={(e) => onNormalChange(parseFloat(e.target.value) || 0)}
-            step="0.01"
-            min="0"
-            max="100"
-            className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-50 outline-none transition-all bg-white"
-            placeholder="0.00"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-600 mb-1">Instant Settlement (%)</label>
-          <input
-            type="number"
-            value={instantValue}
-            onChange={(e) => onInstantChange(parseFloat(e.target.value) || 0)}
-            step="0.01"
-            min="0"
-            max="100"
-            className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-50 outline-none transition-all bg-white"
-            placeholder="0.00"
-          />
-        </div>
-      </div>
-    </div>
   );
 }

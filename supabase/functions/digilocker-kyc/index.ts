@@ -1,4 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
+import { withSignedKycUrls } from "../_shared/kycUrls.ts";
+import { getKycPolicyAttachment } from "../_shared/kycPolicyAttachment.ts";
+import { lookupStateFromPincode } from "../_shared/pincodeLookup.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -326,13 +329,24 @@ async function fetchCashFreeDocuments(
     buildAndStoreCashFreeXml(supabase, 'PAN', panData, userId, 'pan_photo'),
   ]);
 
+  let cfState = sa.state || '';
+  let cfCity = sa.dist || sa.vtc || sa.subdist || '';
+  if (!cfState && sa.pincode) {
+    const pinLookup = await lookupStateFromPincode(sa.pincode);
+    if (pinLookup.state) {
+      cfState = pinLookup.state;
+      if (!cfCity) cfCity = pinLookup.district;
+      console.log('[fetchCashFreeDocuments] state derived from pincode:', sa.pincode, '->', cfState);
+    }
+  }
+
   return {
     pan_number: panData?.pan || '',
     full_name: panData?.name || aadhaarData?.name || '',
     dob: panData?.dob || aadhaarData?.dob || '',
     address: addressParts.join(', '),
-    city: sa.dist || sa.vtc || sa.subdist || '',
-    state: sa.state || '',
+    city: cfCity,
+    state: cfState,
     pincode: sa.pincode || '',
     id_number: aadhaarData?.uid || '',
     address_proof_type: 'aadhar',
@@ -394,9 +408,17 @@ async function digiLockerTokenExchange(
 
 // ── DigiLocker direct: fetch issued documents list ────────────────────────────
 async function fetchIssuedDocuments(accessToken: string): Promise<any[]> {
-  const res = await fetch(`${DIGILOCKER_API}/oauth2/2/files/issued`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let res: Response;
+  try {
+    res = await fetch(`${DIGILOCKER_API}/oauth2/2/files/issued`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   let data: any;
   try { data = await res.json(); } catch { data = {}; }
@@ -410,25 +432,39 @@ async function fetchIssuedDocuments(accessToken: string): Promise<any[]> {
 
 // ── DigiLocker direct: fetch a document XML by URI ───────────────────────────
 async function fetchDocumentXml(accessToken: string, uri: string, label: string): Promise<string> {
-  const res = await fetch(`${DIGILOCKER_API}/oauth2/1/xml/${encodeURIComponent(uri)}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let res: Response;
+  try {
+    res = await fetch(`${DIGILOCKER_API}/oauth2/1/xml/${encodeURIComponent(uri)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`Failed to fetch ${label} document (${uri}): ${errText}`);
+    console.error(`[fetchDocumentXml] ${label} HTTP ${res.status} for uri=${uri}:`, errText.slice(0, 500));
+    throw new Error(`Failed to fetch ${label} document (${uri}): HTTP ${res.status} ${errText.slice(0, 200)}`);
   }
 
   const outerXml = await res.text();
+  console.log(`[fetchDocumentXml] ${label} outer XML length=${outerXml.length} snippet:`, outerXml.slice(0, 300));
 
   const dataContentMatch = outerXml.match(/<DataContent[^>]*>([\s\S]*?)<\/DataContent>/i);
   let innerXml = outerXml;
   if (dataContentMatch) {
     try {
-      innerXml = atob(dataContentMatch[1].trim());
-    } catch {
+      innerXml = atob(dataContentMatch[1].trim().replace(/\s+/g, ''));
+      console.log(`[fetchDocumentXml] ${label} base64 decode SUCCESS, inner length=${innerXml.length} snippet:`, innerXml.slice(0, 300));
+    } catch (e) {
+      console.error(`[fetchDocumentXml] ${label} base64 decode FAILED:`, (e as Error).message, 'base64 len=', dataContentMatch[1].length);
       innerXml = outerXml;
     }
+  } else {
+    console.log(`[fetchDocumentXml] ${label} no DataContent wrapper found, using raw XML`);
   }
 
   return innerXml;
@@ -453,9 +489,17 @@ async function storeXmlFile(
 
 // ── DigiLocker direct: fetch eAadhaar XML via dedicated endpoint ──────────────
 async function fetchEAadhaarXml(accessToken: string): Promise<string> {
-  const res = await fetch(`${DIGILOCKER_API}/oauth2/3/xml/eaadhaar`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let res: Response;
+  try {
+    res = await fetch(`${DIGILOCKER_API}/oauth2/3/xml/eaadhaar`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     const errText = await res.text();
@@ -518,10 +562,10 @@ function parseAddressTag(tag: string): { house: string; street: string; locality
     return m ? m[1].trim() : '';
   };
 
-  const house    = ga('house');
-  const street   = ga('line2') || ga('street') || ga('landmark');
-  const locality = ga('locality') || ga('loc');
-  const vtc      = ga('vtc') || ga('postOffice') || ga('subDistrict');
+  const house    = ga('house') || ga('add1');
+  const street   = ga('line2') || ga('street') || ga('landmark') || ga('lm') || ga('add2');
+  const locality = ga('locality') || ga('loc') || ga('add3');
+  const vtc      = ga('vtc') || ga('postOffice') || ga('subDistrict') || ga('add4');
   const district = ga('district') || ga('dist');
   const state    = ga('state');
   const pincode  = ga('pin') || ga('pc') || ga('pincode');
@@ -538,7 +582,8 @@ function parseAddressTag(tag: string): { house: string; street: string; locality
 function parseAddressElement(xmlBlock: string): {
   house: string; street: string; locality: string; vtc: string; district: string; state: string; pincode: string; line1: string;
 } {
-  const addrTagRe = /<Address2?[\s\S]*?(?:\/>|>)/gi;
+  // Match <Address>, <Address2>, or <Poa> tags (Aadhaar-style)
+  const addrTagRe = /<(?:Address2?|Poa|POA|poa)[\s\S]*?(?:\/>|>)/gi;
   const tags: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = addrTagRe.exec(xmlBlock)) !== null) {
@@ -550,7 +595,7 @@ function parseAddressElement(xmlBlock: string): {
   const score = (tag: string) => {
     let s = 0;
     if (/type=["'](present|permanent)["']/i.test(tag)) s += 10;
-    for (const attr of ['district', 'dist', 'state', 'pin', 'pc', 'pincode', 'house', 'line1']) {
+    for (const attr of ['district', 'dist', 'state', 'pin', 'pc', 'pincode', 'house', 'line1', 'add1']) {
       const re = new RegExp(`\\b${attr}=["']([^"']+)["']`, 'i');
       if (re.test(tag)) s += 1;
     }
@@ -598,11 +643,182 @@ function parseCertificateAddressXml(xml: string): {
   locality: string; vtc: string; district: string; state: string; pincode: string;
 } {
   const issuedToBlock = extractIssuedToBlock(xml);
-  const name = attrInTag(issuedToBlock, 'Person', 'name') || attrInTag(xml, 'Person', 'name') || '';
-  const dob  = attrInTag(issuedToBlock, 'Person', 'dob')  || attrInTag(xml, 'Person', 'dob')  || '';
+
+  // Name — Person element first, then DL/cert element attributes
+  const name = attrInTag(issuedToBlock, 'Person', 'name')
+    || attrInTag(xml, 'Person', 'name')
+    || attrInTag(xml, 'DrivingLicence', 'name')
+    || attrInTag(xml, 'EpicDetails', 'name')
+    || attrInTag(xml, 'Poi', 'name')
+    || '';
+
+  // DOB — same priority chain
+  const dob = attrInTag(issuedToBlock, 'Person', 'dob')
+    || attrInTag(xml, 'Person', 'dob')
+    || attrInTag(xml, 'DrivingLicence', 'dob')
+    || attrInTag(xml, 'EpicDetails', 'dob')
+    || attrInTag(xml, 'Poi', 'dob')
+    || '';
+
+  // Strategy 1: <Address> / <Address2> / <Poa> elements (handled by parseAddressElement)
   const addr = parseAddressElement(issuedToBlock);
+  if (addr.district || addr.state || addr.pincode || addr.house) {
+    const { line1: _l, ...rest } = addr;
+    return { name, dob, ...rest };
+  }
+
+  // Strategy 2: full XML fallback (in case IssuedTo wrapper is missing)
+  const addrFull = parseAddressElement(xml);
+  if (addrFull.district || addrFull.state || addrFull.pincode || addrFull.house) {
+    const { line1: _l, ...rest } = addrFull;
+    return { name, dob, ...rest };
+  }
+
+  // Strategy 3: Aadhaar-style <Poa> attributes (dist/pc etc.)
+  const poaBlock = issuedToBlock || xml;
+  const poaHouse    = attrInTag(poaBlock, 'Poa', 'house') || attrInTag(poaBlock, 'Poa', 'co');
+  const poaStreet   = attrInTag(poaBlock, 'Poa', 'lm') || attrInTag(poaBlock, 'Poa', 'street');
+  const poaLocality = attrInTag(poaBlock, 'Poa', 'loc');
+  const poaVtc      = attrInTag(poaBlock, 'Poa', 'vtc') || attrInTag(poaBlock, 'Poa', 'subdist');
+  const poaDist     = attrInTag(poaBlock, 'Poa', 'dist');
+  const poaState    = attrInTag(poaBlock, 'Poa', 'state');
+  const poaPin      = attrInTag(poaBlock, 'Poa', 'pc') || attrInTag(poaBlock, 'Poa', 'pincode') || attrInTag(poaBlock, 'Poa', 'pin');
+  if (poaDist || poaState || poaPin || poaHouse) {
+    return { name, dob, house: poaHouse, street: poaStreet, locality: poaLocality, vtc: poaVtc, district: poaDist, state: poaState, pincode: poaPin };
+  }
+
+  // Strategy 4: address attributes on the main certificate element (DrivingLicence, EpicDetails, etc.)
+  const ga = (tag: string, attr: string) => attrInTag(xml, tag, attr);
+  for (const certTag of ['DrivingLicence', 'EpicDetails', 'PassportDetails', 'RegistrationCertificate']) {
+    const tagRe = new RegExp(`<${certTag}[\\s\\S]*?(?:\\/>|>)`, 'i');
+    const certMatch = xml.match(tagRe);
+    if (!certMatch) continue;
+    const el = certMatch[0];
+    const gEl = (attr: string) => { const r = new RegExp(`\\b${attr}=["']([^"']*)["']`, 'i'); const mm = el.match(r); return mm ? mm[1].trim() : ''; };
+    const house    = gEl('house') || gEl('add1');
+    const street   = gEl('line2') || gEl('street') || gEl('landmark') || gEl('lm') || gEl('add2');
+    const locality = gEl('locality') || gEl('loc') || gEl('add3');
+    const vtc      = gEl('vtc') || gEl('postOffice') || gEl('subDistrict') || gEl('add4');
+    const district = gEl('district') || gEl('dist') || ga(certTag, 'district') || ga(certTag, 'dist');
+    const state    = gEl('state') || ga(certTag, 'state');
+    const pincode  = gEl('pin') || gEl('pc') || gEl('pincode');
+    if (district || state || pincode || house) {
+      return { name, dob, house, street, locality, vtc, district, state, pincode };
+    }
+  }
+
+  // Final fallback — return whatever addr had (may be empty)
   const { line1: _line1, ...rest } = addr;
   return { name, dob, ...rest };
+}
+
+// ── Dedicated DL XML parser — covers all real-world RTO XML variants ──────────
+function parseDlXml(xml: string): {
+  name: string; dob: string; dlNumber: string;
+  house: string; street: string; locality: string; vtc: string;
+  district: string; state: string; pincode: string;
+} {
+  const ga = (tag: string, attr: string) => attrInTag(xml, tag, attr);
+  const gEl = (tagEl: string, attr: string) => {
+    const r = new RegExp(`\\b${attr}=["']([^"']*)["']`, 'i');
+    const mm = tagEl.match(r);
+    return mm ? mm[1].trim() : '';
+  };
+  const getTextEl = (attr: string) => {
+    const r = new RegExp(`<${attr}[^>]*>([^<]+)<\/${attr}>`, 'i');
+    const mm = xml.match(r);
+    return mm ? mm[1].trim() : '';
+  };
+
+  // Name / DOB — Person, POI, or DrivingLicence element
+  const name = ga('Person', 'name') || ga('POI', 'name') || ga('Poi', 'name') || ga('DrivingLicence', 'name') || '';
+  const dob  = ga('Person', 'dob')  || ga('POI', 'dob')  || ga('Poi', 'dob')  || ga('DrivingLicence', 'dob')  || '';
+
+  // DL number
+  const dlNumber = attrInTag(xml, 'Certificate', 'number')
+    || ga('DrivingLicence', 'dlno')
+    || ga('DrivingLicence', 'number')
+    || ga('CertificateData', 'dlno')
+    || '';
+
+  // Accumulate address fields across all strategies — first non-empty value wins
+  const result = { name, dob, dlNumber, house: '', street: '', locality: '', vtc: '', district: '', state: '', pincode: '' };
+  const fill = (r: typeof result) => {
+    for (const k of ['house', 'street', 'locality', 'vtc', 'district', 'state', 'pincode'] as const) {
+      if (!result[k] && r[k]) result[k] = r[k];
+    }
+  };
+
+  // ── Strategy 1: POA element with attributes ──────────────────────────────
+  const poaTagRe = /<POA[\s\S]*?(?:\/>|>)/gi;
+  let pm: RegExpExecArray | null;
+  while ((pm = poaTagRe.exec(xml)) !== null) {
+    const t = pm[0];
+    const house    = gEl(t, 'house') || gEl(t, 'add1') || gEl(t, 'co');
+    const street   = gEl(t, 'street') || gEl(t, 'add2') || gEl(t, 'landmark') || gEl(t, 'lm');
+    const locality = gEl(t, 'locality') || gEl(t, 'loc') || gEl(t, 'add3');
+    const vtc      = gEl(t, 'vtc') || gEl(t, 'postoffice') || gEl(t, 'subdist') || gEl(t, 'add4');
+    const district = gEl(t, 'district') || gEl(t, 'dist');
+    const state    = gEl(t, 'state');
+    const pincode  = gEl(t, 'pincode') || gEl(t, 'pin') || gEl(t, 'pc');
+    if (district || state || pincode || house) {
+      fill({ name, dob, dlNumber, house, street, locality, vtc, district, state, pincode });
+    }
+  }
+
+  // ── Strategy 2: <Address> / <Poa> attributes (generic element names) ────
+  const genericAddrRe = /<(?:Address2?|Poa|poa)[\s\S]*?(?:\/>|>)/gi;
+  while ((pm = genericAddrRe.exec(xml)) !== null) {
+    const t = pm[0];
+    const house    = gEl(t, 'house') || gEl(t, 'add1');
+    const street   = gEl(t, 'street') || gEl(t, 'add2') || gEl(t, 'landmark') || gEl(t, 'lm');
+    const locality = gEl(t, 'locality') || gEl(t, 'loc') || gEl(t, 'add3');
+    const vtc      = gEl(t, 'vtc') || gEl(t, 'postoffice') || gEl(t, 'add4');
+    const district = gEl(t, 'district') || gEl(t, 'dist');
+    const state    = gEl(t, 'state');
+    const pincode  = gEl(t, 'pincode') || gEl(t, 'pin') || gEl(t, 'pc');
+    if (district || state || pincode || house) {
+      fill({ name, dob, dlNumber, house, street, locality, vtc, district, state, pincode });
+    }
+  }
+
+  // ── Strategy 3: address attributes on <DrivingLicence> element itself ────
+  const dlTagRe = /<DrivingLicence[\s\S]*?(?:\/>|>)/i;
+  const dlMatch = xml.match(dlTagRe);
+  if (dlMatch) {
+    const el = dlMatch[0];
+    const house    = gEl(el, 'house') || gEl(el, 'add1');
+    const street   = gEl(el, 'street') || gEl(el, 'add2') || gEl(el, 'landmark');
+    const locality = gEl(el, 'locality') || gEl(el, 'loc') || gEl(el, 'add3');
+    const vtc      = gEl(el, 'vtc') || gEl(el, 'postoffice') || gEl(el, 'add4');
+    const district = gEl(el, 'district') || gEl(el, 'dist');
+    const state    = gEl(el, 'state');
+    const pincode  = gEl(el, 'pin') || gEl(el, 'pc') || gEl(el, 'pincode');
+    if (district || state || pincode || house) {
+      fill({ name, dob, dlNumber, house, street, locality, vtc, district, state, pincode });
+    }
+
+    // presentaddress / permanentaddress as unstructured string fallback
+    const addrStr = gEl(el, 'presentaddress') || gEl(el, 'permanentaddress');
+    if (addrStr) {
+      const p = parseAddressLine1(addrStr);
+      fill({ name, dob, dlNumber, house: p.address || addrStr, street: '', locality: p.locality, vtc: '', district: p.district, state: p.state, pincode: p.pincode });
+    }
+  }
+
+  // ── Strategy 4: child text elements e.g. <District>...</District> ────────
+  const txtDistrict = getTextEl('District') || getTextEl('district');
+  const txtState    = getTextEl('State')    || getTextEl('state');
+  const txtPincode  = getTextEl('Pincode')  || getTextEl('PinCode') || getTextEl('Pin');
+  const txtHouse    = getTextEl('House')    || getTextEl('HouseNo') || getTextEl('Address1');
+  const txtStreet   = getTextEl('Street')   || getTextEl('Landmark') || getTextEl('Address2');
+  const txtLocality = getTextEl('Locality') || getTextEl('Area') || getTextEl('Address3');
+  const txtVtc      = getTextEl('VTC')      || getTextEl('PostOffice') || getTextEl('SubDistrict');
+  if (txtDistrict || txtState || txtPincode || txtHouse) {
+    fill({ name, dob, dlNumber, house: txtHouse, street: txtStreet, locality: txtLocality, vtc: txtVtc, district: txtDistrict, state: txtState, pincode: txtPincode });
+  }
+
+  return result;
 }
 
 function extractCertIdNumber(xml: string, doctype: 'dl' | 'passport' | 'voter_id'): string {
@@ -612,6 +828,15 @@ function extractCertIdNumber(xml: string, doctype: 'dl' | 'passport' | 'voter_id
       || attrInTag(xml, 'Person', 'epicno')
       || xmlAttr(xml, 'epicno')
       || certRootNum
+      || '';
+  }
+  if (doctype === 'dl') {
+    return certRootNum
+      || attrInTag(xml, 'DrivingLicence', 'dlno')
+      || attrInTag(xml, 'DrivingLicence', 'number')
+      || attrInTag(xml, 'CertificateData', 'dlno')
+      || attrInTag(xml, 'CertificateData', 'number')
+      || attrInTag(xml, 'Person', 'number')
       || '';
   }
   return certRootNum
@@ -631,9 +856,17 @@ function parsePanXml(xml: string) {
 
 // ── DigiLocker direct: fetch user details ────────────────────────────────────
 async function fetchUserDetails(accessToken: string): Promise<{ name: string; dob: string; gender: string }> {
-  const res = await fetch(`${DIGILOCKER_API}/oauth2/1/user`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let res: Response;
+  try {
+    res = await fetch(`${DIGILOCKER_API}/oauth2/1/user`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
   let data: any;
   try { data = await res.json(); } catch { data = {}; }
   return { name: data.name || '', dob: data.dob || '', gender: data.gender || '' };
@@ -646,7 +879,7 @@ function normalizeDob(dob: string): string {
   return dob;
 }
 
-type AddrResult = { house: string; street: string; locality: string; vtc: string; district: string; state: string; pincode: string };
+type AddrResult = { house: string; street: string; locality: string; vtc: string; district: string; state: string; pincode: string; name?: string; dob?: string };
 function hasAddress(a: AddrResult | null | undefined): boolean {
   return !!(a?.district || a?.state || a?.pincode || a?.house || a?.locality);
 }
@@ -668,7 +901,7 @@ async function fetchDigiLockerData(
     .map((s: string) => s.replace('issued/', ''));
 
   const docs = await fetchIssuedDocuments(accessToken);
-
+  console.log('[fetchDigiLockerData] issued docs:', JSON.stringify(docs.map((d: any) => ({ uri: d.uri, type: d.type, doctype: d.doctype, issuerid: d.issuerid }))));
   const allUris = new Set(docs.map((d: any) => d.uri).filter(Boolean));
   for (const uri of scopeUris) {
     if (!allUris.has(uri)) {
@@ -691,11 +924,12 @@ async function fetchDigiLockerData(
   const DL_DOCTYPES       = new Set(['DRVLC', 'DL']);
   const DL_ISSUERS        = new Set(['in.gov.transport', 'in.gov.morth', 'in.gov.rto']);
 
-  const isAadhaarDoc  = (d: any) => AADHAAR_DOCTYPES.has(d.doctype)  || AADHAAR_ISSUERS.has(d.issuerid);
-  const isPanDoc      = (d: any) => PAN_DOCTYPES.has(d.doctype)       || PAN_ISSUERS.has(d.issuerid);
-  const isPassportDoc = (d: any) => PASSPORT_DOCTYPES.has(d.doctype)  || PASSPORT_ISSUERS.has(d.issuerid);
-  const isVoterDoc    = (d: any) => VOTERID_DOCTYPES.has(d.doctype)   || VOTERID_ISSUERS.has(d.issuerid);
-  const isDlDoc       = (d: any) => DL_DOCTYPES.has(d.doctype)        || DL_ISSUERS.has(d.issuerid);
+  const isAadhaarDoc  = (d: any) => AADHAAR_DOCTYPES.has(d.doctype || d.type)  || AADHAAR_ISSUERS.has(d.issuerid);
+  const isPanDoc      = (d: any) => PAN_DOCTYPES.has(d.doctype || d.type)       || PAN_ISSUERS.has(d.issuerid);
+  const isPassportDoc = (d: any) => PASSPORT_DOCTYPES.has(d.doctype || d.type)  || PASSPORT_ISSUERS.has(d.issuerid);
+  const isVoterDoc    = (d: any) => VOTERID_DOCTYPES.has(d.doctype || d.type)   || VOTERID_ISSUERS.has(d.issuerid);
+  const isDlDoc       = (d: any) => DL_DOCTYPES.has(d.doctype || d.type) || DL_ISSUERS.has(d.issuerid) ||
+    ['in.gov.transport', 'in.gov.morth', 'in.gov.rto'].some(p => (d.issuerid || '').startsWith(p));
 
   const aadhaarDoc =
     docs.find((d: any) => d.doctype === 'EAADHAAR') ||
@@ -705,6 +939,16 @@ async function fetchDigiLockerData(
   const passportDoc = docs.find((d: any) => isPassportDoc(d));
   const voterDoc    = docs.find((d: any) => isVoterDoc(d));
   const dlDoc       = docs.find((d: any) => isDlDoc(d));
+  console.log('[fetchDigiLockerData] dlDoc:', JSON.stringify(dlDoc || null));
+  let panParsed: ReturnType<typeof parsePanXml> | null = null;
+  let panRawXml: string | null = null;
+  if (panDoc?.uri) {
+    try {
+      const xml = await fetchDocumentXml(accessToken, panDoc.uri, 'pan');
+      panRawXml = xml;
+      panParsed = parsePanXml(xml);
+    } catch { /* ignore */ }
+  }
 
   let aadhaarParsed: ReturnType<typeof parseAadhaarXml> | null = null;
   let aadhaarRawXml: string | null = null;
@@ -733,16 +977,6 @@ async function fetchDigiLockerData(
     } catch { /* non-fatal */ }
   }
 
-  let panParsed: ReturnType<typeof parsePanXml> | null = null;
-  let panRawXml: string | null = null;
-  if (panDoc?.uri) {
-    try {
-      const xml = await fetchDocumentXml(accessToken, panDoc.uri, 'pan');
-      panRawXml = xml;
-      panParsed = parsePanXml(xml);
-    } catch { /* ignore */ }
-  }
-
   let addrProofType: AddressProofType = 'aadhar';
   let addrIdNumber = '';
   let addrRawXml: string | null = null;
@@ -768,17 +1002,38 @@ async function fetchDigiLockerData(
     } catch { /* ignore */ }
   }
 
-  if (!addrParsed && dlDoc?.uri) {
-    try {
-      const xml = await fetchDocumentXml(accessToken, dlDoc.uri, 'dl');
-      const parsed = parseCertificateAddressXml(xml);
-      if (hasAddress(parsed)) {
-        addrProofType = 'driving_license';
-        addrIdNumber = extractCertIdNumber(xml, 'dl');
-        addrRawXml = xml;
-        addrParsed = parsed;
+  let dlAttemptedButFailed = false;
+
+  if (!addrParsed && dlDoc) {
+    if (!dlDoc.uri) {
+      dlAttemptedButFailed = true;
+    } else {
+      try {
+        const xml = await fetchDocumentXml(accessToken, dlDoc.uri, 'dl');
+        let parsed = parseDlXml(xml);
+        console.log('[DL] parseDlXml result:', JSON.stringify({ name: parsed.name, dob: parsed.dob, dlNumber: parsed.dlNumber, district: parsed.district, state: parsed.state, pincode: parsed.pincode, house: parsed.house, locality: parsed.locality }));
+        if (!parsed.state || (!parsed.district && !parsed.pincode && !parsed.house && !parsed.locality)) {
+          console.error('DL XML missing state or address fields. Trying generic parser. XML snippet:', xml.slice(0, 500));
+          const genericParsed = parseCertificateAddressXml(xml);
+          if (hasAddress(genericParsed)) {
+            parsed = { ...parsed, ...genericParsed, dlNumber: parsed.dlNumber || extractCertIdNumber(xml, 'dl') };
+            console.log('[DL] generic parser merged:', JSON.stringify({ district: parsed.district, state: parsed.state, pincode: parsed.pincode, house: parsed.house }));
+          }
+        }
+        if (parsed.district || parsed.pincode || parsed.house || parsed.locality) {
+          addrProofType = 'driving_license';
+          addrIdNumber = parsed.dlNumber || extractCertIdNumber(xml, 'dl');
+          addrRawXml = xml;
+          addrParsed = parsed;
+        } else {
+          console.error('DL XML: both parsers failed to extract address. Full XML length:', xml.length);
+          dlAttemptedButFailed = true;
+        }
+      } catch (e) {
+        console.error('DL document fetch/parse error:', (e as Error).message);
+        dlAttemptedButFailed = true;
       }
-    } catch { /* ignore */ }
+    }
   }
 
   if (!addrParsed && voterDoc?.uri) {
@@ -794,6 +1049,15 @@ async function fetchDigiLockerData(
     } catch { /* ignore */ }
   }
 
+  if (!addrParsed) {
+    const hadOtherProofs = !!(aadhaarDoc || passportDoc || voterDoc);
+    console.error('[fetchDigiLockerData] address proof failed. docs found:', JSON.stringify({
+      aadhaar: !!aadhaarDoc, pan: !!panDoc, passport: !!passportDoc, dl: !!dlDoc, voter: !!voterDoc,
+      dlHadUri: !!(dlDoc?.uri), dlAttemptedButFailed, hadOtherProofs,
+    }));
+    throw new Error(dlAttemptedButFailed && !hadOtherProofs ? 'DRIVING_LICENSE_UNAVAILABLE' : 'ADDRESS_PROOF_UNAVAILABLE');
+  }
+
   const addrFileKey = addrProofType === 'passport' ? 'passport'
     : addrProofType === 'driving_license' ? 'dl'
     : addrProofType === 'voter_id' ? 'voter_id'
@@ -804,15 +1068,27 @@ async function fetchDigiLockerData(
     addrRawXml ? storeXmlFile(supabase, addrRawXml, userId, `${addrFileKey}_back`)  : Promise.resolve(null),
   ]);
 
+  // ── Fallback: derive state from pincode if missing (common with DL documents) ──
+  let resolvedState = addrParsed?.state || '';
+  let resolvedCity = addrParsed?.district || addrParsed?.vtc || '';
+  if (!resolvedState && addrParsed?.pincode) {
+    const pinLookup = await lookupStateFromPincode(addrParsed.pincode);
+    if (pinLookup.state) {
+      resolvedState = pinLookup.state;
+      if (!resolvedCity) resolvedCity = pinLookup.district;
+      console.log('[fetchDigiLockerData] state derived from pincode:', addrParsed.pincode, '->', resolvedState);
+    }
+  }
+
   const addressParts = [addrParsed?.house, addrParsed?.street, addrParsed?.locality].filter(Boolean);
 
   return {
     pan_number:         panParsed?.panNumber      || '',
-    full_name:          panParsed?.name || aadhaarParsed?.name || userDetailsName || tokenName,
-    dob:                panParsed?.dob  || aadhaarParsed?.dob  || userDetailsDob  || tokenDob,
+    full_name:          panParsed?.name || aadhaarParsed?.name || addrParsed?.name || userDetailsName || tokenName,
+    dob:                panParsed?.dob  || aadhaarParsed?.dob  || addrParsed?.dob  || userDetailsDob  || tokenDob,
     address:            addressParts.join(', '),
-    city:               addrParsed?.district || addrParsed?.vtc || '',
-    state:              addrParsed?.state    || '',
+    city:               resolvedCity,
+    state:              resolvedState,
     pincode:            addrParsed?.pincode  || '',
     id_number:          addrIdNumber,
     address_proof_type: addrProofType,
@@ -1018,7 +1294,18 @@ Deno.serve(async (req: Request) => {
         kycData = await fetchCashFreeDocuments(supabase, apiKey, apiSecret, publicKey, provider.environment, code, userId);
       } else {
         const redirectUri = bodyRedirectUri || savedRedirectUri || '';
-        kycData = await fetchDigiLockerData(supabase, apiKey, apiSecret, code, redirectUri, userId, codeVerifier);
+        try {
+          kycData = await fetchDigiLockerData(supabase, apiKey, apiSecret, code, redirectUri, userId, codeVerifier);
+        } catch (e) {
+          const msg = (e as Error).message;
+          if (msg === 'DRIVING_LICENSE_UNAVAILABLE' || msg === 'ADDRESS_PROOF_UNAVAILABLE') {
+            return new Response(
+              JSON.stringify({ success: false, autoApproved: false, error: msg }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          throw e;
+        }
       }
 
       if (!kycData.pan_number) {
@@ -1072,18 +1359,24 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const { panRecord, addressRecord } = await writeKycRecords(supabase, userId, kycData, provider.provider_name, ipAddress);
+      const resolvedIp = ipAddress ||
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        req.headers.get("x-real-ip")?.trim() ||
+        null;
+      const { panRecord, addressRecord } = await writeKycRecords(supabase, userId, kycData, provider.provider_name, resolvedIp);
 
       try {
+        const attachment = await getKycPolicyAttachment();
         await fetch(`${supabaseUrl}/functions/v1/send-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
           body: JSON.stringify({
             to: userRow.email,
             subject: 'KYC Verified via DigiLocker - Account Ready',
-            body: `<p>Dear ${nameResult.registeredName},</p><p>Congratulations! Your KYC has been <strong style="color:#16a34a;">automatically verified</strong> via DigiLocker.</p><p>Your account is now fully active and ready for transactions.</p>`,
+            body: `<p>Dear ${nameResult.registeredName},</p><p>Congratulations! Your KYC has been <strong style="color:#16a34a;">automatically verified</strong> via DigiLocker.</p><p>Your account is now fully active and ready for transactions.</p><p>Please find attached the accepted terms and conditions for your reference.</p>`,
             body_type: 'html',
             use_template: true,
+            ...attachment,
           }),
         });
       } catch (_) { /* non-critical */ }
@@ -1114,3 +1407,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+
+// redeploy

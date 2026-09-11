@@ -59,7 +59,7 @@ export default function KYCVerification() {
     if (!userId) navigate('/login', { replace: true });
   }, [userId, navigate]);
 
-  const { kycData, loading, error, refetch } = useKycData(userId ?? null);
+  const { kycData, loading, error, refetch, refresh } = useKycData(userId ?? null);
   const { logout } = useAuth();
 
   const [provider, setProvider] = useState<KycProvider | null>(null);
@@ -244,7 +244,7 @@ export default function KYCVerification() {
                     kycData?.address?.status === 'verified' ||
                     kycData?.address?.status === 'verification_pending'
                   }
-                  onSaved={refetch}
+                  onSaved={refresh}
                 />
 
                 {/* KYC Method Selector — shown when a provider is enabled and KYC not yet done */}
@@ -323,9 +323,9 @@ export default function KYCVerification() {
                 {/* Manual KYC sections */}
                 {(effectiveMethod === 'manual' || !showDigilockerOption || digilockerDone) && (
                   <>
-                    <PanSection userId={userId} data={kycData?.pan ?? null} onSaved={refetch} />
-                    <AddressSection userId={userId} data={kycData?.address ?? null} onSaved={refetch} />
-                    <BusinessSection userId={userId} data={kycData?.business ?? null} onSaved={refetch} />
+                    <PanSection userId={userId} data={kycData?.pan ?? null} onSaved={refresh} />
+                    <AddressSection userId={userId} data={kycData?.address ?? null} onSaved={refresh} />
+                    <BusinessSection userId={userId} data={kycData?.business ?? null} onSaved={refresh} />
                   </>
                 )}
 

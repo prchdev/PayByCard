@@ -14,6 +14,7 @@ const CATEGORIES = {
     'Dashboard Data is Not Loading Properly',
     'Not Getting Notification Emails',
     'Not Getting Notification SMS',
+    'Delete Account',
   ],
   'KYC Related': [
     'KYC Pending for Long Time',
@@ -144,28 +145,28 @@ export default function CreateTicketModal({ userId, onClose, onSuccess }: Create
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 pb-20">
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b-2 border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Create Support Ticket</h2>
+        <div className="sticky top-0 bg-white border-b-2 border-gray-200 px-4 py-3 flex items-center justify-between">
+          <h2 className="text-base font-bold text-gray-900">Create Support Ticket</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X className="w-6 h-6 text-gray-600" />
+            <X className="w-5 h-5 text-gray-600" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {error && (
-            <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="bg-red-50 border-2 border-red-300 rounded-xl p-3 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-900">{error}</p>
             </div>
           )}
 
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="category" className="block text-xs font-medium text-gray-700 mb-1.5">
               Category <span className="text-red-600">*</span>
             </label>
             <select
@@ -173,7 +174,7 @@ export default function CreateTicketModal({ userId, onClose, onSuccess }: Create
               value={category}
               onChange={handleCategoryChange}
               required
-              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+              className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white text-sm"
             >
               <option value="">Select a category</option>
               {Object.keys(CATEGORIES).map((cat) => (
@@ -186,7 +187,7 @@ export default function CreateTicketModal({ userId, onClose, onSuccess }: Create
 
           {category && (
             <div>
-              <label htmlFor="subCategory" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="subCategory" className="block text-xs font-medium text-gray-700 mb-1.5">
                 Sub-Category <span className="text-red-600">*</span>
               </label>
               <select
@@ -194,7 +195,7 @@ export default function CreateTicketModal({ userId, onClose, onSuccess }: Create
                 value={subCategory}
                 onChange={(e) => setSubCategory(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white text-sm"
               >
                 <option value="">Select a sub-category</option>
                 {CATEGORIES[category as keyof typeof CATEGORIES].map((subCat) => (
@@ -207,7 +208,7 @@ export default function CreateTicketModal({ userId, onClose, onSuccess }: Create
           )}
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="description" className="block text-xs font-medium text-gray-700 mb-1.5">
               Description of Help Needed <span className="text-red-600">*</span>
             </label>
             <textarea
@@ -215,16 +216,16 @@ export default function CreateTicketModal({ userId, onClose, onSuccess }: Create
               value={description}
               onChange={(e) => setDescription(e.target.value.slice(0, 1000))}
               required
-              rows={6}
+              rows={4}
               maxLength={1000}
               placeholder="Please describe your issue in detail..."
-              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all resize-none"
+              className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all resize-none text-sm"
             />
             <p className="text-xs text-gray-500 mt-1 text-right">{description.length}/1000</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
               Attachments (Optional - Max 3 files)
             </label>
             <input
@@ -239,7 +240,7 @@ export default function CreateTicketModal({ userId, onClose, onSuccess }: Create
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={files.length >= 3}
-              className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#8c76f0] hover:bg-purple-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-gray-600"
+              className="w-full px-3 py-2.5 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#8c76f0] hover:bg-purple-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-gray-600 text-sm"
             >
               <Upload className="w-5 h-5" />
               <span className="text-sm font-medium">
@@ -273,8 +274,8 @@ export default function CreateTicketModal({ userId, onClose, onSuccess }: Create
             )}
           </div>
 
-          <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4">
-            <p className="text-sm text-purple-900 font-medium">
+          <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-3">
+            <p className="text-xs text-purple-900 font-medium">
               Please provide as much detail as possible to help us resolve your issue quickly.
             </p>
           </div>
@@ -283,14 +284,14 @@ export default function CreateTicketModal({ userId, onClose, onSuccess }: Create
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

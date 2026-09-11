@@ -171,6 +171,7 @@ export default function VerifyOTP() {
         throw new Error(data.error || 'OTP verification failed');
       }
 
+      if (data.sessionToken) sessionStorage.setItem('pbc_session', data.sessionToken);
       login(userId, email);
       navigate('/kyc-verification', { state: { userId, userEmail: email } });
     } catch (error) {

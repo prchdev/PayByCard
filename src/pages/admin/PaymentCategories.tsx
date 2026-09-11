@@ -392,6 +392,7 @@ export default function PaymentCategories() {
                   Time taken to settle the payment to the receiver
                 </p>
               </div>
+
             </div>
 
             {/* Checkboxes */}

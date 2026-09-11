@@ -4,9 +4,11 @@ import {
   RefreshCw, Users, Clock, XCircle, CheckCircle, Search,
   ChevronLeft, ChevronRight, ShieldCheck, X, ZoomIn, Eye,
   AlertCircle, Loader2, FileCode2, Globe, CalendarCheck, ScanFace, CreditCard,
+  Download,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
+import { downloadCsv } from '../../utils/csvExport';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -112,7 +114,7 @@ function PanImage({ url }: { url: string | null }) {
 }
 
 type PayoutResult = { payout: string; error?: string } | null;
-type RefundResult = { refund: 'initiated' | 'failed' | 'no_payment'; refund_id?: string; refund_error?: string } | null;
+type RefundResult = { refund: 'initiated' | 'failed' | 'no_payment' | 'notified'; refund_id?: string; refund_error?: string; message?: string } | null;
 
 function ReviewModal({
   record,
@@ -122,7 +124,7 @@ function ReviewModal({
 }: {
   record: MerchantRecord;
   onClose: () => void;
-  onReview: (id: string, action: 'verified' | 'rejected', reason?: string) => Promise<{ payout?: string; refund?: string; refund_id?: string; refund_error?: string; error?: string } | null>;
+  onReview: (id: string, action: 'verified' | 'rejected', reason?: string) => Promise<{ payout?: string; refund?: string; refund_id?: string; refund_error?: string; message?: string; error?: string } | null>;
   canEdit: boolean;
 }) {
   const [action, setAction] = useState<'verified' | 'rejected' | null>(null);
@@ -148,9 +150,10 @@ function ReviewModal({
         setDone(true);
       } else {
         setRefundResult(result ? {
-          refund: (result.refund ?? 'no_payment') as 'initiated' | 'failed' | 'no_payment',
+          refund: (result.refund ?? 'notified') as 'initiated' | 'failed' | 'no_payment' | 'notified',
           refund_id: result.refund_id,
           refund_error: result.refund_error,
+          message: result.message,
         } : null);
         setDone(true);
       }
@@ -174,6 +177,7 @@ function ReviewModal({
     initiated:  { label: 'Refund initiated via payment gateway. Amount will reflect in sender\'s account within a few business days.', cls: 'text-green-700 bg-green-50 border-green-200' },
     failed:     { label: 'Gateway refund call failed. Payment has been marked as refunded — please process the refund manually.', cls: 'text-red-700 bg-red-50 border-red-200' },
     no_payment: { label: 'KYC rejected. No linked payment found — no refund required.', cls: 'text-gray-700 bg-gray-50 border-gray-200' },
+    notified:   { label: 'KYC rejected. Beneficiary has been notified via email and SMS to re-submit KYC within the remaining time. No refund initiated.', cls: 'text-blue-700 bg-blue-50 border-blue-200' },
   };
 
   return (
@@ -196,9 +200,9 @@ function ReviewModal({
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Payment Info */}
+          {/* Payment & Bank Info */}
           <div className="bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-[#8c76f0]/30 rounded-2xl p-4">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Payment Details</h3>
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Payment &amp; Bank Details</h3>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <p className="text-gray-500 text-xs">Sender</p>
@@ -215,6 +219,22 @@ function ReviewModal({
               <div>
                 <p className="text-gray-500 text-xs">Amount</p>
                 <p className="font-medium text-gray-900">{record.amount != null ? `₹${Number(record.amount).toFixed(2)}` : '—'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">Account Number</p>
+                <p className="font-medium text-gray-900 font-mono">{record.bank_account_number || '—'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">IFSC Code</p>
+                <p className="font-medium text-gray-900 font-mono">{record.bank_ifsc || '—'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">Bank Name</p>
+                <p className="font-medium text-gray-900">{record.bank_name || '—'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">Branch Name</p>
+                <p className="font-medium text-gray-900">{record.bank_branch || '—'}</p>
               </div>
             </div>
           </div>
@@ -239,24 +259,6 @@ function ReviewModal({
                 <p className="text-gray-500 text-xs">PAN Number</p>
                 <p className="font-medium text-gray-900 font-mono tracking-wider">{record.pan_number || '—'}</p>
               </div>
-              {record.bank_name && (
-                <div>
-                  <p className="text-gray-500 text-xs">Bank</p>
-                  <p className="font-medium text-gray-900">{record.bank_name}</p>
-                </div>
-              )}
-              {record.bank_account_number && (
-                <div>
-                  <p className="text-gray-500 text-xs">Account No.</p>
-                  <p className="font-medium text-gray-900 font-mono">{record.bank_account_number}</p>
-                </div>
-              )}
-              {record.bank_ifsc && (
-                <div>
-                  <p className="text-gray-500 text-xs">IFSC</p>
-                  <p className="font-medium text-gray-900 font-mono">{record.bank_ifsc}</p>
-                </div>
-              )}
               <div>
                 <p className="text-gray-500 text-xs">Status</p>
                 <StatusBadge status={record.status} />
@@ -433,7 +435,7 @@ function ReviewModal({
             </div>
           )}
 
-          {/* Refund result after rejection */}
+          {/* Rejection result */}
           {done && action === 'rejected' && refundResult && (
             <div className={`flex flex-col gap-2 text-sm border rounded-xl px-4 py-3 ${
               REFUND_MESSAGES[refundResult.refund]?.cls ?? 'text-gray-700 bg-gray-50 border-gray-200'
@@ -442,7 +444,7 @@ function ReviewModal({
                 <XCircle className="w-4 h-4 flex-shrink-0" />
                 KYC Rejected
               </div>
-              <p>{REFUND_MESSAGES[refundResult.refund]?.label}</p>
+              <p>{refundResult.message || REFUND_MESSAGES[refundResult.refund]?.label}</p>
               {refundResult.refund_id && (
                 <p className="text-xs opacity-75">Refund ID: {refundResult.refund_id}</p>
               )}
@@ -453,8 +455,8 @@ function ReviewModal({
             </div>
           )}
 
-          {/* Action selector — only for submitted (KYC In Review) records */}
-          {record.status === 'submitted' && !done && canEdit && (
+          {/* Action selector — for submitted (KYC In Review) or rejected (re-review after re-submission) records */}
+          {(record.status === 'submitted' || record.status === 'rejected') && !done && canEdit && (
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-gray-800">Decision</h3>
               <div className="grid grid-cols-2 gap-3">
@@ -591,6 +593,7 @@ export default function AdminMerchantKyc() {
       refund: data.refund,
       refund_id: data.refund_id,
       refund_error: data.refund_error,
+      message: data.message,
       error: data.error,
     };
   };
@@ -619,6 +622,36 @@ export default function AdminMerchantKyc() {
   const totalPages = Math.ceil(filtered.length / recordsPerPage);
   const startIndex = (currentPage - 1) * recordsPerPage;
   const paginated = filtered.slice(startIndex, startIndex + recordsPerPage);
+
+  const handleDownloadCsv = () => {
+    const headers = [
+      'Full Name', 'Email', 'Mobile Number', 'Joined Date',
+      'PAN Number', 'Payment Reference', 'Category', 'Sender Name',
+      'Amount', 'Bank Account Number', 'Bank IFSC', 'Bank Name',
+      'KYC Method', 'Status', 'Expires At', 'Verified At', 'Rejection Reason',
+    ];
+    const rows = filtered.map((r) => [
+      r.full_name,
+      r.email,
+      r.mobile,
+      new Date(r.created_at).toLocaleDateString('en-IN'),
+      r.pan_number ?? '',
+      r.payment_reference ?? '',
+      r.category_name ?? '',
+      r.sender_name ?? '',
+      r.amount != null ? Number(r.amount).toFixed(2) : '',
+      r.bank_account_number ?? '',
+      r.bank_ifsc ?? '',
+      r.bank_name ?? '',
+      r.kyc_method ?? '',
+      r.status,
+      r.expires_at ? new Date(r.expires_at).toLocaleDateString('en-IN') : '',
+      r.verified_at ? new Date(r.verified_at).toLocaleDateString('en-IN') : '',
+      r.rejection_reason ?? '',
+    ]);
+    const dateStr = new Date().toISOString().split('T')[0];
+    downloadCsv(`merchant-kyc-report-${dateStr}.csv`, headers, rows);
+  };
 
   if (permLoading) return null;
 
@@ -708,6 +741,15 @@ export default function AdminMerchantKyc() {
                   className="w-full sm:w-56 pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8c76f0]"
                 />
               </div>
+              <button
+                onClick={handleDownloadCsv}
+                disabled={filtered.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Download CSV report"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Download Report CSV</span>
+              </button>
               <button
                 onClick={fetchRecords}
                 disabled={loading}

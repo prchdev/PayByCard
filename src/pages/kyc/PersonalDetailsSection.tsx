@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CircleUser as UserCircle, Save, Lock, CheckCircle, AlertCircle } from 'lucide-react';
 import { UserProfile } from './types';
+import { capitalizeName } from '../../utils/nameFormat';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -39,6 +40,10 @@ export default function PersonalDetailsSection({
     if (!firstName.trim()) { setError('First name is required.'); return; }
     if (!lastName.trim()) { setError('Last name is required.'); return; }
 
+    const capFirst = capitalizeName(firstName);
+    const capMiddle = capitalizeName(middleName);
+    const capLast = capitalizeName(lastName);
+
     setSaving(true);
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/update-user-profile`, {
@@ -47,7 +52,7 @@ export default function PersonalDetailsSection({
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId, first_name: firstName, middle_name: middleName, last_name: lastName }),
+        body: JSON.stringify({ userId, first_name: capFirst, middle_name: capMiddle, last_name: capLast }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to save profile.');

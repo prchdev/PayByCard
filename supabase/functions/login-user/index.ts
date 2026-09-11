@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
-import bcrypt from 'npm:bcryptjs@2.4.3';
+import bcrypt from "npm:bcryptjs@2.4.3";
+import { issueSessionToken } from "../_shared/session.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,7 +17,7 @@ interface LoginRequest {
 }
 
 function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return (() => { const a = new Uint32Array(1); crypto.getRandomValues(a); return (100000 + (a[0] % 900000)).toString(); })();
 }
 
 Deno.serve(async (req: Request) => {
@@ -42,6 +43,14 @@ Deno.serve(async (req: Request) => {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
+      );
+    }
+
+    const emailRegex = /^[a-zA-Z0-9._%+\-]{1,64}@[a-zA-Z0-9.\-]{1,255}\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(String(email).trim())) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid email or password' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -145,6 +154,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const isFullyVerified = user.is_mobile_verified && user.is_email_verified;
+    const sessionToken = await issueSessionToken("user", user.id);
 
     if (!isFullyVerified) {
       const mobileOTP = generateOTP();
@@ -252,6 +262,7 @@ Deno.serve(async (req: Request) => {
           firstName: user.first_name,
           lastName: user.last_name,
           isVerified: false,
+          sessionToken,
           kycCompleted: user.kyc_completed,
           needsVerification: true,
           message: 'OTPs sent to mobile and email for verification.',
@@ -272,6 +283,7 @@ Deno.serve(async (req: Request) => {
         firstName: user.first_name,
         lastName: user.last_name,
         isVerified: true,
+        sessionToken,
         kycCompleted: user.kyc_completed,
         needsVerification: false,
         isRestricted: user.is_restricted || false,
@@ -294,3 +306,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// redeploy

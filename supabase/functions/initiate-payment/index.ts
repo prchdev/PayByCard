@@ -63,12 +63,8 @@ Deno.serve(async (req: Request) => {
 
     // ── Input validation ──────────────────────────────────────────────────────
     const parsedAmount = parseFloat(amount);
-    const parsedTotal  = parseFloat(totalAmount);
     if (isNaN(parsedAmount) || parsedAmount < MIN_AMOUNT || parsedAmount > MAX_AMOUNT) {
       return err(`Amount must be between ₹${MIN_AMOUNT} and ₹${MAX_AMOUNT}`);
-    }
-    if (isNaN(parsedTotal) || parsedTotal < MIN_AMOUNT || parsedTotal > MAX_AMOUNT * 1.5) {
-      return err("Invalid total amount");
     }
     if (billFileUrl && typeof billFileUrl === "string" && billFileUrl.length > MAX_STR) {
       return err("billFileUrl too long");
@@ -79,6 +75,28 @@ Deno.serve(async (req: Request) => {
         return err(`Invalid ${key}`);
       }
     }
+
+    // F4: Recompute charges, GST, discount and total server-side — never trust the browser.
+    const chargesRes = await fetch(`${supabaseUrl}/functions/v1/calculate-payment-option-charges`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount: parsedAmount,
+        categoryId: paymentOptionId,
+        gatewayId: gatewayId,
+      }),
+    });
+    if (!chargesRes.ok) {
+      return err("Failed to calculate payment charges");
+    }
+    const chargesData = await chargesRes.json();
+    const parsedCharges = parseFloat(chargesData.charges || 0);
+    const parsedGst = parseFloat(chargesData.gst || 0);
+    const parsedDiscount = parseFloat(chargesData.discount || 0);
+    const parsedTotal = parsedAmount + parsedCharges + parsedGst - parsedDiscount;
 
     // ── Duplicate payment guard ───────────────────────────────────────────────
     // Detects double-submit within 30 s: same user + beneficiary + amount.
@@ -108,9 +126,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!gatewaySettings.is_enabled) {
+    // Fetch the payment option to get the per-option environment
+    const { data: paymentOption, error: optionError } = await supabase
+      .from("payment_options")
+      .select("id, gateway_id, environment, is_enabled")
+      .eq("id", paymentOptionId)
+      .maybeSingle();
+
+    if (optionError || !paymentOption) {
       return new Response(
-        JSON.stringify({ error: "Selected gateway is not enabled" }),
+        JSON.stringify({ error: "Payment option not found" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -118,20 +143,33 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (!paymentOption.is_enabled) {
+      return new Response(
+        JSON.stringify({ error: "Selected payment option is not enabled" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Use the environment from the payment option, not from the gateway settings
+    const optionEnvironment = paymentOption.environment || "test";
+
     const allowedCards = determineAllowedCards(cardType);
 
     const paymentReference = await generatePaymentReference(supabase);
 
     const transactionSummary = {
       payment_reference: paymentReference,
-      amount: parseFloat(amount),
-      charges: parseFloat(charges || 0),
-      gst: parseFloat(gst || 0),
-      discount: parseFloat(discount || 0),
-      total_amount: parseFloat(totalAmount),
+      amount: parsedAmount,
+      charges: parsedCharges,
+      gst: parsedGst,
+      discount: parsedDiscount,
+      total_amount: parsedTotal,
       card_type: cardType,
       gateway_name: gatewaySettings.gateway_name,
-      environment: gatewaySettings.environment,
+      environment: optionEnvironment,
       allowed_cards: allowedCards,
       initiated_at: new Date().toISOString(),
       ip_address: ipAddress || "unknown",
@@ -139,7 +177,7 @@ Deno.serve(async (req: Request) => {
 
     const validCardType = cardType ? extractSingleCardType(cardType) : null;
     // Normalize: "Testing"/"test" → "test", "Production"/"production" → "production"
-    const rawEnv = (gatewaySettings.environment || "").toLowerCase();
+    const rawEnv = (optionEnvironment || "").toLowerCase();
     const normalizedEnvironment = rawEnv.startsWith("prod") ? "production" : "test";
 
     const { data: payment, error: paymentError } = await supabase
@@ -154,11 +192,11 @@ Deno.serve(async (req: Request) => {
         card_type: validCardType,
         allowed_cards: allowedCards,
         gateway_environment: normalizedEnvironment,
-        amount: parseFloat(amount),
-        charges: parseFloat(charges || 0),
-        gst: parseFloat(gst || 0),
-        discount: parseFloat(discount || 0),
-        total_amount: parseFloat(totalAmount),
+        amount: parsedAmount,
+        charges: parsedCharges,
+        gst: parsedGst,
+        discount: parsedDiscount,
+        total_amount: parsedTotal,
         payment_reference: paymentReference,
         bill_file_url: billFileUrl || null,
         status: "pending",
@@ -265,6 +303,13 @@ function determineAllowedCards(cardType: string): string[] {
   }
 
   return ["visa", "mastercard", "rupay", "amex", "diners"];
+}
+
+async function generatePhonePeChecksum(base64Payload: string, apiEndpoint: string, saltKey: string): Promise<string> {
+  const data = base64Payload + apiEndpoint + saltKey;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(data));
+  const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return hashHex + "###" + 1;
 }
 
 async function createGatewayPaymentConfig(
@@ -541,6 +586,116 @@ async function createGatewayPaymentConfig(
         }
       };
 
+    case "phonepe": {
+      const merchantId = isTestMode ? gatewaySettings.test_api_key : gatewaySettings.production_api_key;
+      const saltKey = isTestMode ? gatewaySettings.test_api_secret : gatewaySettings.production_api_secret;
+
+      if (!merchantId || !saltKey) {
+        throw new Error("PhonePe credentials not configured");
+      }
+
+      const phonepeBaseUrl = isTestMode
+        ? "https://api-preprod.phonepe.com/apis/hermes"
+        : "https://api.phonepe.com/apis/hermes";
+
+      const merchantOrderId = payment.payment_reference;
+      const amountInPaise = Math.round(payment.total_amount * 100);
+      const redirectUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-gateway-webhook?gateway=phonepe`;
+      const callbackUrlFull = callbackUrl;
+
+      // Look up per-payment-option PhonePe configuration
+      let phonepeConfig: any = null;
+      if (payment.payment_category_id) {
+        const { data: ppConfig } = await supabase
+          .from("phonepe_payment_configs")
+          .select("card_types, networks, variants, geo_scopes")
+          .eq("payment_gateway_id", gatewaySettings.id)
+          .eq("payment_option_id", payment.payment_category_id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (ppConfig) {
+          phonepeConfig = ppConfig;
+        }
+      }
+
+      // Build paymentModeConfig only if any constraint values are defined
+      const hasCardTypes = phonepeConfig?.card_types?.length > 0;
+      const hasNetworks = phonepeConfig?.networks?.length > 0;
+      const hasVariants = phonepeConfig?.variants?.length > 0;
+      const hasGeoScopes = phonepeConfig?.geo_scopes?.length > 0;
+
+      const cardMode: any = { type: "CARD" };
+      if (hasCardTypes) cardMode.types = phonepeConfig.card_types;
+      if (hasNetworks) cardMode.networks = phonepeConfig.networks;
+      if (hasVariants) cardMode.variants = phonepeConfig.variants;
+      if (hasGeoScopes) cardMode.geoScopes = phonepeConfig.geo_scopes;
+
+      const usePaymentModeConfig = hasCardTypes || hasNetworks || hasVariants || hasGeoScopes;
+
+      // PhonePe Standard Checkout: initiate a PG transaction
+      const payload: any = {
+        merchantId,
+        merchantOrderId,
+        amount: amountInPaise,
+        redirectUrl,
+        redirectMode: "REDIRECT",
+        callbackUrl: callbackUrlFull,
+        paymentInstrument: {
+          type: "PAY_PAGE",
+        },
+      };
+
+      if (usePaymentModeConfig) {
+        payload.paymentFlow = {
+          type: "PG_CHECKOUT",
+          merchantUrls: {
+            redirectUrl,
+          },
+          paymentModeConfig: {
+            version: "V2",
+            enabledPaymentModes: [cardMode],
+          },
+        };
+      }
+
+      const payloadBase64 = btoa(JSON.stringify(payload));
+      const xVerify = await generatePhonePeChecksum(payloadBase64, "/pg/v1/pay", saltKey);
+
+      const initiateResponse = await fetch(`${phonepeBaseUrl}/pg/v1/pay`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-VERIFY": xVerify,
+        },
+        body: JSON.stringify({ request: payloadBase64 }),
+      });
+
+      if (!initiateResponse.ok) {
+        const errorData = await initiateResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to create PhonePe order");
+      }
+
+      const orderData = await initiateResponse.json();
+
+      return {
+        ...config,
+        merchantId,
+        sdkUrl: "https://phonepe.merchant.sdk/v1/phonepe-checkout.js",
+        environment: isTestMode ? "test" : "production",
+        options: {
+          merchantId,
+          merchantOrderId,
+          amount: amountInPaise,
+          redirectUrl,
+          redirectMode: "REDIRECT",
+          token: orderData.data?.token ?? orderData.data?.merchantTransactionId,
+          checkoutUrl: orderData.data?.redirectUrl ?? orderData.data?.instrumentResponse?.redirectInfo?.url,
+          cardType: payment.card_type,
+        }
+      };
+    }
+
     default:
       throw new Error(`Gateway ${gatewayName} not supported`);
   }
@@ -571,3 +726,6 @@ async function generatePaymentReference(supabase: any): Promise<string> {
 
   throw new Error("Failed to generate unique payment reference");
 }
+
+
+// redeploy

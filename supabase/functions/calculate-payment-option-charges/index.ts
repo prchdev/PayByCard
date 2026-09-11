@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: gateway, error: gatewayError } = await supabase
       .from("payment_gateway_settings")
-      .select("id, gateway_name, registered_name, gst_number, gst_percentage, payout_mode, visa_charges, mastercard_charges, rupay_charges, amex_charges, diners_charges")
+      .select("id, gateway_name, registered_name, gst_number, gst_percentage, payout_mode")
       .eq("id", gatewayId)
       .eq("is_enabled", true)
       .maybeSingle();
@@ -103,11 +103,6 @@ Deno.serve(async (req: Request) => {
     const totalAmount = paymentAmount + charges + gst;
 
     const gatewayChargesInfo = {
-      visa: parseFloat(gateway.visa_charges || 0),
-      mastercard: parseFloat(gateway.mastercard_charges || 0),
-      rupay: parseFloat(gateway.rupay_charges || 0),
-      amex: parseFloat(gateway.amex_charges || 0),
-      diners: parseFloat(gateway.diners_charges || 0),
       gst_percentage: parseFloat(gateway.gst_percentage || 18),
     };
 
@@ -148,3 +143,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// redeploy
+// renamed from calculate-payment-charges

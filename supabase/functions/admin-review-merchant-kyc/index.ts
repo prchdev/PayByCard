@@ -270,6 +270,46 @@ async function processGatewayRefund(
       return { success: false, error: data.message ?? "EnKash refund failed" };
     }
 
+    // ── PhonePe ──────────────────────────────────────────────────────────
+    if (name.includes("phonepe")) {
+      const merchantId = isTest ? gateway.test_api_key : gateway.production_api_key;
+      const saltKey     = isTest ? gateway.test_api_secret : gateway.production_api_secret;
+      if (!merchantId || !saltKey) return { success: false, error: "PhonePe credentials not configured" };
+
+      const baseUrl = isTest
+        ? "https://api-preprod.phonepe.com/apis/hermes"
+        : "https://api.phonepe.com/apis/hermes";
+
+      const originalOrderId = (payment.gateway_request as any)?.merchantOrderId ?? txnId;
+      const refundId = `refund_${payment.payment_reference ?? payment.id}`;
+      const amountInPaise = Math.round(refundAmount * 100);
+
+      const payload = {
+        merchantId,
+        merchantOrderId: originalOrderId,
+        transactionId: txnId,
+        amount: amountInPaise,
+        callbackUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-gateway-webhook?gateway=phonepe`,
+      };
+
+      const payloadBase64 = btoa(JSON.stringify(payload));
+      const apiEndpoint = "/pg/v1/refund";
+      const hashInput = payloadBase64 + apiEndpoint + saltKey;
+      const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+      const xVerify = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+
+      const res = await fetch(`${baseUrl}${apiEndpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-VERIFY": xVerify },
+        body: JSON.stringify({ request: payloadBase64 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        return { success: true, refund_id: data.data?.refundId ?? refundId };
+      }
+      return { success: false, error: data.message ?? "PhonePe refund failed" };
+    }
+
     return { success: false, error: `Unsupported gateway for automated refund: ${gatewayName}` };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Refund call threw an exception" };
@@ -333,7 +373,9 @@ Deno.serve(async (req: Request) => {
     const now = new Date().toISOString();
 
     // ─────────────────────────────────────────────────────────────────────
-    // REJECTION — mark rejected, then initiate gateway refund of base amount
+    // REJECTION — mark rejected, send email to beneficiary, do NOT auto-refund.
+    // The beneficiary can re-submit KYC. Auto-refund happens only via the
+    // cron job when the timeline expires and KYC is still not verified.
     // ─────────────────────────────────────────────────────────────────────
     if (action === "rejected") {
       await supabase
@@ -341,155 +383,53 @@ Deno.serve(async (req: Request) => {
         .update({ status: "rejected", rejection_reason: rejectionReason || null, updated_at: now })
         .eq("id", recordId);
 
-      let refundStatus: "initiated" | "failed" | "no_payment" = "no_payment";
-      let refundId: string | undefined;
-      let refundError: string | undefined;
-
+      // Log the rejection
       if (record.payment_id) {
-        // Fetch payment + gateway
-        const { data: payment } = await supabase
+        // Set payment back to kyc_pending so the auto-refund cron can pick it up
+        // when the timeline expires (if the beneficiary doesn't re-submit in time).
+        await supabase
           .from("payments")
-          .select("id, amount, payment_reference, gateway_transaction_id, gateway_request, gateway_environment, payment_gateway_id, user_id, beneficiary_details")
+          .update({ status: "kyc_pending", updated_at: now })
           .eq("id", record.payment_id)
-          .maybeSingle();
+          .in("status", ["merchant_kyc_review", "kyc_pending"]);
 
-        if (payment) {
-          let gatewayName: string | null = null;
-          let gatewayRecord: Record<string, any> | null = null;
+        await supabase.from("payment_logs").insert({
+          payment_id: record.payment_id,
+          status: "merchant_kyc_review",
+          message: `Merchant KYC rejected by admin. Reason: ${rejectionReason || "No reason provided"}. Beneficiary notified to re-submit KYC. Payment reverted to kyc_pending for auto-refund eligibility.`,
+          metadata: { admin_id: adminId, merchant_onboarding_id: recordId },
+        });
+      }
 
-          if (payment.payment_gateway_id) {
-            const { data: gw } = await supabase
-              .from("payment_gateway_settings")
-              .select("*")
-              .eq("id", payment.payment_gateway_id)
-              .maybeSingle();
-            if (gw) {
-              gatewayName = gw.gateway_name ?? null;
-              gatewayRecord = gw;
-            }
-          }
+      // Send email to beneficiary informing them of rejection and need to re-submit
+      EdgeRuntime.waitUntil((async () => {
+        const receiverName = record.full_name || "Beneficiary";
+        const receiverEmail = record.email || null;
+        const reason = rejectionReason || "Your KYC submission did not meet our requirements.";
 
-          const baseAmount = Number(payment.amount);
-
-          // Attempt gateway refund
-          if (gatewayName && gatewayRecord) {
-            const refundResult = await processGatewayRefund(
-              gatewayName,
-              gatewayRecord,
-              payment,
-              baseAmount,
-            );
-            refundStatus = refundResult.success ? "initiated" : "failed";
-            refundId = refundResult.refund_id;
-            refundError = refundResult.error;
-          } else {
-            refundStatus = "failed";
-            refundError = "Gateway settings not found";
-          }
-
-          // Update payment status to refunded regardless of gateway result
-          // (manual follow-up is possible if gateway call failed)
-          await supabase
-            .from("payments")
-            .update({ status: "refunded", updated_at: now })
-            .eq("id", payment.id);
-
-          // Log refund attempt
-          await supabase.from("payment_logs").insert({
-            payment_id: payment.id,
-            status: "refunded",
-            message: refundStatus === "initiated"
-              ? `Merchant KYC rejected. Gateway refund initiated. Refund ID: ${refundId}. Reason: ${rejectionReason || "No reason provided"}`
-              : `Merchant KYC rejected. Gateway refund failed: ${refundError}. Payment marked refunded. Manual follow-up required. Reason: ${rejectionReason || "No reason provided"}`,
-            metadata: {
-              admin_id: adminId,
-              merchant_onboarding_id: recordId,
-              refund_status: refundStatus,
-              refund_id: refundId ?? null,
-              refund_error: refundError ?? null,
-              gateway: gatewayName,
-            },
-          });
-
-          // Notify sender and receiver (mirrors admin-process-refund logic exactly)
-          EdgeRuntime.waitUntil((async () => {
-            const beneficiaryDetails = (payment.beneficiary_details ?? {}) as Record<string, any>;
-
-            const { data: senderUser } = await supabase
-              .from("users")
-              .select("first_name, last_name, email, mobile_number")
-              .eq("id", payment.user_id)
-              .maybeSingle();
-
-            const senderName   = senderUser
-              ? `${senderUser.first_name ?? ""} ${senderUser.last_name ?? ""}`.trim()
-              : "Customer";
-            const senderEmail  = senderUser?.email;
-            const senderMobile = senderUser?.mobile_number;
-            const receiverName  = beneficiaryDetails.full_name  ?? record.full_name  ?? "Beneficiary";
-            const receiverEmail = beneficiaryDetails.email ?? record.email ?? null;
-
-            const refundReference = refundId ?? payment.payment_reference ?? "—";
-            const refundDate      = new Date().toLocaleDateString("en-IN");
-
-            const receiptRows = `
-              <table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:8px;overflow:hidden;margin:16px 0;">
-                <tr><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:14px;">Transaction Reference</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#111827;font-size:14px;text-align:right;">${payment.payment_reference ?? "—"}</td></tr>
-                <tr><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:14px;">Refund Amount</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#111827;font-size:14px;text-align:right;">₹${baseAmount.toFixed(2)}</td></tr>
-                <tr><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:14px;">Refund Reference</td><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#111827;font-size:14px;text-align:right;">${refundReference}</td></tr>
-                <tr><td style="padding:8px 12px;color:#6b7280;font-size:14px;">Refund Date</td><td style="padding:8px 12px;font-weight:600;color:#111827;font-size:14px;text-align:right;">${refundDate}</td></tr>
-              </table>`;
-
-            if (senderEmail) {
-              await sendEmail(
-                supabaseUrl, supabaseKey,
-                senderEmail,
-                `Refund Processed – Ref: ${payment.payment_reference}`,
-                `<p>Dear ${senderName},</p><p>The payment has been refunded. The amount will be returned to your source account within a few business days.</p>${receiptRows}<p style="color:#6b7280;font-size:13px;">Contact support for any queries.</p>`
-              );
-            }
-
-            if (receiverEmail) {
-              await sendEmail(
-                supabaseUrl, supabaseKey,
-                receiverEmail,
-                `Payment Cancelled – KYC Not Completed – Ref: ${payment.payment_reference}`,
-                `<p>Dear ${receiverName},</p><p>The payment to your account has been cancelled as KYC verification was not completed in time. The amount has been refunded to the sender.</p>${receiptRows}`
-              );
-            }
-
-            if (senderMobile) {
-              await sendSms(supabaseUrl, supabaseKey, senderMobile, "payment_refund", {
-                var1: baseAmount.toFixed(2),
-                var2: payment.payment_reference ?? "",
-              });
-            }
-          })());
-        } else {
-          // payment_id set but record not found — still log
-          await supabase.from("payment_logs").insert({
-            payment_id: record.payment_id,
-            status: "merchant_kyc_review",
-            message: `Merchant KYC rejected by admin. Payment record not found for refund. Reason: ${rejectionReason || "No reason provided"}`,
-            metadata: { admin_id: adminId, merchant_onboarding_id: recordId },
-          });
-          refundStatus = "failed";
-          refundError = "Payment record not found";
+        if (receiverEmail) {
+          await sendEmail(
+            supabaseUrl, supabaseKey,
+            receiverEmail,
+            "KYC Rejected – Please Re-submit",
+            `<p>Dear ${receiverName},</p>
+             <p>Your KYC verification has been rejected for the following reason:</p>
+             <p style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;color:#991b1b;font-size:14px;">${reason}</p>
+             <p>Please re-submit your KYC with the correct details as soon as possible. If you do not complete your KYC within the remaining time, the payment will be automatically refunded to the sender.</p>
+             <p style="color:#6b7280;font-size:13px;">If you have questions, please contact support.</p>`
+          );
         }
-      }
 
-      // Notify merchant via SMS
-      if (record.mobile) {
-        await sendSms(supabaseUrl, supabaseKey, record.mobile, "kyc_rejected", {});
-      }
+        if (record.mobile) {
+          await sendSms(supabaseUrl, supabaseKey, record.mobile, "kyc_rejected", {});
+        }
+      })());
 
       return new Response(
         JSON.stringify({
           success: true,
           action: "rejected",
-          refund: refundStatus,
-          refund_id: refundId ?? null,
-          refund_error: refundError ?? null,
+          message: "Beneficiary notified of KYC rejection. No refund initiated.",
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -505,7 +445,7 @@ Deno.serve(async (req: Request) => {
       .eq("id", recordId);
 
     if (record.mobile) {
-      await sendSms(supabaseUrl, supabaseKey, record.mobile, "kyc_approved", {});
+      EdgeRuntime.waitUntil(sendSms(supabaseUrl, supabaseKey, record.mobile, "kyc_approved", {}));
     }
 
     if (record.beneficiary_id) {
@@ -669,3 +609,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+
+// redeploy

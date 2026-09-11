@@ -492,8 +492,10 @@ Deno.serve(async (req: Request) => {
         .eq("payment_id", payment.id)
         .maybeSingle();
 
-      if (onboarding && onboarding.status !== "pending") {
-        // Merchant submitted manually or completed DigiLocker — skip auto-refund
+      if (onboarding && onboarding.status !== "pending" && onboarding.status !== "rejected") {
+        // Merchant submitted and is under review, or already verified — skip auto-refund.
+        // "rejected" means admin rejected and beneficiary was told to re-submit —
+        // only auto-refund if the timeline has passed (checked below).
         continue;
       }
 
@@ -576,7 +578,7 @@ Deno.serve(async (req: Request) => {
           .from("merchant_onboarding")
           .update({ status: "rejected", updated_at: new Date().toISOString() })
           .eq("payment_id", payment.id)
-          .in("status", ["pending", "submitted", "expired"]);
+          .in("status", ["pending", "submitted", "expired", "rejected"]);
 
         // 4. Insert refund record in payouts table
         const payoutRef = refundRef;
@@ -645,3 +647,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// redeploy

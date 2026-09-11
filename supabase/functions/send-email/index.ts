@@ -8,6 +8,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
+interface EmailAttachment {
+  filename: string;
+  content_base64: string;
+  content_type?: string;
+}
+
 interface EmailRequest {
   to: string;
   subject: string;
@@ -16,9 +22,10 @@ interface EmailRequest {
   use_template?: boolean;
   button_text?: string;
   button_link?: string;
-  attachment_base64?: string;        // base64-encoded content
+  attachment_base64?: string;        // base64-encoded content (single, legacy)
   attachment_filename?: string;      // e.g. "invoice-TXN123.html"
   attachment_content_type?: string;  // e.g. "text/html" or "application/pdf" (default)
+  attachments?: EmailAttachment[];  // multiple attachments
 }
 
 Deno.serve(async (req: Request) => {
@@ -45,6 +52,7 @@ Deno.serve(async (req: Request) => {
       attachment_base64,
       attachment_filename,
       attachment_content_type = 'application/pdf',
+      attachments,
     } = await req.json() as EmailRequest;
 
     if (!to || !subject || !body) {
@@ -156,20 +164,35 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const allAttachments: any[] = [];
+    if (attachment_base64) {
+      allAttachments.push({
+        filename: attachment_filename || 'attachment',
+        content: attachment_base64,
+        encoding: 'base64',
+        contentType: attachment_content_type || 'application/octet-stream',
+      });
+    }
+    if (attachments && Array.isArray(attachments)) {
+      for (const att of attachments) {
+        if (att.content_base64) {
+          allAttachments.push({
+            filename: att.filename || 'attachment',
+            content: att.content_base64,
+            encoding: 'base64',
+            contentType: att.content_type || 'application/octet-stream',
+          });
+        }
+      }
+    }
+
     const mailOptions: any = {
       from: `${settings.from_display_name} <${settings.from_email}>`,
       to: to,
       subject: subject,
       text: body_type === 'text' ? body : undefined,
       html: body_type === 'html' ? emailContent : undefined,
-      ...(attachment_base64 ? {
-        attachments: [{
-          filename: attachment_filename || 'invoice.pdf',
-          content: attachment_base64,
-          encoding: 'base64',
-          contentType: attachment_content_type || 'application/pdf',
-        }],
-      } : {}),
+      ...(allAttachments.length > 0 ? { attachments: allAttachments } : {}),
     };
 
     console.log('📧 Sending email to:', to);
@@ -231,3 +254,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// redeploy

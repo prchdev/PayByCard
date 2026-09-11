@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
-import bcrypt from 'npm:bcryptjs@2.4.3';
+import bcrypt from "npm:bcryptjs@2.4.3";
 import { validatePassword } from '../_shared/passwordValidation.ts';
 
 const corsHeaders = {
@@ -19,7 +19,7 @@ interface RegisterRequest {
 }
 
 function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return (() => { const a = new Uint32Array(1); crypto.getRandomValues(a); return (100000 + (a[0] % 900000)).toString(); })();
 }
 
 Deno.serve(async (req: Request) => {
@@ -274,3 +274,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// redeploy

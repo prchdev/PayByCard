@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -38,7 +38,7 @@ import AdminKycVerification from './pages/admin/AdminKycVerification';
 import AdminForgotPassword from './pages/admin/AdminForgotPassword';
 import EmailSettings from './pages/admin/EmailSettings';
 import AdminChangePassword from './pages/admin/AdminChangePassword';
-import PaymentCharges from './pages/admin/PaymentCharges';
+import PaymentOption from './pages/admin/PaymentOption';
 import PaymentGatewaySettings from './pages/admin/PaymentGatewaySettings';
 import SMSSettings from './pages/admin/SMSSettings';
 import AdminUserManagement from './pages/admin/AdminUserManagement';
@@ -49,12 +49,16 @@ import PaymentCategories from './pages/admin/PaymentCategories';
 import MasterSettings from './pages/admin/MasterSettings';
 import MerchantOnboarding from './pages/MerchantOnboarding';
 import ManualPayout from './pages/admin/ManualPayout';
+import PayoutSettings from './pages/admin/PayoutSettings';
 import AdminReports from './pages/admin/AdminReports';
 import AdminUserSummary from './pages/admin/AdminUserSummary';
+import AdminNotifications from './pages/admin/AdminNotifications';
+import BulkEmail from './pages/admin/BulkEmail';
+import BulkSMS from './pages/admin/BulkSMS';
 import KycMethodSettings from './pages/admin/KycMethodSettings';
+import DashboardNotification from './pages/admin/DashboardNotification';
 import AdminMerchantKyc from './pages/admin/AdminMerchantKyc';
 import DigiLockerCallback from './pages/DigiLockerCallback';
-
 function MainLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -96,6 +100,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+
 function App() {
   return (
     <BrowserRouter>
@@ -127,7 +132,7 @@ function App() {
           <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
           <Route path="/admin/dashboard" element={<AdminHome />} />
           <Route path="/admin/kyc-verification" element={<AdminKycVerification />} />
-          <Route path="/admin/payment-option" element={<PaymentCharges />} />
+          <Route path="/admin/payment-option" element={<PaymentOption />} />
           <Route path="/admin/payment-charges" element={<Navigate to="/admin/payment-option" replace />} />
           <Route path="/admin/payment-gateway-settings" element={<PaymentGatewaySettings />} />
           <Route path="/admin/email-settings" element={<EmailSettings />} />
@@ -140,12 +145,18 @@ function App() {
           <Route path="/admin/payment-categories" element={<PaymentCategories />} />
           <Route path="/admin/master-settings" element={<MasterSettings />} />
           <Route path="/admin/manual-payout" element={<ManualPayout />} />
+          <Route path="/admin/payout-settings" element={<PayoutSettings />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/user-summary" element={<AdminUserSummary />} />
           <Route path="/admin/kyc-method" element={<KycMethodSettings />} />
           <Route path="/admin/merchant-kyc" element={<AdminMerchantKyc />} />
+          <Route path="/admin/dashboard-notification" element={<DashboardNotification />} />
+          <Route path="/admin/mobile-notifications" element={<AdminNotifications />} />
+          <Route path="/admin/bulk-email" element={<BulkEmail />} />
+          <Route path="/admin/bulk-sms" element={<BulkSMS />} />
           <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
           <Route path="/digilocker-callback" element={<DigiLockerCallback />} />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

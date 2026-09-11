@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   Tag,
+  Settings2,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -26,6 +27,13 @@ interface PaymentCategory {
   discounted_charges_percentage: number;
   gst_percentage: number;
   settlement_time: string;
+  gateway_id: string | null;
+  environment: string;
+}
+
+interface GatewayOption {
+  id: string;
+  gateway_name: string;
 }
 
 const SETTLEMENT_TIME_OPTIONS = [
@@ -42,7 +50,7 @@ function settlementLabel(value: string) {
 export default function PaymentCharges() {
   const navigate = useNavigate();
   const adminId = sessionStorage.getItem('adminId');
-  const { loading: permLoading, canEdit } = useAdminPermission('payment-charges');
+  const { loading: permLoading, canEdit } = useAdminPermission('payment-option');
 
   useEffect(() => {
     if (!adminId) navigate('/admin/login');
@@ -55,17 +63,41 @@ export default function PaymentCharges() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [gateways, setGateways] = useState<GatewayOption[]>([]);
 
   useEffect(() => {
     fetchCategories();
+    fetchGateways();
   }, []);
+
+  const fetchGateways = async () => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-gateways`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ admin_id: adminId }),
+        }
+      );
+      const data = await response.json();
+      if (response.ok && data.gateways) {
+        setGateways(data.gateways.map((g: any) => ({ id: g.id, gateway_name: g.gateway_name })));
+      }
+    } catch {
+      // silent fail
+    }
+  };
 
   const fetchCategories = async () => {
     try {
       const id = sessionStorage.getItem('adminId');
       if (!id) throw new Error('Admin not authenticated');
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-categories`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-options`,
         {
           method: 'POST',
           headers: {
@@ -96,8 +128,13 @@ export default function PaymentCharges() {
       if (!id) throw new Error('Admin not authenticated');
       const cat = categories.find((c) => c.id === catId);
       if (!cat) throw new Error('Category not found');
+      if (cat.is_enabled && !cat.gateway_id) {
+        setMessage({ type: 'error', text: 'A payment gateway must be selected before enabling this payment option' });
+        setSavingId(null);
+        return;
+      }
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-payment-categories`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-payment-options`,
         {
           method: 'POST',
           headers: {
@@ -128,8 +165,14 @@ export default function PaymentCharges() {
     try {
       const id = sessionStorage.getItem('adminId');
       if (!id) throw new Error('Admin not authenticated');
+      const invalid = categories.find((c) => c.is_enabled && !c.gateway_id);
+      if (invalid) {
+        setMessage({ type: 'error', text: `"${invalid.category_name}" cannot be enabled without a payment gateway` });
+        setSaving(false);
+        return;
+      }
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-payment-categories`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-payment-options`,
         {
           method: 'POST',
           headers: {
@@ -244,11 +287,13 @@ export default function PaymentCharges() {
         {/* List */}
         <div className="bg-white rounded-2xl border-2 border-gray-300 overflow-hidden">
           {/* Table header */}
-          <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-6 py-3 bg-gradient-to-r from-purple-50 to-violet-50 border-b-2 border-gray-200">
+          <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 px-6 py-3 bg-gradient-to-r from-purple-50 to-violet-50 border-b-2 border-gray-200">
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</span>
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Charges %</span>
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">GST %</span>
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Settlement</span>
+            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Gateway</span>
+            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Environment</span>
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Status</span>
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Details</span>
           </div>
@@ -266,7 +311,7 @@ export default function PaymentCharges() {
                 return (
                   <div key={cat.id} className="transition-colors hover:bg-gray-50">
                     {/* Summary row */}
-                    <div className="grid grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center px-6 py-4">
+                    <div className="grid grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg flex items-center justify-center flex-shrink-0">
                           <CreditCard className="w-4 h-4 text-[#8c76f0]" />
@@ -297,6 +342,23 @@ export default function PaymentCharges() {
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-200">
                           <Clock className="w-3 h-3" />
                           {settlementLabel(cat.settlement_time || 'instant')}
+                        </span>
+                      </div>
+
+                      <div className="hidden md:flex justify-center">
+                        {cat.gateway_id ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-full border border-purple-200">
+                            <CreditCard className="w-3 h-3" />
+                            {gateways.find((g) => g.id === cat.gateway_id)?.gateway_name || 'Unknown'}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">Not set</span>
+                        )}
+                      </div>
+
+                      <div className="hidden md:flex justify-center">
+                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full border ${cat.environment === 'production' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                          {cat.environment === 'production' ? 'Production' : 'Testing'}
                         </span>
                       </div>
 
@@ -338,6 +400,20 @@ export default function PaymentCharges() {
                     {isExpanded && canEdit && (
                       <div className="px-6 pb-6 border-t border-gray-100 bg-gray-50">
                         <div className="pt-5 space-y-6">
+                          {/* Category Name */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                              <Tag className="w-4 h-4" /> Category Name
+                            </label>
+                            <input
+                              type="text"
+                              value={cat.category_name}
+                              onChange={(e) => updateCategory(cat.id, 'category_name', e.target.value)}
+                              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all bg-white"
+                              placeholder="Category name"
+                            />
+                          </div>
+
                           {/* Enable toggle */}
                           <div className="flex items-center gap-3">
                             <input
@@ -400,6 +476,55 @@ export default function PaymentCharges() {
                                   <ChevronDown className="w-4 h-4 text-gray-400" />
                                 </div>
                               </div>
+                            </div>
+                          </div>
+
+                          {/* Payment Gateway + Environment */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                                <CreditCard className="w-4 h-4" /> Payment Gateway
+                                {!cat.is_enabled && <span className="text-gray-400 text-xs">(required to enable)</span>}
+                              </label>
+                              <div className="relative">
+                                <select
+                                  value={cat.gateway_id || ''}
+                                  onChange={(e) => updateCategory(cat.id, 'gateway_id', e.target.value || null)}
+                                  className="w-full px-4 py-2.5 pr-10 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all bg-white appearance-none"
+                                >
+                                  <option value="">Select a gateway</option>
+                                  {gateways.map((g) => (
+                                    <option key={g.id} value={g.id}>{g.gateway_name}</option>
+                                  ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                The gateway used for transactions on this payment option
+                              </p>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                                <Settings2 className="w-4 h-4" /> Environment
+                              </label>
+                              <div className="relative">
+                                <select
+                                  value={cat.environment || 'test'}
+                                  onChange={(e) => updateCategory(cat.id, 'environment', e.target.value)}
+                                  className="w-full px-4 py-2.5 pr-10 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all bg-white appearance-none"
+                                >
+                                  <option value="test">Testing</option>
+                                  <option value="production">Production</option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                The gateway environment to use for this payment option
+                              </p>
                             </div>
                           </div>
 

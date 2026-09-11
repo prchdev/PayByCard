@@ -1,5 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { withSignedKycUrls } from "../_shared/kycUrls.ts";
+import { getKycPolicyAttachment } from "../_shared/kycPolicyAttachment.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,7 +15,14 @@ const TABLE_LABELS: Record<string, string> = {
   kyc_business_info: "Business Documents",
 };
 
-async function sendKycEmail(supabaseUrl: string, supabaseKey: string, to: string, subject: string, body: string) {
+async function sendKycEmail(
+  supabaseUrl: string,
+  supabaseKey: string,
+  to: string,
+  subject: string,
+  body: string,
+  attachment?: { attachment_base64: string; attachment_filename: string; attachment_content_type: string },
+) {
   try {
     await fetch(`${supabaseUrl}/functions/v1/send-email`, {
       method: "POST",
@@ -27,6 +36,7 @@ async function sendKycEmail(supabaseUrl: string, supabaseKey: string, to: string
         body,
         body_type: "html",
         use_template: true,
+        ...(attachment ?? {}),
       }),
     });
   } catch (e) {
@@ -87,6 +97,9 @@ function buildFullKycApprovedBody(): string {
       <span style="font-size: 14px; color: #4b5563; margin-top: 8px; display: inline-block;">You can now make and receive payments on PayByCard.</span>
     </p>
     <p>Thank you for completing the verification process. You can now enjoy all the features of our platform.</p>
+    <p style="margin-top: 16px; padding: 12px; background-color: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+      <strong>Attached:</strong> Please find the accepted terms and conditions document attached with this email for your reference.
+    </p>
   `;
 }
 
@@ -221,47 +234,54 @@ Deno.serve(async (req: Request) => {
       .update({ kyc_completed: kycCompleted })
       .eq("id", userId);
 
-    // Send email + SMS notifications to user
+    // Send email + SMS notifications to user in the background (non-blocking)
     const documentType = TABLE_LABELS[table] || table;
 
-    if (userEmail) {
-      if (action === "verified") {
-        await sendKycEmail(
-          supabaseUrl,
-          supabaseServiceKey,
-          userEmail,
-          `KYC ${documentType} Approved`,
-          buildApprovalEmailBody(documentType)
-        );
-      } else if (action === "rejected") {
-        await sendKycEmail(
-          supabaseUrl,
-          supabaseServiceKey,
-          userEmail,
-          `KYC ${documentType} Rejected`,
-          buildRejectionEmailBody(documentType, rejectionReason || "")
-        );
+    EdgeRuntime.waitUntil((async () => {
+      if (userEmail) {
+        if (action === "verified") {
+          await sendKycEmail(
+            supabaseUrl,
+            supabaseServiceKey,
+            userEmail,
+            `KYC ${documentType} Approved`,
+            buildApprovalEmailBody(documentType)
+          );
+        } else if (action === "rejected") {
+          await sendKycEmail(
+            supabaseUrl,
+            supabaseServiceKey,
+            userEmail,
+            `KYC ${documentType} Rejected`,
+            buildRejectionEmailBody(documentType, rejectionReason || "")
+          );
+        }
+
+        // If all KYC is now complete, send the account-ready email with the terms PDF attached
+        if (kycCompleted) {
+          let attachment;
+          try { attachment = await getKycPolicyAttachment(); } catch (e) {
+            console.error("Failed to load KYC policy attachment:", e);
+          }
+          await sendKycEmail(
+            supabaseUrl,
+            supabaseServiceKey,
+            userEmail,
+            "KYC Fully Approved - Account Ready",
+            buildFullKycApprovedBody(),
+            attachment
+          );
+        }
       }
 
-      // If all KYC is now complete, send the account-ready email
-      if (kycCompleted) {
-        await sendKycEmail(
-          supabaseUrl,
-          supabaseServiceKey,
-          userEmail,
-          "KYC Fully Approved - Account Ready",
-          buildFullKycApprovedBody()
-        );
+      if (userMobile) {
+        if (action === "verified") {
+          await sendSms(supabaseUrl, supabaseServiceKey, userMobile, "kyc_approved", {});
+        } else if (action === "rejected") {
+          await sendSms(supabaseUrl, supabaseServiceKey, userMobile, "kyc_rejected", {});
+        }
       }
-    }
-
-    if (userMobile) {
-      if (action === "verified") {
-        await sendSms(supabaseUrl, supabaseServiceKey, userMobile, "kyc_approved", {});
-      } else if (action === "rejected") {
-        await sendSms(supabaseUrl, supabaseServiceKey, userMobile, "kyc_rejected", {});
-      }
-    }
+    })());
 
     return new Response(
       JSON.stringify({
@@ -284,3 +304,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+
+// redeploy

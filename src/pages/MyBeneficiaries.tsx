@@ -19,6 +19,8 @@ import DashboardSidebar from '../components/DashboardSidebar';
 import Footer from '../components/Footer';
 import { useAuth } from '../contexts/AuthContext';
 import { getClientIp } from '../utils/getClientIp';
+import { isCreditCardIfsc, looksLikeCreditCardNumber } from '../utils/beneficiaryValidation';
+import { capitalizeName } from '../utils/nameFormat';
 
 interface Beneficiary {
   id: string;
@@ -202,6 +204,9 @@ export default function MyBeneficiaries() {
     if (!/^[A-Za-z ]+$/.test(formData.full_name)) {
       setError('Full Name must contain only letters and spaces.'); return;
     }
+    if (formData.full_name.trim().split(/\s+/).length < 2) {
+      setError('Please enter beneficiary full name (First Name and Last Name).'); return;
+    }
     if (formData.full_name.length > 90) {
       setError('Full Name must not exceed 90 characters.'); return;
     }
@@ -253,6 +258,16 @@ export default function MyBeneficiaries() {
       return;
     }
 
+    if (isCreditCardIfsc(formData.ifsc)) {
+      setError('This IFSC code is for credit card bill payments. Adding credit card accounts as beneficiaries is not allowed.');
+      return;
+    }
+
+    if (looksLikeCreditCardNumber(formData.bank_account)) {
+      setError('The account number entered appears to be a credit card number. Credit card bill payments are not allowed through this platform.');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       const ipAddress = await getClientIp();
@@ -263,7 +278,7 @@ export default function MyBeneficiaries() {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ...formData, userId, ipAddress }),
+        body: JSON.stringify({ ...formData, full_name: capitalizeName(formData.full_name), userId, ipAddress }),
       });
 
       const data = await response.json();
@@ -569,15 +584,10 @@ export default function MyBeneficiaries() {
                     >
                       {beneficiary.status}
                     </span>
-                    {beneficiary.is_verified_merchant ? (
+                    {beneficiary.is_verified_merchant && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-semibold">
                         <CheckCircle className="w-3.5 h-3.5" />
                         Verified Merchant
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-semibold">
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        Merchant KYC Pending
                       </span>
                     )}
                   </div>
@@ -796,6 +806,16 @@ export default function MyBeneficiaries() {
                     <Building2 className="w-4 h-4" />
                     Bank Details
                   </h3>
+
+                  <div className="mb-4 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3">
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm font-medium text-amber-800 leading-relaxed">
+                        Transfer of Money to Your Own Bank Account and Credit Card Bill Payments Are Not Allowed.
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">

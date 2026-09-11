@@ -1,4 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
+import { withSignedKycUrls } from "../_shared/kycUrls.ts";
+import { lookupStateFromPincode } from "../_shared/pincodeLookup.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -220,13 +222,24 @@ async function fetchCashFreeDocuments(
     panData ? storeJson(panData, 'pan_data') : Promise.resolve(null),
   ]);
 
+  let cfState = sa.state || '';
+  let cfCity = sa.dist || sa.vtc || sa.subdist || '';
+  if (!cfState && sa.pincode) {
+    const pinLookup = await lookupStateFromPincode(sa.pincode);
+    if (pinLookup.state) {
+      cfState = pinLookup.state;
+      if (!cfCity) cfCity = pinLookup.district;
+      console.log('[fetchCashFreeDocuments] state derived from pincode:', sa.pincode, '->', cfState);
+    }
+  }
+
   return {
     pan_number: panData?.pan || '',
     full_name: panData?.name || aadhaarData?.name || '',
     dob: panData?.dob || aadhaarData?.dob || '',
     address: addressParts.join(', '),
-    city: sa.dist || sa.vtc || sa.subdist || '',
-    state: sa.state || '',
+    city: cfCity,
+    state: cfState,
     pincode: sa.pincode || '',
     id_number: aadhaarData?.uid || '',
     address_proof_type: 'aadhar',
@@ -546,6 +559,16 @@ async function fetchDigiLockerData(
   const voterDoc    = docs.find((d: any) => isVoterDoc(d));
   const dlDoc       = docs.find((d: any) => isDlDoc(d));
 
+  let panParsed: ReturnType<typeof parsePanXml> | null = null;
+  let panRawXml: string | null = null;
+  if (panDoc?.uri) {
+    try {
+      const xml = await fetchDocumentXml(accessToken, panDoc.uri, 'pan');
+      panRawXml = xml;
+      panParsed = parsePanXml(xml);
+    } catch { /* ignore */ }
+  }
+
   let aadhaarParsed: ReturnType<typeof parseAadhaarXml> | null = null;
   let aadhaarRawXml: string | null = null;
 
@@ -571,16 +594,6 @@ async function fetchDigiLockerData(
       userDetailsName = ud.name;
       userDetailsDob = normalizeDob(ud.dob);
     } catch { /* non-fatal */ }
-  }
-
-  let panParsed: ReturnType<typeof parsePanXml> | null = null;
-  let panRawXml: string | null = null;
-  if (panDoc?.uri) {
-    try {
-      const xml = await fetchDocumentXml(accessToken, panDoc.uri, 'pan');
-      panRawXml = xml;
-      panParsed = parsePanXml(xml);
-    } catch { /* ignore */ }
   }
 
   let addrProofType: AddressProofType = 'aadhar';
@@ -612,7 +625,16 @@ async function fetchDigiLockerData(
   if (!addrParsed && dlDoc?.uri) {
     try {
       const xml = await fetchDocumentXml(accessToken, dlDoc.uri, 'dl');
-      const parsed = parseCertificateAddressXml(xml);
+      let parsed = parseCertificateAddressXml(xml);
+      if (!parsed.state) {
+        const stateText = xml.match(/<State[^>]*>([^<]+)<\/State>/i)?.[1]?.trim() || '';
+        const state = attrInTag(xml, 'DrivingLicence', 'state')
+          || attrInTag(xml, 'Address', 'state')
+          || attrInTag(xml, 'Address2', 'state')
+          || attrInTag(xml, 'Poa', 'state')
+          || stateText;
+        if (state) parsed = { ...parsed, state };
+      }
       if (parsed.district || parsed.state || parsed.pincode || parsed.house) {
         addrProofType = 'driving_license';
         addrIdNumber = attrInTag(xml, 'Certificate', 'number') || '';
@@ -655,6 +677,18 @@ async function fetchDigiLockerData(
       : Promise.resolve(null),
   ]);
 
+  // ── Fallback: derive state from pincode if missing (common with DL documents) ──
+  let resolvedState = (addrParsed as any)?.state || '';
+  let resolvedCity = (addrParsed as any)?.district || (addrParsed as any)?.vtc || '';
+  if (!resolvedState && (addrParsed as any)?.pincode) {
+    const pinLookup = await lookupStateFromPincode((addrParsed as any).pincode);
+    if (pinLookup.state) {
+      resolvedState = pinLookup.state;
+      if (!resolvedCity) resolvedCity = pinLookup.district;
+      console.log('[fetchDigiLockerData] state derived from pincode:', (addrParsed as any).pincode, '->', resolvedState);
+    }
+  }
+
   const addressParts = [
     (addrParsed as any)?.house,
     (addrParsed as any)?.street,
@@ -666,8 +700,8 @@ async function fetchDigiLockerData(
     full_name:          panParsed?.name || aadhaarParsed?.name || userDetailsName || tokenName,
     dob:                panParsed?.dob  || aadhaarParsed?.dob  || userDetailsDob  || tokenDob,
     address:            addressParts.join(', '),
-    city:               (addrParsed as any)?.district || (addrParsed as any)?.vtc || '',
-    state:              (addrParsed as any)?.state    || '',
+    city:               resolvedCity,
+    state:              resolvedState,
     pincode:            (addrParsed as any)?.pincode  || '',
     id_number:          addrIdNumber,
     address_proof_type: addrProofType,
@@ -891,6 +925,70 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      // ── Self-transfer check: merchant must not be the same person as the sender ──
+      const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const merchantFullName = normalize(kycData.full_name || record.full_name || '');
+      const merchantPan = normalizePan(kycData.pan_number);
+      const merchantEmail = normalize(record.email || '');
+      const merchantMobile = (record.mobile || '').replace(/\D/g, '').slice(-10);
+
+      let senderUser: { full_name: string | null; first_name: string | null; last_name: string | null; email: string | null; mobile_number: string | null } | null = null;
+      let senderUserId: string | null = null;
+      if (record.payment_id) {
+        const { data: payment } = await supabase
+          .from('payments')
+          .select('user_id')
+          .eq('id', record.payment_id)
+          .maybeSingle();
+        if (payment?.user_id) {
+          senderUserId = payment.user_id;
+          const { data: sender } = await supabase
+            .from('users')
+            .select('full_name, first_name, last_name, email, mobile_number')
+            .eq('id', payment.user_id)
+            .maybeSingle();
+          senderUser = sender;
+        }
+      }
+
+      let senderPan: string | null = null;
+      if (senderUserId) {
+        const { data: senderKyc } = await supabase
+          .from('kyc_pan_verification')
+          .select('pan_number')
+          .eq('user_id', senderUserId)
+          .maybeSingle();
+        senderPan = senderKyc?.pan_number || null;
+      }
+
+      const senderFullName = senderUser
+        ? normalize(senderUser.full_name || `${senderUser.first_name || ''} ${senderUser.last_name || ''}`.trim())
+        : normalize(record.sender_name || '');
+      const senderEmail = senderUser ? normalize(senderUser.email || '') : '';
+      const senderMobile = senderUser ? (senderUser.mobile_number || '').replace(/\D/g, '').slice(-10) : '';
+      const senderPanNorm = senderPan ? senderPan.trim().toUpperCase() : '';
+
+      const nameMatch = merchantFullName && senderFullName && merchantFullName === senderFullName;
+      const emailMatch = senderEmail && merchantEmail && senderEmail === merchantEmail;
+      const mobileMatch = senderMobile && merchantMobile && senderMobile === merchantMobile;
+      const panMatch = senderPanNorm && merchantPan && senderPanNorm === merchantPan;
+
+      if (nameMatch || emailMatch || mobileMatch || panMatch) {
+        const matchedField = panMatch ? 'PAN number'
+          : nameMatch ? 'name'
+          : emailMatch ? 'email address'
+          : 'mobile number';
+        if (record.mobile) await sendSms(supabaseUrl, supabaseKey, record.mobile, 'kyc_rejected');
+        return new Response(
+          JSON.stringify({
+            success: false, autoApproved: false,
+            error: `Self-funds transfer is not allowed. The merchant ${matchedField} matches the sender's details. You cannot send money to yourself.`,
+            self_transfer: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const ipAddress =
         req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
         req.headers.get('x-real-ip') ||
@@ -919,3 +1017,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+
+// redeploy

@@ -100,11 +100,6 @@ interface ChargesDetails {
     gstNumber: string;
     payoutMode: string;
     chargesInfo: {
-      visa: number;
-      mastercard: number;
-      rupay: number;
-      amex: number;
-      diners: number;
       gst_percentage: number;
     };
   };
@@ -535,7 +530,7 @@ export default function MakePayment() {
     setLoading(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/calculate-payment-charges`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/calculate-payment-option-charges`,
         {
           method: 'POST',
           headers: {
@@ -655,7 +650,6 @@ export default function MakePayment() {
           gstNumber: selectedPaymentOption.gateway_gst_number || '',
           payoutMode: selectedPaymentOption.payout_mode || 'manual',
           chargesInfo: {
-            visa: 0, mastercard: 0, rupay: 0, amex: 0, diners: 0,
             gst_percentage: selectedPaymentOption.gateway_gst_percentage || 18,
           },
         },
@@ -725,7 +719,7 @@ export default function MakePayment() {
             userId,
             beneficiaryId: selectedBeneficiary?.id,
             businessCategoryId: selectedCategory?.id,
-            paymentOptionId: selectedPaymentOption.category_id,
+            paymentOptionId: selectedPaymentOption.id,
             gatewayId: selectedPaymentOption.gateway_id,
             cardType: selectedPaymentOption.card_type,
             amount: chargesDetails?.amount,
@@ -905,6 +899,9 @@ export default function MakePayment() {
           if (!sdkReady) throw new Error('ZaakPay SDK failed to initialize');
           openZaakPayCheckout(gatewayConfig, paymentInfo);
           break;
+        case 'phonepe':
+          await openPhonePeCheckout(gatewayConfig, paymentInfo);
+          break;
         case 'enkash':
           sdkReady = await waitForSDKReady(() => typeof (window as any).EnkashCheckout !== 'undefined', 'Enkash');
           if (!sdkReady) throw new Error('Enkash SDK failed to initialize');
@@ -1072,6 +1069,22 @@ export default function MakePayment() {
     } catch (error) {
       console.error('Enkash checkout error:', error);
       throw error;
+    }
+  };
+
+  const openPhonePeCheckout = async (config: any, payment: any) => {
+    try {
+      setProcessing(true);
+      // PhonePe uses redirect-based checkout — redirect to the checkout URL
+      // returned by the initiate-payment edge function.
+      const checkoutUrl = config.options?.checkoutUrl;
+      if (!checkoutUrl) {
+        throw new Error('PhonePe checkout URL not available');
+      }
+      window.location.href = checkoutUrl;
+    } catch (error: any) {
+      console.error('PhonePe checkout error:', error);
+      handlePaymentFailure(error.message || 'PhonePe checkout failed');
     }
   };
 
@@ -1509,15 +1522,10 @@ export default function MakePayment() {
                             </p>
                           </div>
                           <div className="mt-3">
-                            {beneficiary.is_verified_merchant ? (
+                            {beneficiary.is_verified_merchant && (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-semibold">
                                 <CheckCircle className="w-3.5 h-3.5" />
                                 Verified Merchant
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-semibold">
-                                <AlertCircle className="w-3.5 h-3.5" />
-                                Merchant KYC Pending
                               </span>
                             )}
                           </div>

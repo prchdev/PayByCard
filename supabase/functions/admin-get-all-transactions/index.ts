@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { withSignedKycUrls } from "../_shared/kycUrls.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,11 +83,16 @@ Deno.serve(async (req: Request) => {
       query = query.lte("created_at", dateToEnd);
     }
 
-    // DB-level text search on payment_reference and beneficiary JSONB name
+    // DB-level text search on payment_reference, beneficiary name, and invoice number
     if (search && search.trim().length > 0) {
       const term = search.trim().replace(/[%_]/g, "\\$&");
+      // Support searching by formatted invoice "PAY-YYYY-NNNN" or bare number
+      const invoiceNumMatch = term.match(/^(?:PAY-\d{4}-)?(?:\d+)$/i);
+      const invoiceFilter = invoiceNumMatch
+        ? `,invoice_number.eq.${parseInt(term.split("-").pop() ?? term, 10)}`
+        : "";
       query = query.or(
-        `payment_reference.ilike.%${term}%,beneficiary_details->>full_name.ilike.%${term}%`
+        `payment_reference.ilike.%${term}%,beneficiary_details->>full_name.ilike.%${term}%${invoiceFilter}`
       );
     }
 
@@ -124,6 +130,7 @@ Deno.serve(async (req: Request) => {
       addrResult,
       bizResult,
       beneResult,
+      merchantResult,
     ] = await Promise.all([
       // Payouts (always needed)
       supabase
@@ -163,6 +170,11 @@ Deno.serve(async (req: Request) => {
       // Beneficiary PAN — opt-in only
       include_kyc && beneficiaryIds.length > 0
         ? supabase.from("beneficiaries").select("id, pan_number").in("id", beneficiaryIds)
+        : Promise.resolve({ data: [] as any[] }),
+
+      // Merchant onboarding PAN — fallback when beneficiary has no PAN (opt-in only)
+      include_kyc && paymentIds.length > 0
+        ? supabase.from("merchant_onboarding").select("payment_id, pan_number").in("payment_id", paymentIds).neq("pan_number", "")
         : Promise.resolve({ data: [] as any[] }),
     ]);
 
@@ -215,6 +227,11 @@ Deno.serve(async (req: Request) => {
       if (r.pan_number) benePanMap[r.id] = r.pan_number;
     }
 
+    const merchantPanMap: Record<string, string> = {};
+    for (const r of (merchantResult.data || [])) {
+      if (r.payment_id && r.pan_number) merchantPanMap[r.payment_id] = r.pan_number;
+    }
+
     // Enrich payments
     const enriched = payments.map((payment: any) => {
       const payout = payoutMap[payment.id] ?? null;
@@ -258,7 +275,7 @@ Deno.serve(async (req: Request) => {
         company_pan: biz?.business_pan ?? null,
         company_gst: biz?.gst_number ?? null,
         company_address: biz?.business_address ?? null,
-        receiver_pan: payment.beneficiary_id ? (benePanMap[payment.beneficiary_id] ?? null) : null,
+        receiver_pan: (payment.beneficiary_id ? benePanMap[payment.beneficiary_id] : null) ?? merchantPanMap[payment.id] ?? null,
       };
     });
 
@@ -272,8 +289,11 @@ Deno.serve(async (req: Request) => {
   } catch (error: any) {
     console.error("Error in admin-get-all-transactions:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Internal server error" }),
+      JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
+
+
+// redeploy

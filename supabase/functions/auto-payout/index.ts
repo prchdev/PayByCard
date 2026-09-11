@@ -167,6 +167,51 @@ async function verifyCashfreeSettlement(
   }
 }
 
+async function verifyPhonePeSettlement(
+  gateway: any,
+  env: string,
+  paymentReference: string,
+): Promise<SettlementResult> {
+  const { apiKey, apiSecret } = getCredentials(gateway, env);
+  if (!apiKey || !apiSecret) {
+    return { settled: false, reason: "Missing PhonePe credentials", gatewayStatus: "check_failed" };
+  }
+  const base = (env ?? "production").toLowerCase() === "test"
+    ? "https://api-preprod.phonepe.com/apis/hermes"
+    : "https://api.phonepe.com/apis/hermes";
+
+  const apiEndpoint = `/pg/v1/status/${apiKey}/${paymentReference}`;
+  const hashInput = apiEndpoint + apiSecret;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+  const xVerify = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+
+  try {
+    const res = await fetch(`${base}${apiEndpoint}`, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-VERIFY": xVerify,
+        "X-MERCHANT-ID": apiKey,
+      },
+    });
+    if (!res.ok) {
+      return { settled: false, reason: `PhonePe status fetch failed (HTTP ${res.status})`, gatewayStatus: "check_failed" };
+    }
+    const data = await res.json();
+    if (!data.success) {
+      return { settled: false, reason: `PhonePe status check unsuccessful: ${data.message ?? ""}`, gatewayStatus: "check_failed" };
+    }
+    const state = (data.data?.state ?? "").toUpperCase();
+    if (state !== "PAYMENT_SUCCESS" && state !== "COMPLETED") {
+      return { settled: false, reason: `Payment not successful (state: ${state})`, gatewayStatus: "not_paid" };
+    }
+    // PhonePe does not expose a separate settlement status via the status API.
+    // A successful payment is considered settled for payout purposes.
+    return { settled: true, reason: `Payment ${state} — considered settled`, gatewayStatus: "settled" };
+  } catch (e: any) {
+    return { settled: false, reason: `PhonePe settlement check error: ${e?.message}`, gatewayStatus: "check_failed" };
+  }
+}
+
 async function verifyGatewaySettlement(
   gateway: any,
   env: string,
@@ -178,6 +223,9 @@ async function verifyGatewaySettlement(
   }
   if (name.includes("cashfree")) {
     return verifyCashfreeSettlement(gateway, env, payment.payment_reference);
+  }
+  if (name.includes("phonepe")) {
+    return verifyPhonePeSettlement(gateway, env, payment.payment_reference);
   }
   return { settled: true, reason: "unsupported_gateway_skip_check", gatewayStatus: "not_applicable" };
 }
@@ -266,10 +314,39 @@ async function getCashfreeBalance(gateway: any, env: string): Promise<{ balance:
   }
 }
 
+async function getPhonePeBalance(gateway: any, env: string): Promise<{ balance: number | null; error?: string }> {
+  const isTest = (env ?? "production").toLowerCase() === "test";
+  const merchantId = isTest
+    ? ((gateway.test_payout_client_id || "").trim() || (gateway.test_api_key || "").trim())
+    : ((gateway.production_payout_client_id || "").trim() || (gateway.production_api_key || "").trim());
+  const saltKey = isTest
+    ? ((gateway.test_payout_client_secret || "").trim() || (gateway.test_api_secret || "").trim())
+    : ((gateway.production_payout_client_secret || "").trim() || (gateway.production_api_secret || "").trim());
+  if (!merchantId || !saltKey) return { balance: null, error: "PhonePe payout credentials missing" };
+  const base = isTest ? "https://api-preprod.phonepe.com/apis/hermes" : "https://api.phonepe.com/apis/hermes";
+  const apiEndpoint = `/pg/v1/payout/balance/${merchantId}`;
+  const hashInput = apiEndpoint + saltKey;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+  const xVerify = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+  try {
+    const res = await fetch(`${base}${apiEndpoint}`, { headers: { "X-VERIFY": xVerify, "X-MERCHANT-ID": merchantId } });
+    const bodyText = await res.text();
+    if (!res.ok) return { balance: null, error: `PhonePe API ${res.status}: ${bodyText.slice(0, 300)}` };
+    let data: any;
+    try { data = JSON.parse(bodyText); } catch { return { balance: null, error: `Non-JSON: ${bodyText.slice(0, 200)}` }; }
+    if (!data.success) return { balance: null, error: data.message ?? "PhonePe balance check failed" };
+    const bal = data.data?.availableBalance ?? data.data?.balance;
+    return bal != null ? { balance: parseFloat(String(bal)) / 100 } : { balance: null, error: "balance field missing" };
+  } catch (e: any) {
+    return { balance: null, error: `Exception: ${e?.message}` };
+  }
+}
+
 async function getGatewayBalance(gateway: any, env: string): Promise<{ balance: number | null; error?: string }> {
   const name = (gateway.gateway_name ?? "").toLowerCase();
   if (name.includes("razorpay")) return getRazorpayBalance(gateway, env);
   if (name.includes("cashfree")) return getCashfreeBalance(gateway, env);
+  if (name.includes("phonepe")) return getPhonePeBalance(gateway, env);
   return { balance: null, error: `Balance check not supported for gateway: ${gateway.gateway_name}` };
 }
 
@@ -591,6 +668,40 @@ async function checkCashfreePayoutStatus(
   }
 }
 
+async function checkPhonePePayoutStatus(
+  gateway: any,
+  env: string,
+  transferId: string,
+): Promise<PayoutStatusResult> {
+  const isTest = (env ?? "production").toLowerCase() === "test";
+  const merchantId = isTest
+    ? ((gateway.test_payout_client_id || "").trim() || (gateway.test_api_key || "").trim())
+    : ((gateway.production_payout_client_id || "").trim() || (gateway.production_api_key || "").trim());
+  const saltKey = isTest
+    ? ((gateway.test_payout_client_secret || "").trim() || (gateway.test_api_secret || "").trim())
+    : ((gateway.production_payout_client_secret || "").trim() || (gateway.production_api_secret || "").trim());
+  if (!merchantId || !saltKey) return { status: "unknown", utr: null };
+  const base = isTest ? "https://api-preprod.phonepe.com/apis/hermes" : "https://api.phonepe.com/apis/hermes";
+  try {
+    const apiEndpoint = `/pg/v1/payout/status/${merchantId}/${transferId}`;
+    const hashInput = apiEndpoint + saltKey;
+    const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+    const xVerify = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+    const res = await fetch(`${base}${apiEndpoint}`, { headers: { "X-VERIFY": xVerify, "X-MERCHANT-ID": merchantId } });
+    const data = await res.json();
+    if (!data.success) return { status: "unknown", utr: null };
+    const state = (data.data?.state ?? data.data?.status ?? "").toUpperCase();
+    const status: PayoutStatusResult["status"] =
+      state === "SUCCESS" || state === "PAYOUT_SUCCESS" || state === "COMPLETED" ? "processed"
+      : state === "FAILED" || state === "PAYOUT_FAILED" || state === "REJECTED" ? "failed"
+      : state === "PENDING" || state === "ACCEPTED" || state === "PROCESSING" ? "processing"
+      : "unknown";
+    return { status, utr: data.data?.utr ?? null };
+  } catch {
+    return { status: "unknown", utr: null };
+  }
+}
+
 async function checkGatewayPayoutStatus(
   gateway: any,
   env: string,
@@ -599,6 +710,7 @@ async function checkGatewayPayoutStatus(
   const name = (gateway.gateway_name ?? "").toLowerCase();
   if (name.includes("razorpay")) return checkRazorpayPayoutStatus(gateway, env, payoutId);
   if (name.includes("cashfree")) return checkCashfreePayoutStatus(gateway, env, payoutId);
+  if (name.includes("phonepe")) return checkPhonePePayoutStatus(gateway, env, payoutId);
   return { status: "unknown", utr: null };
 }
 
@@ -823,6 +935,76 @@ async function executeCashfreePayout(
   };
 }
 
+async function executePhonePePayout(
+  _supabase: ReturnType<typeof createClient>,
+  payment: any,
+  gateway: any,
+  beneficiary: any,
+  payoutRef: string,
+): Promise<{ success: boolean; gateway_tx_id: string | null; utr: string | null; response: any }> {
+  const env = (payment.gateway_environment ?? "production").toLowerCase();
+  const isTest = env === "test";
+  const merchantId = isTest
+    ? ((gateway.test_payout_client_id || "").trim() || (gateway.test_api_key || "").trim())
+    : ((gateway.production_payout_client_id || "").trim() || (gateway.production_api_key || "").trim());
+  const saltKey = isTest
+    ? ((gateway.test_payout_client_secret || "").trim() || (gateway.test_api_secret || "").trim())
+    : ((gateway.production_payout_client_secret || "").trim() || (gateway.production_api_secret || "").trim());
+  if (!merchantId || !saltKey) throw new Error("PhonePe payout credentials not configured");
+
+  const base = isTest ? "https://api-preprod.phonepe.com/apis/hermes" : "https://api.phonepe.com/apis/hermes";
+  const transferId = `AUTO-${payoutRef}`;
+  const amountInPaise = Math.round(parseFloat(payment.amount) * 100);
+
+  const payload = {
+    merchantId,
+    transferId,
+    amount: amountInPaise,
+    transferMode: "IMPS",
+    beneficiary: {
+      accountNumber: beneficiary.bank_account,
+      ifsc: beneficiary.ifsc,
+      name: beneficiary.full_name,
+    },
+  };
+
+  const payloadBase64 = btoa(JSON.stringify(payload));
+  const apiEndpoint = "/pg/v1/payout";
+  const hashInput = payloadBase64 + apiEndpoint + saltKey;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+  const xVerify = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+
+  const res = await fetch(`${base}${apiEndpoint}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-VERIFY": xVerify, "X-MERCHANT-ID": merchantId },
+    body: JSON.stringify({ request: payloadBase64 }),
+  });
+  const data = await res.json();
+
+  if (res.status === 409) {
+    // Duplicate transfer — check status
+    const statusEndpoint = `/pg/v1/payout/status/${merchantId}/${transferId}`;
+    const statusHashInput = statusEndpoint + saltKey;
+    const statusHashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(statusHashInput));
+    const statusXVerify = Array.from(new Uint8Array(statusHashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+    const statusRes = await fetch(`${base}${statusEndpoint}`, { headers: { "X-VERIFY": statusXVerify, "X-MERCHANT-ID": merchantId } });
+    const statusData = await statusRes.json();
+    if (statusData.success && statusData.data?.state?.toUpperCase() !== "FAILED") {
+      return { success: true, gateway_tx_id: transferId, utr: statusData.data?.utr ?? null, response: statusData };
+    }
+    throw new Error(`Auto-payout failed: PhonePe transfer ${transferId} has permanently failed. Admin manual payout required.`);
+  }
+
+  const state = (data?.data?.state ?? data?.data?.status ?? "").toUpperCase();
+  const success = res.ok && data.success && ["SUCCESS", "PAYOUT_SUCCESS", "PENDING", "ACCEPTED", "PROCESSING"].includes(state);
+  return {
+    success,
+    gateway_tx_id: transferId,
+    utr: data?.data?.utr ?? null,
+    response: data,
+  };
+}
+
 async function executePayout(
   supabase: ReturnType<typeof createClient>,
   payment: any,
@@ -837,6 +1019,9 @@ async function executePayout(
   }
   if (name.includes("cashfree")) {
     return executeCashfreePayout(supabase, payment, gateway, beneficiary, payoutRef, userKyc);
+  }
+  if (name.includes("phonepe")) {
+    return executePhonePePayout(supabase, payment, gateway, beneficiary, payoutRef);
   }
   throw new Error(`Gateway ${gateway.gateway_name} does not support auto payout`);
 }
@@ -943,8 +1128,17 @@ Deno.serve(async (req: Request) => {
       await supabase.rpc("fn_release_payment_lock", { p_payment_id: singlePaymentId });
     }
 
+    // ── Fetch global payout settings ──────────────────────────────────────────
+    const { data: payoutSettings } = await supabase
+      .from("payout_settings")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+    const globalPayoutMode = payoutSettings?.payout_mode ?? "manual";
+    const globalEnv = payoutSettings?.environment ?? "test";
+
     // ── Fetch eligible payments ───────────────────────────────────────────────
-    // Target: settlement_pending OR settlement_in_progress, payout_mode = payout or payment_split
+    // Target: settlement_pending OR settlement_in_progress, payout_mode is an auto mode
     let query = supabase
       .from("payments")
       .select("*, payment_gateway_settings(*), beneficiaries(*)")
@@ -970,21 +1164,31 @@ Deno.serve(async (req: Request) => {
     const now = new Date();
 
     // ── Filter ────────────────────────────────────────────────────────────────
+    const AUTO_PAYOUT_MODES = new Set([
+      "payout", "payment_split",
+      "cashfree_payout", "cashfree_payment_split",
+      "razorpay_payout", "razorpay_payment_split",
+      "axis_payout",
+    ]);
     const eligible = payments
       .filter((p: any) => {
-        const mode      = p.payout_mode ?? p.payment_gateway_settings?.payout_mode;
+        const mode      = p.payout_mode ?? globalPayoutMode;
         const gwSettled = GATEWAY_SETTLED_STATUSES.has(
           (p.gateway_settlement_status ?? "").toLowerCase(),
         );
 
-        if (mode !== "payout" && mode !== "payment_split") return false;
+        if (!AUTO_PAYOUT_MODES.has(mode)) return false;
 
-        // payment_split: process immediately (funds stay with gateway)
-        if (mode === "payment_split") return true;
+        // Skip payments already marked as auto_payout_failed — they are in the
+        // manual payout queue and must not be retried by the cron to prevent
+        // double spending.
+        if (p.auto_payout_failed === true) return false;
 
-        // payout mode: always require gateway to confirm settlement first.
-        // A date-based timer is NOT sufficient — we must see gateway_settlement_status
-        // as "paid", "settled", "success", or "captured" before creating any transfer.
+        // payment_split / cashfree_payment_split / razorpay_payment_split: process immediately
+        if (mode.includes("payment_split")) return true;
+
+        // payout modes (payout, cashfree_payout, razorpay_payout, axis_payout):
+        // always require gateway to confirm settlement first.
         return gwSettled;
       })
       .sort((a: any, b: any) => {
@@ -1008,12 +1212,17 @@ Deno.serve(async (req: Request) => {
     // ── Per-gateway balance cache ──────────────────────────────────────────────
     const balanceCache: Record<string, { balance: number | null; error?: string }> = {};
 
+    // Track gateways that hit insufficient balance during this run so all
+    // subsequent (newer) payments on the same gateway are also skipped,
+    // preserving FIFO order (first confirmed payment gets paid first).
+    const insufficientGateways = new Set<string>();
+
     for (const payment of eligible) {
       const gateway     = payment.payment_gateway_settings;
       const beneficiary = payment.beneficiaries;
       const amount      = parseFloat(payment.amount ?? "0");
-      const payoutMode  = payment.payout_mode ?? gateway?.payout_mode;
-      const env         = payment.gateway_environment ?? "production";
+      const payoutMode  = payment.payout_mode ?? globalPayoutMode;
+      const env         = payment.gateway_environment ?? globalEnv;
 
       if (!gateway) {
         results.push({ id: payment.id, reference: payment.payment_reference, action: "skipped", error: "No gateway settings" });
@@ -1139,6 +1348,20 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      // FIFO: if this gateway already hit insufficient balance for an earlier
+      // (older) payment, skip all subsequent payments on the same gateway so
+      // newer payments don't jump ahead of older ones in the queue.
+      if (insufficientGateways.has(gwCacheKey)) {
+        await supabase.rpc("fn_release_payment_lock", { p_payment_id: payment.id });
+        results.push({
+          id:        payment.id,
+          reference: payment.payment_reference,
+          action:    "skipped_fifo_insufficient_balance",
+          error:     `Earlier payment in queue had insufficient balance on ${gateway.gateway_name} (${env}) — holding this payment for FIFO order`,
+        });
+        continue;
+      }
+
       const cachedBalance = balanceCache[gwCacheKey];
       if (cachedBalance.balance === null) {
         // Balance API returned an error — this means we couldn't CHECK the balance,
@@ -1157,9 +1380,14 @@ Deno.serve(async (req: Request) => {
         await supabase.from("payment_logs").insert({
           payment_id: payment.id,
           status:     "payout_skipped_low_balance",
-          message:    `Auto-payout skipped: insufficient balance in ${gateway.gateway_name} ${env} account. Available: ₹${currentBalance.toFixed(2)}, Required: ₹${amount.toFixed(2)}.`,
+          message:    `Auto-payout skipped: insufficient balance in ${gateway.gateway_name} ${env} account. Available: ₹${currentBalance.toFixed(2)}, Required: ₹${amount.toFixed(2)}. Holding FIFO order — subsequent payments on this gateway will also be skipped until funds are available.`,
           metadata:   { available_balance: currentBalance, required_amount: amount, gateway: gateway.gateway_name, environment: env },
         });
+        // Release the lock so the payment can be re-claimed in the next job run
+        await supabase.rpc("fn_release_payment_lock", { p_payment_id: payment.id });
+        // Mark this gateway as insufficient so all subsequent (newer) payments
+        // on the same gateway are also skipped, preserving FIFO order
+        insufficientGateways.add(gwCacheKey);
         results.push({ id: payment.id, reference: payment.payment_reference, action: "skipped_low_balance" });
         continue;
       }
@@ -1167,7 +1395,7 @@ Deno.serve(async (req: Request) => {
       // ── Verify gateway settlement (for settlement_pending with payout mode) ─
       // Skip re-verification if DB already has a confirmed settled status —
       // calling the gateway again would return the same result and burn quota.
-      if (payment.status === "settlement_pending" && payoutMode === "payout") {
+      if (payment.status === "settlement_pending" && !payoutMode.includes("payment_split")) {
         const alreadySettled = GATEWAY_SETTLED_STATUSES.has(
           (payment.gateway_settlement_status ?? "").toLowerCase(),
         );
@@ -1196,7 +1424,80 @@ Deno.serve(async (req: Request) => {
 
       // ── Execute payout ─────────────────────────────────────────────────────
       try {
-        const result = await executePayout(supabase, payment, gateway, beneficiary, userKyc);
+        // For axis_payout mode, use the Axis Bank process function instead
+        let result: { success: boolean; gateway_tx_id: string | null; utr: string | null; response: any };
+        if (payoutMode === "axis_payout") {
+          const axisRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/process-axis-payout`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              payment_id: payment.id,
+              beneficiary_account_number: beneficiary.bank_account,
+              beneficiary_ifsc: beneficiary.ifsc,
+              beneficiary_name: beneficiary.full_name,
+              amount,
+              remarks: `Payout for ${payment.payment_reference}`,
+            }),
+          });
+          const axisData = await axisRes.json();
+
+          // Axis Bank returns pending when available balance is insufficient.
+          // Skip this payment without creating a payout record — leave it
+          // for the next job run (FIFO: first confirmed payment gets paid first).
+          if (!axisData.success && axisData.status === "pending") {
+            await supabase.from("payment_logs").insert({
+              payment_id: payment.id,
+              status:     "payout_skipped_insufficient_balance",
+              message:    `Axis Bank payout skipped: ${axisData.message || "insufficient balance"}. Available: ₹${(axisData.available_balance ?? 0).toFixed(2)}, Required: ₹${(axisData.required_amount ?? amount).toFixed(2)}. Will retry in next job run.`,
+              metadata:   {
+                payout_mode:       payoutMode,
+                available_balance: axisData.available_balance,
+                required_amount:   axisData.required_amount,
+                pending_reason:    axisData.pending_reason,
+              },
+            });
+            // Release the lock so the payment can be re-claimed in the next run
+            await supabase.rpc("fn_release_payment_lock", { p_payment_id: payment.id });
+            results.push({
+              id:        payment.id,
+              reference: payment.payment_reference,
+              action:    "skipped_insufficient_balance",
+              error:     axisData.message || "Insufficient balance — will retry next run",
+            });
+            continue;
+          }
+
+          result = {
+            success: !!axisData.success,
+            gateway_tx_id: axisData.reference_number ?? null,
+            utr: axisData.utr ?? axisData.reference_number ?? null,
+            response: axisData,
+          };
+        } else {
+          // Merge payout_settings credentials into gateway object for cashfree/razorpay modes
+          const mergedGateway = { ...gateway };
+          if (payoutSettings) {
+            if (payoutMode.startsWith("cashfree_")) {
+              mergedGateway.test_payout_client_id = payoutSettings.cashfree_test_client_id;
+              mergedGateway.test_payout_client_secret = payoutSettings.cashfree_test_client_secret;
+              mergedGateway.production_payout_client_id = payoutSettings.cashfree_production_client_id;
+              mergedGateway.production_payout_client_secret = payoutSettings.cashfree_production_client_secret;
+              mergedGateway.test_cashfree_2fa_public_key = payoutSettings.cashfree_test_2fa_public_key;
+              mergedGateway.production_cashfree_2fa_public_key = payoutSettings.cashfree_production_2fa_public_key;
+            } else if (payoutMode.startsWith("razorpay_")) {
+              mergedGateway.test_payout_client_id = payoutSettings.razorpay_test_key_id;
+              mergedGateway.test_payout_client_secret = payoutSettings.razorpay_test_key_secret;
+              mergedGateway.production_payout_client_id = payoutSettings.razorpay_production_key_id;
+              mergedGateway.production_payout_client_secret = payoutSettings.razorpay_production_key_secret;
+              mergedGateway.test_payout_account_number = payoutSettings.razorpay_test_account_number;
+              mergedGateway.production_payout_account_number = payoutSettings.razorpay_production_account_number;
+            }
+          }
+          result = await executePayout(supabase, payment, mergedGateway, beneficiary, userKyc);
+        }
         const payoutRef = `AUTO-${payment.payment_reference}`;
         const transferMode = resolveTransferMode(payment.category_details?.settlement_time);
 
@@ -1205,6 +1506,14 @@ Deno.serve(async (req: Request) => {
           const cur = balanceCache[gwCacheKey]?.balance;
           if (cur !== null && cur !== undefined) {
             balanceCache[gwCacheKey] = { balance: cur - amount };
+          }
+        } else {
+          // Payout failed — if it looks like an insufficient-funds error from the
+          // gateway, mark this gateway as insufficient so subsequent (newer)
+          // payments on the same gateway are also skipped, preserving FIFO order.
+          const respStr = JSON.stringify(result.response ?? "").toLowerCase();
+          if (respStr.includes("insufficient") || respStr.includes("low balance") || respStr.includes("not enough")) {
+            insufficientGateways.add(gwCacheKey);
           }
         }
 
@@ -1236,7 +1545,7 @@ Deno.serve(async (req: Request) => {
           beneficiary_id:        payment.beneficiary_id,
           payment_gateway_id:    payment.payment_gateway_id,
           payment_id:            payment.id,
-          payout_type:           payoutMode === "payment_split" ? "split" : "auto",
+          payout_type:           payoutMode.includes("payment_split") ? "split" : payoutMode === "axis_payout" ? "axis" : "auto",
           amount,
           charges:               0,
           gst:                   0,
@@ -1296,13 +1605,21 @@ Deno.serve(async (req: Request) => {
         });
       } catch (err: any) {
         console.error(`Payout error for ${payment.payment_reference}:`, err);
+        // Mark the payment as auto_payout_failed so it appears in the Manual Payout queue.
+        // Release the lock so it can be re-claimed if admin retries manually.
+        await supabase.from("payments").update({
+          auto_payout_failed: true,
+          status:            "settlement_in_progress",
+          updated_at:        new Date().toISOString(),
+        }).eq("id", payment.id);
+        await supabase.rpc("fn_release_payment_lock", { p_payment_id: payment.id });
         await supabase.from("payment_logs").insert({
           payment_id: payment.id,
           status:     "auto_payout_error",
-          message:    `Auto-payout error for ${payment.payment_reference}: ${err?.message}`,
-          metadata:   { error: err?.message },
+          message:    `Auto-payout error for ${payment.payment_reference}: ${err?.message}. Moved to manual payout queue.`,
+          metadata:   { error: err?.message, payout_mode: payoutMode },
         });
-        results.push({ id: payment.id, reference: payment.payment_reference, action: "error", error: err?.message });
+        results.push({ id: payment.id, reference: payment.payment_reference, action: "auto_payout_failed", error: err?.message });
       }
     }
 
@@ -1425,3 +1742,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// redeploy

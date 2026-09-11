@@ -263,7 +263,7 @@ export default function TicketDetailsModal({ ticketId, userId, onClose }: Ticket
           <p className="text-center text-gray-900 font-medium">Failed to load ticket details</p>
           <button
             onClick={onClose}
-            className="mt-4 w-full px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
+            className="mt-4 w-full px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
           >
             Close
           </button>
@@ -417,7 +417,7 @@ export default function TicketDetailsModal({ ticketId, userId, onClose }: Ticket
                 onChange={(e) => setReplyMessage(e.target.value)}
                 placeholder="Type your reply..."
                 rows={3}
-                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all resize-none"
+                className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all resize-none text-sm"
               />
 
               {replyFiles.length > 0 && (
@@ -459,7 +459,7 @@ export default function TicketDetailsModal({ ticketId, userId, onClose }: Ticket
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={replyFiles.length >= 3}
-                  className="px-4 py-2 border-2 border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-3 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
                 >
                   <Upload className="w-4 h-4" />
                   <span className="text-sm font-medium">Attach</span>
@@ -467,7 +467,7 @@ export default function TicketDetailsModal({ ticketId, userId, onClose }: Ticket
                 <button
                   type="submit"
                   disabled={sending || !replyMessage.trim()}
-                  className="flex-1 px-6 py-2 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {sending ? (
                     <>

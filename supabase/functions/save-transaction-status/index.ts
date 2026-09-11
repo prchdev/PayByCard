@@ -233,7 +233,7 @@ async function sendTransactionEmails(supabase: any, payment: any, paymentStatus:
       ["Amount", formatCurrency(payment.amount)],
       ["Platform Charges", formatCurrency(payment.charges || 0)],
       ["GST on Charges", formatCurrency(payment.gst || 0)],
-      ["Total Charged", formatCurrency(payment.total_amount || payment.amount)],
+      ["Total Charged", formatCurrency(parseFloat(String(payment.charges || 0)) + parseFloat(String(payment.gst || 0)))],
       ["Status", statusLabel],
     ];
 
@@ -257,7 +257,11 @@ async function sendTransactionEmails(supabase: any, payment: any, paymentStatus:
       invoiceBase64 = await generateInvoicePdf(payment.id, isRefund ? "refund" : "settlement");
     }
 
-    const invoiceFilename = `invoice-${payment.payment_reference || "txn"}.html`;
+    const invYear = new Date(payment.completed_at || payment.created_at || new Date()).getFullYear();
+    const invoiceRef = payment.invoice_number
+      ? `PAY-${invYear}-${payment.invoice_number}`
+      : (payment.payment_reference || "txn");
+    const invoiceFilename = `invoice-${invoiceRef}.html`;
 
     // Sender email
     if (senderEmail && statusDisplay?.senderSubject) {
@@ -305,12 +309,147 @@ async function sendTransactionEmails(supabase: any, payment: any, paymentStatus:
   }
 }
 
-async function sendKycRequestEmails(supabase: any, payment: any) {
+/**
+ * Looks up a previously verified merchant_onboarding record for the same beneficiary.
+ * Primary match: same beneficiary_id + same email + same mobile.
+ * Fallback: same bank_account + same ifsc + same mobile (handles cross-beneficiary
+ * cases where the same person was added under a different user account or with
+ * a slightly different email spelling).
+ */
+async function findPreviousVerifiedKyc(supabase: any, beneficiaryId: string | null, currentOnboardingId: string | null): Promise<any | null> {
+  if (!beneficiaryId) return null;
+
+  const { data: bene } = await supabase
+    .from("beneficiaries")
+    .select("email, mobile, bank_account, ifsc")
+    .eq("id", beneficiaryId)
+    .maybeSingle();
+
+  const email = bene?.email?.trim() || null;
+  const mobile = bene?.mobile?.trim() || null;
+  const bankAccount = bene?.bank_account?.trim() || null;
+  const ifsc = bene?.ifsc?.trim() || null;
+
+  // Primary match: same beneficiary_id + email + mobile
+  if (email && mobile) {
+    let query = supabase
+      .from("merchant_onboarding")
+      .select("*")
+      .eq("status", "verified")
+      .eq("beneficiary_id", beneficiaryId)
+      .eq("email", email)
+      .eq("mobile", mobile)
+      .order("verified_at", { ascending: false })
+      .limit(1);
+
+    if (currentOnboardingId) query = query.neq("id", currentOnboardingId);
+
+    const { data: matches } = await query;
+    if (matches?.[0]) return matches[0];
+  }
+
+  // Fallback: match by bank_account + ifsc + mobile across any beneficiary
+  if (bankAccount && ifsc && mobile) {
+    const { data: beneMatches } = await supabase
+      .from("beneficiaries")
+      .select("id")
+      .eq("bank_account", bankAccount)
+      .eq("ifsc", ifsc)
+      .eq("mobile", mobile);
+
+    if (beneMatches && beneMatches.length > 0) {
+      const beneIds = beneMatches.map((b: any) => b.id);
+      let fallbackQuery = supabase
+        .from("merchant_onboarding")
+        .select("*")
+        .eq("status", "verified")
+        .in("beneficiary_id", beneIds)
+        .order("verified_at", { ascending: false })
+        .limit(1);
+
+      if (currentOnboardingId) fallbackQuery = fallbackQuery.neq("id", currentOnboardingId);
+
+      const { data: fallbackMatches } = await fallbackQuery;
+      if (fallbackMatches?.[0]) return fallbackMatches[0];
+    }
+  }
+
+  return null;
+}
+
+async function sendKycRequestEmails(supabase: any, payment: any): Promise<boolean> {
   try {
     const beneficiaryDetails = payment.beneficiary_details || {};
     const receiverName = beneficiaryDetails.full_name || "Beneficiary";
     const receiverEmail = beneficiaryDetails.email;
     const receiverMobile = beneficiaryDetails.mobile || "";
+
+    // ── Auto-reuse: if beneficiary was previously verified, skip KYC flow ──
+    const previousKyc = await findPreviousVerifiedKyc(supabase, payment.beneficiary_id || null, null);
+
+    if (previousKyc) {
+      const nowIso = new Date().toISOString();
+
+      // Create a pre-verified merchant_onboarding record for this payment
+      await supabase.from("merchant_onboarding").insert({
+        payment_id: payment.id,
+        beneficiary_id: payment.beneficiary_id || null,
+        full_name: previousKyc.full_name ?? receiverName,
+        email: previousKyc.email ?? receiverEmail ?? "",
+        mobile: previousKyc.mobile ?? receiverMobile,
+        sender_name: payment.beneficiary_details?.full_name ?? "Sender",
+        category_name: payment.category_details?.category_name ?? "Payment",
+        token: crypto.randomUUID(),
+        status: "verified",
+        expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+        kyc_completed_at: nowIso,
+        verified_at: nowIso,
+        updated_at: nowIso,
+        pan_number: previousKyc.pan_number ?? null,
+        pan_photo_url: previousKyc.pan_photo_url ?? null,
+        dob: previousKyc.dob ?? null,
+        id_number: previousKyc.id_number ?? null,
+        aadhaar_front_url: previousKyc.aadhaar_front_url ?? null,
+        aadhaar_back_url: previousKyc.aadhaar_back_url ?? null,
+        address: previousKyc.address ?? null,
+        city: previousKyc.city ?? null,
+        state: previousKyc.state ?? null,
+        pincode: previousKyc.pincode ?? null,
+        bank_account_number: previousKyc.bank_account_number ?? null,
+        bank_ifsc: previousKyc.bank_ifsc ?? null,
+        bank_name: previousKyc.bank_name ?? null,
+        bank_branch: previousKyc.bank_branch ?? null,
+        kyc_method: previousKyc.kyc_method ?? null,
+        digilocker_verified: previousKyc.digilocker_verified ?? null,
+        digilocker_provider: previousKyc.digilocker_provider ?? null,
+        address_proof_type: previousKyc.address_proof_type ?? null,
+      });
+
+      // Mark beneficiary as verified merchant
+      if (payment.beneficiary_id) {
+        await supabase
+          .from("beneficiaries")
+          .update({ is_verified_merchant: true, updated_at: nowIso })
+          .eq("id", payment.beneficiary_id);
+      }
+
+      // Advance payment to settlement_pending
+      await supabase
+        .from("payments")
+        .update({ status: "settlement_pending", updated_at: nowIso })
+        .eq("id", payment.id);
+
+      await supabase.from("payment_logs").insert({
+        payment_id: payment.id,
+        status: "settlement_pending",
+        message: "Merchant KYC auto-reused from a previous verified submission. Payment queued for settlement.",
+        metadata: { previous_merchant_onboarding_id: previousKyc.id },
+      });
+
+      // Signal to the caller that KYC was auto-resolved (payment is now settlement_pending)
+      return true;
+    }
+    // ── End auto-reuse ────────────────────────────────────────────────────
 
     // Fetch sender name from users table
     const { data: senderUser } = await supabase
@@ -366,7 +505,7 @@ async function sendKycRequestEmails(supabase: any, payment: any) {
 
       if (insertErr) {
         console.error("Failed to create merchant_onboarding record:", insertErr);
-        return;
+        return false;
       }
     }
 
@@ -422,7 +561,9 @@ async function sendKycRequestEmails(supabase: any, payment: any) {
     }
   } catch (err) {
     console.error("Error sending KYC request:", err);
+    return false;
   }
+  return false;
 }
 
 async function triggerPayout(supabase: any, payment: any) {
@@ -483,7 +624,15 @@ Deno.serve(async (req: Request) => {
 
     // Map incoming status to DB status
     // For gateway success: determine kyc_pending vs settlement_pending after fetching payment
+    // F3: Only internal (server-to-server) callers may assert success/completed.
+    //     A browser client sending success is redirected to check-payment-status instead.
     const isGatewaySuccess = status === "success" || status === "completed";
+    if (isGatewaySuccess && !isInternalCall(req)) {
+      return new Response(
+        JSON.stringify({ error: "Payment confirmation must go through the payment status verification endpoint." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const rawDbStatus = isGatewaySuccess ? "completed" // temporary, overridden below
       : status === "failed" ? "failed"
       : status === "cancelled" ? "cancelled"
@@ -567,7 +716,20 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(sendTransactionEmails(supabase, updatedPayment || fullPayment, resolvedStatus));
 
         if (!isEligibleForPayout) {
-          EdgeRuntime.waitUntil(sendKycRequestEmails(supabase, fullPayment));
+          // sendKycRequestEmails returns true when KYC was auto-reused from a previous
+          // verified submission (no email/SMS sent to merchant). In that case the payment
+          // has already been advanced to settlement_pending, so trigger auto-payout.
+          EdgeRuntime.waitUntil(
+            sendKycRequestEmails(supabase, fullPayment).then((autoResolved) => {
+              if (autoResolved) {
+                const payoutModeResolved = fullPayment.payment_gateway_settings?.payout_mode || "manual";
+                const splitConfiguredResolved = fullPayment.split_configured === true;
+                if (payoutModeResolved === "payout" || (payoutModeResolved === "payment_split" && !splitConfiguredResolved)) {
+                  return triggerPayout(supabase, fullPayment);
+                }
+              }
+            })
+          );
         }
       }
     }
@@ -651,8 +813,11 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("Exception in save-transaction-status:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Internal server error" }),
+      JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
+
+
+// redeploy

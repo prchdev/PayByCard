@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { withSignedKycUrls } from "../_shared/kycUrls.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,10 +48,12 @@ Deno.serve(async (req: Request) => {
 
     const [
       usersRes,
-      panPendingRes,
-      addressPendingRes,
+      panAllRes,
+      addressAllRes,
+      businessAllRes,
       merchantKycRes,
       pendingPayoutsRes,
+      manualPaymentsRes,
       totalPaymentsRes,
       completedPaymentsRes,
       inProgressPaymentsRes,
@@ -61,17 +64,20 @@ Deno.serve(async (req: Request) => {
       // Total registered users
       supabase.from("users").select("id", { count: "exact", head: true }),
 
-      // KYC: PAN records awaiting review — fetch user_ids for deduplication
+      // KYC: all PAN records (needed for per-user overall status computation)
       supabase
         .from("kyc_pan_verification")
-        .select("user_id")
-        .eq("status", "verification_pending"),
+        .select("user_id, status"),
 
-      // KYC: Address proof records awaiting review — fetch user_ids for deduplication
+      // KYC: all address proof records
       supabase
         .from("kyc_address_proof")
-        .select("user_id")
-        .eq("status", "verification_pending"),
+        .select("user_id, status"),
+
+      // KYC: all business info records
+      supabase
+        .from("kyc_business_info")
+        .select("user_id, status, incorporation_certificate_url, gst_certificate_url, loa_url"),
 
       // Merchant KYC awaiting review
       supabase
@@ -79,11 +85,18 @@ Deno.serve(async (req: Request) => {
         .select("id", { count: "exact", head: true })
         .in("status", ["pending", "under_review"]),
 
-      // Payouts awaiting processing (pending + processing)
+      // Payouts awaiting processing (pending + processing) — existing payout records
       supabase
         .from("payouts")
-        .select("id", { count: "exact", head: true })
+        .select("id, payment_id")
         .in("status", ["pending", "processing"]),
+
+      // Manual-mode payments needing payout (no payout record created yet)
+      supabase
+        .from("payments")
+        .select("id")
+        .in("status", ["settlement_pending", "settlement_in_progress", "kyc_pending", "merchant_kyc_review"])
+        .eq("payout_mode", "manual"),
 
       // All payments ever
       supabase.from("payments").select("id", { count: "exact", head: true }),
@@ -119,12 +132,61 @@ Deno.serve(async (req: Request) => {
         .in("status", ["In Progress", "in_progress"]),
     ]);
 
-    // KYC reviews = count of distinct users with at least one section in verification_pending
-    // This matches the per-user getOverallStatus() logic used on the KYC Verification page
-    const pendingUserIds = new Set<string>();
-    for (const row of (panPendingRes.data || [])) pendingUserIds.add(row.user_id);
-    for (const row of (addressPendingRes.data || [])) pendingUserIds.add(row.user_id);
-    const pendingKycReviews = pendingUserIds.size + (merchantKycRes.count ?? 0);
+    // Pending payouts = existing payout records + manual-mode payments with no payout record yet
+    const payoutCoveredPaymentIds = new Set(
+      (pendingPayoutsRes.data || []).map((p: any) => p.payment_id).filter(Boolean)
+    );
+    const uncoveredManualPayments = (manualPaymentsRes.data || []).filter(
+      (p: any) => !payoutCoveredPaymentIds.has(p.id)
+    );
+    const pendingPayoutsCount = (pendingPayoutsRes.data || []).length + uncoveredManualPayments.length;
+
+    // KYC reviews = count of distinct users whose overall status is "verification_pending"
+    // Uses the same getOverallStatus() logic as the KYC Verification page
+    const panMap = new Map<string, any>();
+    for (const row of (panAllRes.data || [])) panMap.set(row.user_id, row);
+    const addressMap = new Map<string, any>();
+    for (const row of (addressAllRes.data || [])) addressMap.set(row.user_id, row);
+    const businessMap = new Map<string, any>();
+    for (const row of (businessAllRes.data || [])) businessMap.set(row.user_id, row);
+
+    const allUserIds = new Set<string>([
+      ...panMap.keys(),
+      ...addressMap.keys(),
+      ...businessMap.keys(),
+    ]);
+
+    let pendingKycReviews = 0;
+    for (const userId of allUserIds) {
+      const pan = panMap.get(userId);
+      const address = addressMap.get(userId);
+      const business = businessMap.get(userId);
+
+      const panStatus = pan?.status;
+      const addressStatus = address?.status;
+      const businessStatus = business?.status;
+
+      if (!panStatus || !addressStatus) continue; // "pending" — not a review
+
+      if (panStatus === "rejected" || addressStatus === "rejected") continue; // "rejected"
+
+      const hasBusinessDocs = business?.incorporation_certificate_url || business?.gst_certificate_url || business?.loa_url;
+      if (hasBusinessDocs && businessStatus === "rejected") continue; // "rejected"
+
+      if (panStatus === "verification_pending" || addressStatus === "verification_pending") {
+        pendingKycReviews++;
+        continue;
+      }
+
+      if (hasBusinessDocs && businessStatus === "verification_pending") {
+        pendingKycReviews++;
+        continue;
+      }
+
+      // fully verified or other statuses don't count
+    }
+
+    pendingKycReviews += (merchantKycRes.count ?? 0);
 
     // Support tickets = open + in-progress
     const openSupportTickets =
@@ -189,7 +251,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         totalUsers: usersRes.count ?? 0,
         pendingKycReviews,
-        pendingPayouts: pendingPayoutsRes.count ?? 0,
+        pendingPayouts: pendingPayoutsCount,
         totalPayments: totalPaymentsRes.count ?? 0,
         completedPayments: completedPaymentsRes.count ?? 0,
         pendingPayments: inProgressPaymentsRes.count ?? 0,
@@ -202,8 +264,11 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("Error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Internal server error" }),
+      JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
+
+
+// redeploy

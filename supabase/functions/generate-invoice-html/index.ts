@@ -22,6 +22,17 @@ function fmt(v: string | number | null | undefined): string {
   });
 }
 
+// F23: Escape untrusted beneficiary data before interpolating into invoice HTML.
+function escHtml(s: string | null | undefined): string {
+  if (!s) return "";
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function statusStyle(s: string): { color: string; bg: string; label: string } {
   const map: Record<string, { color: string; bg: string; label: string }> = {
     completed:          { color: "#16a34a", bg: "#dcfce7", label: "Completed" },
@@ -36,9 +47,28 @@ function statusStyle(s: string): { color: string; bg: string; label: string } {
   return map[s] || { color: "#475569", bg: "#f1f5f9", label: s };
 }
 
-async function fetchLogoAsDataUrl(url: string | null | undefined): Promise<string | null> {
+async function fetchLogoAsDataUrl(supabase: any, url: string | null | undefined): Promise<string | null> {
   if (!url) return null;
   try {
+    // If it's a Supabase storage URL in a private bucket, create a signed URL
+    const bucketMatch = url.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.*)/);
+    if (bucketMatch) {
+      const [, bucket, filePath] = bucketMatch;
+      const { data: signedData, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(filePath, 3600);
+      if (!error && signedData?.signedUrl) {
+        const res = await fetch(signedData.signedUrl);
+        if (!res.ok) return null;
+        const buf = await res.arrayBuffer();
+        const ct = res.headers.get("content-type") || "image/png";
+        const bytes = new Uint8Array(buf);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return `data:${ct};base64,${btoa(binary)}`;
+      }
+    }
+    // Fallback: try direct fetch (works for public URLs)
     const res = await fetch(url);
     if (!res.ok) return null;
     const buf = await res.arrayBuffer();
@@ -50,6 +80,12 @@ async function fetchLogoAsDataUrl(url: string | null | undefined): Promise<strin
   } catch {
     return null;
   }
+}
+
+function isMaharashtraState(stateText: string | null | undefined): boolean {
+  if (!stateText) return false;
+  const s = stateText.trim().toLowerCase();
+  return s === "maharashtra" || s === "mh";
 }
 
 function buildHtml(
@@ -73,8 +109,20 @@ function buildHtml(
   const gst = parseFloat(String(payment.gst || 0));
   const cgst = gst / 2;
   const sgst = gst / 2;
-  const total = parseFloat(String(payment.total_amount || 0));
+  const igst = gst;
+  const totalCharged = charges + cgst + sgst;
+
+  // Determine if payer is in Maharashtra for SGST vs IGST
+  const payerState = bizKyc?.business_address || senderAddress || "";
+  const isMH = isMaharashtraState(
+    // Try to extract state from address string
+    payerState.match(/\b(Maharashtra|MH)\b/i)?.[0]
+  );
   const businessKycVerified = bizKyc?.status === "verified";
+
+  // Invoice number in PAY-YEAR-N format (only for completed/refunded)
+  const invYear = new Date(payment.completed_at || payment.created_at).getFullYear();
+  const invoiceNumDisplay = payment.invoice_number ? `PAY-${invYear}-${payment.invoice_number}` : null;
   const categoryName = payment.category_details?.category_name || payment.selected_payment_option?.card_type || "—";
   const settlementTime = payment.category_details?.settlement_time || null;
   const gatewayName = payment.payment_gateway_settings?.gateway_name || null;
@@ -100,21 +148,51 @@ function buildHtml(
     else settlementLabel = settlementTime;
   }
 
-  const payoutSection = payout ? `
+  const payinRef = payment.gateway_transaction_id || payment.payment_reference || "&#8212;";
+  const payinDate = fmtDate(payment.completed_at || payment.created_at);
+  const payinGateway = gatewayName || "&#8212;";
+
+  const payoutMode = payment.payout_mode || payout?.transfer_type || "&#8212;";
+  const payoutDate = payout?.completed_at ? fmtDate(payout.completed_at) : (payout?.payout_date ? payout.payout_date : "&#8212;");
+  const payoutRef = payout?.utr_number || payout?.payout_reference_number || "&#8212;";
+
+  const secondRowLabel = isRefund ? "Refund Transaction" : "PayOut Transaction";
+  const secondRowMode = isRefund ? (gatewayName || "&#8212;") : payoutMode;
+  const secondRowDate = isRefund
+    ? (payout?.completed_at ? fmtDate(payout.completed_at) : "&#8212;")
+    : payoutDate;
+  const secondRowRef = isRefund
+    ? (payout?.utr_number || payout?.payout_reference_number || "&#8212;")
+    : payoutRef;
+
+  const additionalSection = `
   <div style="margin-bottom:24px;">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Payout / Settlement Details</div>
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Additional Details</div>
     <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
-      ${row("Payout Status", payout.status || "—")}
-      ${payment.gateway_transaction_id ? row("Gateway Transaction Ref", payment.gateway_transaction_id, true) : ""}
-      ${payout.completed_at && !isRefund ? row("Gateway Transaction Date", fmtDate(payout.completed_at)) : ""}
-      ${payout.utr_number || payout.payout_reference_number ? row("UTR / Reference", payout.utr_number || payout.payout_reference_number || "", true) : ""}
-      ${payout.payout_reference ? row("Payout Reference", payout.payout_reference, true) : ""}
-      ${payout.payout_date || (payout.completed_at && !isRefund) ? row("Payout Date", payout.payout_date || fmtDate(payout.completed_at)) : ""}
-      ${isRefund && payout.completed_at ? row("Refund Date & Time", fmtDate(payout.completed_at)) : ""}
-      ${payout.payout_confirmed_amount != null ? row("Confirmed Amount", "&#8377;" + fmt(payout.payout_confirmed_amount), false, true) : ""}
-      ${isRefund ? row("Refund Amount", "&#8377;" + fmt(baseAmt), false, true) : ""}
+      <thead>
+        <tr style="background:#e2e8f0;">
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;width:30%;">Type</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;width:20%;">Gateway / Mode</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;width:25%;">Date &amp; Time</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#475569;">Reference No.</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:7px 10px;font-size:11.5px;font-weight:600;">PayIn Transaction</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${payinGateway}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${payinDate}</td>
+          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${payinRef}</td>
+        </tr>
+        <tr>
+          <td style="padding:7px 10px;font-size:11.5px;font-weight:600;">${secondRowLabel}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${secondRowMode}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${secondRowDate}</td>
+          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${secondRowRef}</td>
+        </tr>
+      </tbody>
     </table>
-  </div>` : "";
+  </div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -145,10 +223,14 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
         </div>
       </td>
       <td style="vertical-align:top;text-align:right;">
-        <div style="font-size:26px;font-weight:800;color:#0f172a;letter-spacing:-1px;margin-bottom:8px;">INVOICE</div>
+        <div style="font-size:26px;font-weight:800;color:#0f172a;letter-spacing:-1px;margin-bottom:8px;">TAX INVOICE</div>
         <table style="border-collapse:collapse;margin-left:auto;font-size:11.5px;">
-          <tr>
+          ${invoiceNumDisplay ? `<tr>
             <td style="padding:3px 0;color:#64748b;padding-right:12px;">Invoice No.</td>
+            <td style="padding:3px 0;font-weight:700;font-family:Courier New,monospace;">${invoiceNumDisplay}</td>
+          </tr>` : ""}
+          <tr>
+            <td style="padding:3px 0;color:#64748b;padding-right:12px;">Order No.</td>
             <td style="padding:3px 0;font-weight:700;font-family:Courier New,monospace;">${payment.payment_reference || "&#8212;"}</td>
           </tr>
           <tr>
@@ -215,11 +297,11 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
       <td style="vertical-align:top;padding-left:16px;border-left:1px solid #e2e8f0;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Beneficiary Details</div>
         <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
-          ${row("Name", bene.full_name || "&#8212;", false, true)}
-          ${receiverPan ? row("PAN Number", receiverPan, true) : ""}
-          ${row("Bank", bene.bank_name || "&#8212;")}
-          ${row("Account No.", bene.bank_account || "&#8212;", true)}
-          ${row("IFSC Code", bene.ifsc || "&#8212;", true)}
+          ${row("Name", escHtml(bene.full_name) || "&#8212;", false, true)}
+          ${row("PAN Number", receiverPan || "&#8212;", true)}
+          ${row("Bank", escHtml(bene.bank_name) || "&#8212;")}
+          ${row("Account No.", escHtml(String(bene.bank_account || "")) || "&#8212;", true)}
+          ${row("IFSC Code", escHtml(String(bene.ifsc || "")) || "&#8212;", true)}
           ${bene.city ? row("City", bene.city) : ""}
         </table>
       </td>
@@ -239,26 +321,26 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
       <tbody>
         <tr>
           <td style="padding:7px 8px;font-size:12px;border-bottom:1px solid #e2e8f0;">
-            Payment Transfer &#8212; ${categoryName} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
-            <span style="font-size:10.5px;color:#64748b;">To: ${bene.full_name || "&#8212;"} &middot; ${bene.bank_account || ""} &middot; ${bene.ifsc || ""}</span>
+            Platform Fees &#8212; ${categoryName} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
+            <span style="font-size:10.5px;color:#64748b;">To: ${escHtml(bene.full_name) || "&#8212;"} &middot; ${escHtml(String(bene.bank_account || ""))} &middot; ${escHtml(String(bene.ifsc || ""))}</span><br/>
+            <span style="font-size:10.5px;color:#64748b;">Amount: &#8377;${fmt(baseAmt)}</span>
           </td>
-          <td style="padding:7px 8px;text-align:right;font-size:12px;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(baseAmt)}</td>
+          <td style="padding:7px 8px;text-align:right;font-size:12px;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(charges)}</td>
         </tr>
-        <tr>
-          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">Service Charges</td>
-          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(charges)}</td>
-        </tr>
-        <tr>
+        ${isMH ? `<tr>
           <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">CGST (9%)</td>
           <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(cgst)}</td>
         </tr>
         <tr>
           <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">SGST (9%)</td>
           <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(sgst)}</td>
-        </tr>
+        </tr>` : `<tr>
+          <td style="padding:7px 8px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">IGST (18%)</td>
+          <td style="padding:7px 8px;text-align:right;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0;">&#8377;${fmt(igst)}</td>
+        </tr>`}
         <tr style="background:#0f172a;">
           <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#fff;">TOTAL CHARGED</td>
-          <td style="padding:10px 8px;text-align:right;font-size:16px;font-weight:800;color:#fff;">&#8377;${fmt(total)}</td>
+          <td style="padding:10px 8px;text-align:right;font-size:16px;font-weight:800;color:#fff;">&#8377;${fmt(totalCharged)}</td>
         </tr>
         ${isRefund ? `<tr style="background:#fff7ed;">
           <td style="padding:8px 8px;font-size:12px;font-weight:700;color:#9a3412;border-top:1px solid #fed7aa;">Refund Amount</td>
@@ -268,7 +350,7 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
     </table>
   </div>
 
-  ${payoutSection}
+  ${additionalSection}
 
   <!-- Footer -->
   <div style="border-top:1px solid #e2e8f0;padding-top:16px;margin-top:8px;display:table;width:100%;">
@@ -328,13 +410,14 @@ Deno.serve(async (req: Request) => {
     const userId = payment.user_id;
     const beneficiaryId = payment.beneficiary_id;
 
-    const [userRes, panRes, bizRes, addrRes, payoutRes, beneRes, companyRes] = await Promise.all([
+    const [userRes, panRes, bizRes, addrRes, payoutRes, beneRes, merchantRes, companyRes] = await Promise.all([
       supabase.from("users").select("first_name, last_name, email, mobile_number").eq("id", userId).maybeSingle(),
       supabase.from("kyc_pan_verification").select("pan_number").eq("user_id", userId).eq("status", "verified").maybeSingle(),
       supabase.from("kyc_business_info").select("business_name, business_pan, gst_number, business_address, status").eq("user_id", userId).maybeSingle(),
       supabase.from("kyc_address_proof").select("address, city, state, pincode").eq("user_id", userId).eq("status", "verified").maybeSingle(),
-      supabase.from("payouts").select("status, payout_reference, utr_number, completed_at, payout_date, payout_reference_number, payout_confirmed_amount").eq("payment_id", payment_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("payouts").select("status, transfer_type, payout_reference, utr_number, completed_at, payout_date, payout_reference_number, payout_confirmed_amount").eq("payment_id", payment_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       beneficiaryId ? supabase.from("beneficiaries").select("pan_number").eq("id", beneficiaryId).maybeSingle() : Promise.resolve({ data: null }),
+      supabase.from("merchant_onboarding").select("pan_number").eq("payment_id", payment_id).neq("pan_number", "").limit(1).maybeSingle(),
       supabase.from("master_settings").select("company_name, address, cin, gst_number, pan, company_logo_url, website_url, support_email, phone_number").limit(1).maybeSingle(),
     ]);
 
@@ -346,7 +429,7 @@ Deno.serve(async (req: Request) => {
       ? [addrData.address, addrData.city, addrData.state, addrData.pincode].filter(Boolean).join(", ")
       : null;
     const payout = payoutRes.data;
-    const receiverPan: string | null = beneRes.data?.pan_number ?? null;
+    const receiverPan: string | null = beneRes.data?.pan_number || merchantRes.data?.pan_number || null;
 
     const co = {
       company_name: "PayByCard Technologies Private Limited",
@@ -362,7 +445,7 @@ Deno.serve(async (req: Request) => {
     };
 
     // Embed logo as data URL so it renders in email clients and offline HTML
-    const logoDataUrl = await fetchLogoAsDataUrl(co.company_logo_url);
+    const logoDataUrl = await fetchLogoAsDataUrl(supabase, co.company_logo_url);
 
     const enrichedPayment = {
       ...payment,
@@ -392,3 +475,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// redeploy

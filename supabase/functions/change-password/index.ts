@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
-import bcrypt from 'npm:bcryptjs@2.4.3';
+import bcrypt from "npm:bcryptjs@2.4.3";
 import { validatePassword } from '../_shared/passwordValidation.ts';
 
 const corsHeaders = {
@@ -48,6 +48,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (current_password === new_password) {
+      return new Response(
+        JSON.stringify({ error: 'New password must be different from the current password' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id, password_hash')
@@ -77,7 +84,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const salt = bcrypt.genSaltSync(10);
-    const newPasswordHash = bcrypt.hashSync(new_password, salt);
+    const newPasswordHash = bcrypt.hashSync(new_password, salt, 10);
 
     const { error: updateError } = await supabase
       .from('users')
@@ -122,3 +129,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+
+// redeploy

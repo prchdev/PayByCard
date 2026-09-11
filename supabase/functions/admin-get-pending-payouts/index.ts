@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { withSignedKycUrls } from "../_shared/kycUrls.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,8 +69,8 @@ Deno.serve(async (req: Request) => {
     const { data: existingPayouts } = await supabase
       .from("payouts")
       .select("*, payments!inner(status)")
-      .in("status", ["pending", "processing"])
-      .not("payments.status", "in", '("completed","refunded","cancelled","failed")')
+      .in("status", ["pending", "processing", "failed"])
+      .not("payments.status", "in", '("completed","refunded","cancelled")')
       .order("created_at", { ascending: false });
 
     const payoutPaymentIds = new Set(
@@ -137,6 +138,8 @@ Deno.serve(async (req: Request) => {
               account_number: beneficiary.bank_account,
               ifsc_code: beneficiary.ifsc,
               bank_name: beneficiary.bank_name,
+              mobile: beneficiary.mobile || null,
+              email: beneficiary.email || null,
             } : null,
             gateway: gw ? { gateway_name: gw.gateway_name, payout_mode: isAutoFailed ? "manual" : (payment.payout_mode ?? gw.payout_mode) } : null,
             merchant_kyc: kycRes.data,
@@ -148,7 +151,7 @@ Deno.serve(async (req: Request) => {
       (existingPayouts || []).map(async (payout: any) => {
         const [userRes, beneficiaryRes, gatewayRes, onboardingRes, paymentRes] = await Promise.all([
           supabase.from("users").select("first_name, last_name, email, mobile_number").eq("id", payout.user_id).maybeSingle(),
-          supabase.from("beneficiaries").select("beneficiary_name, account_number, ifsc_code, bank_name").eq("id", payout.beneficiary_id).maybeSingle(),
+          supabase.from("beneficiaries").select("beneficiary_name, account_number, ifsc_code, bank_name, mobile, email").eq("id", payout.beneficiary_id).maybeSingle(),
           supabase.from("payment_gateway_settings").select("gateway_name, payout_mode").eq("id", payout.payment_gateway_id).maybeSingle(),
           supabase.from("merchant_onboarding").select("status, pan_number, pan_photo_url").eq("payment_id", payout.payment_id).maybeSingle(),
           payout.payment_id
@@ -221,3 +224,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+
+// redeploy

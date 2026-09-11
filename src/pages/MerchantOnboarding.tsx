@@ -4,7 +4,7 @@ import {
   ShieldCheck, Upload, CheckCircle, AlertCircle, Loader2, Clock, XCircle,
   CreditCard, ScanFace, FileText, RefreshCw, ExternalLink, WifiOff,
   ShieldAlert, User, MapPin, Menu, X, Facebook, Twitter, Linkedin, Instagram,
-  Mail, Phone,
+  Mail, Phone, Building2, Landmark, Hash, Wallet,
 } from 'lucide-react';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -43,6 +43,10 @@ interface OnboardingData {
   pan_number: string;
   pan_photo_url: string;
   expires_at: string;
+  bank_name?: string;
+  bank_branch?: string;
+  bank_ifsc?: string;
+  bank_account_number?: string;
 }
 
 interface KycProvider {
@@ -1134,6 +1138,52 @@ export default function MerchantOnboarding() {
                   <p className="font-medium text-amber-700">{new Date(data.expires_at).toLocaleString('en-IN')}</p>
                 </div>
               </div>
+              {(data.bank_name || data.bank_ifsc || data.bank_account_number) && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Landmark className="w-4 h-4 text-gray-600" />
+                    <h4 className="font-semibold text-gray-800 text-sm">Beneficiary Bank Details</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    {data.bank_name && (
+                      <div className="flex items-start gap-2">
+                        <Building2 className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-gray-500">Bank Name</p>
+                          <p className="font-medium text-gray-900">{data.bank_name}</p>
+                        </div>
+                      </div>
+                    )}
+                    {data.bank_branch && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-gray-500">Branch</p>
+                          <p className="font-medium text-gray-900">{data.bank_branch}</p>
+                        </div>
+                      </div>
+                    )}
+                    {data.bank_ifsc && (
+                      <div className="flex items-start gap-2">
+                        <Hash className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-gray-500">IFSC Code</p>
+                          <p className="font-mono font-medium text-gray-900">{data.bank_ifsc}</p>
+                        </div>
+                      </div>
+                    )}
+                    {data.bank_account_number && (
+                      <div className="flex items-start gap-2">
+                        <Wallet className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-gray-500">Account Number</p>
+                          <p className="font-mono font-medium text-gray-900">{data.bank_account_number}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

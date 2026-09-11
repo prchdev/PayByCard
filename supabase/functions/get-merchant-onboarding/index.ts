@@ -82,6 +82,10 @@ Deno.serve(async (req: Request) => {
             pan_photo_url: record.pan_photo_url,
             expires_at: record.expires_at,
             rejection_reason: record.rejection_reason || null,
+            bank_name: record.bank_name || '',
+            bank_branch: record.bank_branch || '',
+            bank_ifsc: record.bank_ifsc || '',
+            bank_account_number: record.bank_account_number || '',
           },
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -111,6 +115,10 @@ Deno.serve(async (req: Request) => {
           pan_number: record.pan_number,
           pan_photo_url: record.pan_photo_url,
           expires_at: record.expires_at,
+          bank_name: record.bank_name || '',
+          bank_branch: record.bank_branch || '',
+          bank_ifsc: record.bank_ifsc || '',
+          bank_account_number: record.bank_account_number || '',
         },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -222,13 +222,24 @@ async function fetchCashFreeDocuments(
     panData ? storeJson(panData, 'pan_data') : Promise.resolve(null),
   ]);
 
+  let cfState = sa.state || '';
+  let cfCity = sa.dist || sa.vtc || sa.subdist || '';
+  if (!cfState && sa.pincode) {
+    const pinLookup = await lookupStateFromPincode(sa.pincode);
+    if (pinLookup.state) {
+      cfState = pinLookup.state;
+      if (!cfCity) cfCity = pinLookup.district;
+      console.log('[fetchCashFreeDocuments] state derived from pincode:', sa.pincode, '->', cfState);
+    }
+  }
+
   return {
     pan_number: panData?.pan || '',
     full_name: panData?.name || aadhaarData?.name || '',
     dob: panData?.dob || aadhaarData?.dob || '',
     address: addressParts.join(', '),
-    city: sa.dist || sa.vtc || sa.subdist || '',
-    state: sa.state || '',
+    city: cfCity,
+    state: cfState,
     pincode: sa.pincode || '',
     id_number: aadhaarData?.uid || '',
     address_proof_type: 'aadhar',

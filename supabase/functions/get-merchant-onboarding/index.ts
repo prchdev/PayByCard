@@ -41,6 +41,24 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Fetch beneficiary bank details from the beneficiaries table
+    let bankDetails = { bank_name: '', bank_branch: '', bank_ifsc: '', bank_account_number: '' };
+    if (record.beneficiary_id) {
+      const { data: bene } = await supabase
+        .from("beneficiaries")
+        .select("bank_name, branch_name, ifsc, bank_account")
+        .eq("id", record.beneficiary_id)
+        .maybeSingle();
+      if (bene) {
+        bankDetails = {
+          bank_name: bene.bank_name || '',
+          bank_branch: bene.branch_name || '',
+          bank_ifsc: bene.ifsc || '',
+          bank_account_number: bene.bank_account || '',
+        };
+      }
+    }
+
     if (record.status === "verified") {
       return new Response(
         JSON.stringify({ status: "verified", message: "KYC already completed" }),
@@ -82,10 +100,10 @@ Deno.serve(async (req: Request) => {
             pan_photo_url: record.pan_photo_url,
             expires_at: record.expires_at,
             rejection_reason: record.rejection_reason || null,
-            bank_name: record.bank_name || '',
-            bank_branch: record.bank_branch || '',
-            bank_ifsc: record.bank_ifsc || '',
-            bank_account_number: record.bank_account_number || '',
+            bank_name: bankDetails.bank_name,
+            bank_branch: bankDetails.bank_branch,
+            bank_ifsc: bankDetails.bank_ifsc,
+            bank_account_number: bankDetails.bank_account_number,
           },
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -115,10 +133,10 @@ Deno.serve(async (req: Request) => {
           pan_number: record.pan_number,
           pan_photo_url: record.pan_photo_url,
           expires_at: record.expires_at,
-          bank_name: record.bank_name || '',
-          bank_branch: record.bank_branch || '',
-          bank_ifsc: record.bank_ifsc || '',
-          bank_account_number: record.bank_account_number || '',
+          bank_name: bankDetails.bank_name,
+          bank_branch: bankDetails.bank_branch,
+          bank_ifsc: bankDetails.bank_ifsc,
+          bank_account_number: bankDetails.bank_account_number,
         },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -41,12 +41,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Fetch beneficiary bank details from the beneficiaries table
+    // Fetch beneficiary bank details and name from the beneficiaries table
     let bankDetails = { bank_name: '', bank_branch: '', bank_ifsc: '', bank_account_number: '' };
+    let beneficiaryName = record.beneficiary_name || '';
     if (record.beneficiary_id) {
       const { data: bene } = await supabase
         .from("beneficiaries")
-        .select("bank_name, branch_name, ifsc, bank_account")
+        .select("bank_name, branch_name, ifsc, bank_account, full_name")
         .eq("id", record.beneficiary_id)
         .maybeSingle();
       if (bene) {
@@ -56,6 +57,7 @@ Deno.serve(async (req: Request) => {
           bank_ifsc: bene.ifsc || '',
           bank_account_number: bene.bank_account || '',
         };
+        if (!beneficiaryName) beneficiaryName = bene.full_name || '';
       }
     }
 
@@ -93,7 +95,7 @@ Deno.serve(async (req: Request) => {
             id: record.id,
             sender_name: record.sender_name,
             category_name: record.category_name,
-            beneficiary_name: record.beneficiary_name,
+            beneficiary_name: beneficiaryName,
             email: record.email,
             mobile: record.mobile,
             pan_number: record.pan_number,
@@ -127,7 +129,7 @@ Deno.serve(async (req: Request) => {
           id: record.id,
           sender_name: record.sender_name,
           category_name: record.category_name,
-          beneficiary_name: record.beneficiary_name,
+          beneficiary_name: beneficiaryName,
           email: record.email,
           mobile: record.mobile,
           pan_number: record.pan_number,

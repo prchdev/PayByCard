@@ -1076,6 +1076,81 @@ export default function MerchantOnboarding() {
                 </p>
               )}
             </div>
+
+            {/* Payment Details Card */}
+            {data && (
+              <div className="bg-gradient-to-r from-slate-50 to-gray-50 border-2 border-gray-200 rounded-2xl p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <CreditCard className="w-5 h-5 text-gray-600" />
+                  <h3 className="font-semibold text-gray-900">Payment Details</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-gray-500">Sender</p>
+                    <p className="font-medium text-gray-900">{data.sender_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Category</p>
+                    <p className="font-medium text-gray-900">{data.category_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Beneficiary</p>
+                    <p className="font-medium text-gray-900">{data.beneficiary_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Expires</p>
+                    <p className="font-medium text-amber-700">{new Date(data.expires_at).toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+                {(data.bank_name || data.bank_ifsc || data.bank_account_number) && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Landmark className="w-4 h-4 text-gray-600" />
+                      <h4 className="font-semibold text-gray-800 text-sm">Beneficiary Bank Details</h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      {data.bank_name && (
+                        <div className="flex items-start gap-2">
+                          <Building2 className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-gray-500">Bank Name</p>
+                            <p className="font-medium text-gray-900">{data.bank_name}</p>
+                          </div>
+                        </div>
+                      )}
+                      {data.bank_branch && (
+                        <div className="flex items-start gap-2">
+                          <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-gray-500">Branch</p>
+                            <p className="font-medium text-gray-900">{data.bank_branch}</p>
+                          </div>
+                        </div>
+                      )}
+                      {data.bank_ifsc && (
+                        <div className="flex items-start gap-2">
+                          <Hash className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-gray-500">IFSC Code</p>
+                            <p className="font-mono font-medium text-gray-900">{data.bank_ifsc}</p>
+                          </div>
+                        </div>
+                      )}
+                      {data.bank_account_number && (
+                        <div className="flex items-start gap-2">
+                          <Wallet className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-gray-500">Account Number</p>
+                            <p className="font-mono font-medium text-gray-900">{data.bank_account_number}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               onClick={() => { setStatus('pending'); setSubmitted(false); }}
               className="w-full px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg"

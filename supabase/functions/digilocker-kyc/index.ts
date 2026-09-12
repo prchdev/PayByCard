@@ -18,6 +18,7 @@ interface DigiLockerKycRequest {
   codeChallenge?: string;
   codeVerifier?: string;
   ipAddress?: string;
+  platform?: string;
 }
 
 type AddressProofType = 'aadhar' | 'passport' | 'voter_id' | 'driving_license';
@@ -921,8 +922,8 @@ async function fetchDigiLockerData(
   const PASSPORT_ISSUERS  = new Set(['in.gov.mea', 'in.gov.passport']);
   const VOTERID_DOCTYPES  = new Set(['VOTERID', 'EPICNO', 'EPIC']);
   const VOTERID_ISSUERS   = new Set(['in.gov.eci']);
-  const DL_DOCTYPES       = new Set(['DRVLC', 'DL']);
-  const DL_ISSUERS        = new Set(['in.gov.transport', 'in.gov.morth', 'in.gov.rto']);
+  const DL_DOCTYPES       = new Set(['DRVLC', 'DL', 'DRIVING_LICENSE', 'DRIVINGLICENCE']);
+  const DL_ISSUERS        = new Set(['in.gov.transport', 'in.gov.morth', 'in.gov.rto', 'in.gov.parivahan', 'in.gov.nic']);
 
   const isAadhaarDoc  = (d: any) => AADHAAR_DOCTYPES.has(d.doctype || d.type)  || AADHAAR_ISSUERS.has(d.issuerid);
   const isPanDoc      = (d: any) => PAN_DOCTYPES.has(d.doctype || d.type)       || PAN_ISSUERS.has(d.issuerid);
@@ -1020,7 +1021,7 @@ async function fetchDigiLockerData(
             console.log('[DL] generic parser merged:', JSON.stringify({ district: parsed.district, state: parsed.state, pincode: parsed.pincode, house: parsed.house }));
           }
         }
-        if (parsed.district || parsed.pincode || parsed.house || parsed.locality) {
+        if (hasAddress(parsed)) {
           addrProofType = 'driving_license';
           addrIdNumber = parsed.dlNumber || extractCertIdNumber(xml, 'dl');
           addrRawXml = xml;
@@ -1227,11 +1228,8 @@ Deno.serve(async (req: Request) => {
       } else {
         let redirectUri = savedRedirectUri;
         if (!redirectUri) {
-          const originHeader = req.headers.get('origin') || req.headers.get('referer') || '';
-          let appOrigin = '';
-          try { appOrigin = originHeader ? new URL(originHeader).origin : ''; } catch { /* ignore */ }
-          if (!appOrigin || appOrigin.includes('supabase')) appOrigin = 'https://paybycard.in';
-          redirectUri = `${appOrigin}/digilocker-callback`;
+          const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+          redirectUri = `${supabaseUrl}/functions/v1/digilocker-redirect`;
         }
         const state = 'u' + userId.replace(/-/g, '');
         const pkceParams = codeChallenge

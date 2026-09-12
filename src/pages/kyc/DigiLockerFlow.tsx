@@ -116,7 +116,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
   // ── On mount: recover from same-tab redirect fallback (sessionStorage) ──────
   useEffect(() => {
     const cfId = sessionStorage.getItem('cf_verification_id');
-    const oauthCode = sessionStorage.getItem('digilocker_oauth_code');
+    const oauthCode = sessionStorage.getItem('digilocker_oauth_code') || sessionStorage.getItem('digilocker_code');
     const storedRedirectUri = sessionStorage.getItem('digilocker_redirect_uri') || '';
     const storedCodeVerifier = sessionStorage.getItem('digilocker_code_verifier') || '';
 
@@ -136,6 +136,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
       startPolling(cfId);
     } else if (oauthCode) {
       sessionStorage.removeItem('digilocker_oauth_code');
+      sessionStorage.removeItem('digilocker_code');
       sessionStorage.removeItem('digilocker_redirect_uri');
       logEvent(userId, providerName, 'session_restore_code', true, {
         redirect_uri: storedRedirectUri || '[empty]',
@@ -161,6 +162,26 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
   const handleMessage = useCallback((event: MessageEvent) => {
     const d = event.data;
     if (!d || typeof d !== 'object') return;
+
+    // Bridge-based callback: digilocker-redirect edge function sends { type: 'digilocker_callback', code, state }
+    if (d.type === 'digilocker_callback') {
+      if (d.error) {
+        if (stepRef.current === 'waiting_popup') {
+          logEvent(userId, providerName, 'bridge_postmessage_error', false, {
+            error_code: 'DIGILOCKER_ERROR',
+            error_message: d.error,
+            source: 'bridge_postMessage',
+          });
+          setStep('error');
+          setError('DigiLocker authorization was denied or failed. Please try again.');
+        }
+        return;
+      }
+      if (d.code && typeof d.code === 'string') {
+        handleCode(d.code, 'bridge_postMessage');
+      }
+      return;
+    }
 
     const cfId = d.cf_verification_id;
     if (cfId && typeof cfId === 'string') {
@@ -284,7 +305,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
       const res = await fetch(`${SUPABASE_URL}/functions/v1/digilocker-kyc`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action: 'get_auth_url', codeChallenge }),
+        body: JSON.stringify({ userId, action: 'get_auth_url', codeChallenge, platform: 'web' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to get authorization URL');
@@ -311,11 +332,12 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
       );
 
       if (!popup || popup.closed) {
-        // Popup blocked — open as new tab WITHOUT noopener so window.close() works in the callback
-        window.open(url, '_blank');
-        logEvent(userId, providerName, 'popup_blocked_new_tab', true, { redirect_uri: rUri });
-        setStep('waiting_popup');
-        setShowManualInput(true);
+        // Popup blocked — redirect current page; KYCVerification will capture code/state from URL params
+        sessionStorage.setItem('digilocker_redirect_uri', rUri);
+        sessionStorage.setItem('digilocker_code_verifier', codeVerifier);
+        logEvent(userId, providerName, 'popup_blocked_redirect', true, { redirect_uri: rUri });
+        window.location.href = url;
+        return;
       } else {
         popupRef.current = popup;
         logEvent(userId, providerName, 'popup_opened', true, { redirect_uri: rUri });
@@ -510,6 +532,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
     localStorage.removeItem('digilocker_error');
     sessionStorage.removeItem('digilocker_redirect_uri');
     sessionStorage.removeItem('digilocker_oauth_code');
+    sessionStorage.removeItem('digilocker_code');
     sessionStorage.removeItem('digilocker_code_verifier');
   };
 

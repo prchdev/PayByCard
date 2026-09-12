@@ -58,7 +58,6 @@ import BulkSMS from './pages/admin/BulkSMS';
 import KycMethodSettings from './pages/admin/KycMethodSettings';
 import DashboardNotification from './pages/admin/DashboardNotification';
 import AdminMerchantKyc from './pages/admin/AdminMerchantKyc';
-import DigiLockerCallback from './pages/DigiLockerCallback';
 function MainLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -155,8 +154,6 @@ function App() {
           <Route path="/admin/bulk-email" element={<BulkEmail />} />
           <Route path="/admin/bulk-sms" element={<BulkSMS />} />
           <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
-          <Route path="/digilocker-callback" element={<DigiLockerCallback />} />
-
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

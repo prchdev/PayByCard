@@ -41,16 +41,22 @@ export default function KYCVerification() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // CashFree DigiLocker redirects back to this page with ?cf_verification_id=...
-  // Relay it to the opener popup, or store in sessionStorage if popup was blocked.
+  // Bridge-based DigiLocker redirect falls back to ?code=...&state=... when popup is blocked.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const cfId = params.get('cf_verification_id') || params.get('verification_id');
-    if (!cfId) return;
-    if (window.opener && !window.opener.closed) {
-      window.opener.postMessage({ cf_verification_id: cfId }, '*');
-      window.close();
-    } else {
-      sessionStorage.setItem('cf_verification_id', cfId);
+    const code = params.get('code');
+
+    if (cfId) {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ cf_verification_id: cfId }, '*');
+        window.close();
+      } else {
+        sessionStorage.setItem('cf_verification_id', cfId);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } else if (code) {
+      sessionStorage.setItem('digilocker_code', code);
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);

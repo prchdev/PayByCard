@@ -123,6 +123,10 @@ verify_jwt = false
 verify_jwt = false
 [functions.digilocker-redirect]
 verify_jwt = false
+[functions.send-push-notification]
+verify_jwt = false
+[functions.register-push-token]
+verify_jwt = false
 [functions.download-ticket-attachment]
 verify_jwt = false
 [functions.generate-invoice-html]

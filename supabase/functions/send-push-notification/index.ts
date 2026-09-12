@@ -154,15 +154,32 @@ Deno.serve(async (req: Request) => {
         totalSent += success;
         totalFailed += failed;
 
+        const nowIso = new Date().toISOString();
+
         // Log push events
         const logRows = batch.map((t: any) => ({
           campaign_id: campaign.id,
           user_id: t.user_id,
-          pushed_at: new Date().toISOString(),
+          pushed_at: nowIso,
           status: "delivered",
         }));
 
         await supabase.from("mobile_notification_logs").insert(logRows);
+
+        // Create in-app notification rows so the mobile app can display them
+        const notifRows = batch.map((t: any) => ({
+          user_id: t.user_id,
+          type: "campaign",
+          title: campaign.title,
+          body: campaign.message,
+          data: { campaign_id: campaign.id, ...(campaign.image_url ? { image_url: campaign.image_url } : {}) },
+          campaign_id: campaign.id,
+          image_url: campaign.image_url || null,
+          notification_format: campaign.image_url ? "image" : "text",
+          is_read: false,
+        }));
+
+        await supabase.from("mobile_notifications").insert(notifRows);
       }
     }
 

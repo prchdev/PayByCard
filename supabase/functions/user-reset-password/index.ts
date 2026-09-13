@@ -98,7 +98,11 @@ Deno.serve(async (req: Request) => {
 
     const { error: updateError } = await supabase
       .from("users")
-      .update({ password_hash: passwordHash })
+      .update({
+        password_hash: passwordHash,
+        failed_login_attempts: 0,
+        locked_until: null,
+      })
       .eq("id", user.id);
 
     if (updateError) {

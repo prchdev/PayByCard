@@ -100,6 +100,7 @@ Deno.serve(async (req: Request) => {
       push_time_from,
       push_time_to,
       frequency,
+      push_enabled: true,
       created_by_admin_id: adminId,
     };
 

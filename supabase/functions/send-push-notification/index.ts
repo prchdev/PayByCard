@@ -20,7 +20,15 @@ interface ExpoPushMessage {
   "mutable-content"?: number;
 }
 
-async function sendExpoBatch(messages: ExpoPushMessage[]): Promise<{ success: number; failed: number }> {
+interface ExpoPushTicket {
+  status: "ok" | "error";
+  message?: string;
+  details?: { error?: string };
+}
+
+async function sendExpoBatch(
+  messages: ExpoPushMessage[]
+): Promise<{ tickets: ExpoPushTicket[]; httpStatus: number; rawBody: string }> {
   try {
     const resp = await fetch(EXPO_PUSH_URL, {
       method: "POST",
@@ -28,14 +36,21 @@ async function sendExpoBatch(messages: ExpoPushMessage[]): Promise<{ success: nu
       body: JSON.stringify(messages),
     });
 
-    if (!resp.ok) return { success: 0, failed: messages.length };
+    const rawBody = await resp.text();
 
-    const json = await resp.json();
-    const results: Array<{ status: string }> = json.data || [];
-    const failed = results.filter((r) => r.status === "error").length;
-    return { success: results.length - failed, failed };
-  } catch {
-    return { success: 0, failed: messages.length };
+    if (!resp.ok) {
+      return { tickets: [], httpStatus: resp.status, rawBody };
+    }
+
+    const json = JSON.parse(rawBody);
+    const tickets: ExpoPushTicket[] = json.data || [];
+    return { tickets, httpStatus: resp.status, rawBody };
+  } catch (err) {
+    return {
+      tickets: [],
+      httpStatus: 0,
+      rawBody: err instanceof Error ? err.message : "fetch failed",
+    };
   }
 }
 
@@ -59,6 +74,7 @@ Deno.serve(async (req: Request) => {
       .from("mobile_notification_campaigns")
       .select("id, title, message, image_url, frequency, start_date, end_date, push_time_from, push_time_to")
       .eq("status", "active")
+      .eq("push_enabled", true)
       .lte("start_date", todayDate)
       .gte("end_date", todayDate)
       .lte("push_time_from", currentTime)
@@ -150,19 +166,43 @@ Deno.serve(async (req: Request) => {
           return msg;
         });
 
-        const { success, failed } = await sendExpoBatch(messages);
-        totalSent += success;
-        totalFailed += failed;
+        const { tickets, httpStatus, rawBody } = await sendExpoBatch(messages);
 
+        if (httpStatus !== 200 || tickets.length === 0) {
+          console.error(`Expo push failed: HTTP ${httpStatus}`, rawBody);
+          totalFailed += batch.length;
+          const nowIso = new Date().toISOString();
+          const logRows = batch.map((t: any) => ({
+            campaign_id: campaign.id,
+            user_id: t.user_id,
+            pushed_at: nowIso,
+            status: "failed",
+            error_message: `Expo HTTP ${httpStatus}: ${rawBody.slice(0, 500)}`,
+          }));
+          await supabase.from("mobile_notification_logs").insert(logRows);
+          continue;
+        }
+
+        let batchSuccess = 0;
+        let batchFailed = 0;
         const nowIso = new Date().toISOString();
 
-        // Log push events
-        const logRows = batch.map((t: any) => ({
-          campaign_id: campaign.id,
-          user_id: t.user_id,
-          pushed_at: nowIso,
-          status: "delivered",
-        }));
+        const logRows = batch.map((t: any, idx: number) => {
+          const ticket = tickets[idx] || { status: "error" } as ExpoPushTicket;
+          const isOk = ticket.status === "ok";
+          if (isOk) batchSuccess++;
+          else batchFailed++;
+          return {
+            campaign_id: campaign.id,
+            user_id: t.user_id,
+            pushed_at: nowIso,
+            status: isOk ? "delivered" : "failed",
+            error_message: isOk ? null : (ticket.message || ticket.details?.error || "Unknown Expo error"),
+          };
+        });
+
+        totalSent += batchSuccess;
+        totalFailed += batchFailed;
 
         await supabase.from("mobile_notification_logs").insert(logRows);
 

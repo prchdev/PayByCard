@@ -205,6 +205,7 @@ Deno.serve(async (req: Request) => {
         beneficiary_details: beneficiaryDetails || {},
         category_details: categoryDetails || {},
         selected_payment_option: paymentOptionDetails || {},
+        payment_option_name: paymentOptionDetails?.category_name || cardType || null,
       })
       .select()
       .single();

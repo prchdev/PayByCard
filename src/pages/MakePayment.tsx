@@ -752,6 +752,7 @@ export default function MakePayment() {
             },
             paymentOptionDetails: {
               gateway_name: selectedPaymentOption.gateway_name,
+              category_name: selectedPaymentOption.category_name,
               card_type: selectedPaymentOption.card_type,
               charges_percentage: selectedPaymentOption.charges_percentage,
               discounted_charges_percentage: selectedPaymentOption.discounted_charges_percentage,
@@ -1895,7 +1896,7 @@ export default function MakePayment() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-700">Payment Option</span>
-                          <span className="text-sm font-semibold text-gray-900">{selectedPaymentOption?.card_type}</span>
+                          <span className="text-sm font-semibold text-gray-900">{selectedPaymentOption?.category_name}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-700">Amount to Send</span>

@@ -1623,17 +1623,20 @@ export default function MakePayment() {
                     {fieldErrors.category && (
                       <p className="text-sm text-red-600 font-medium mt-1">{fieldErrors.category}</p>
                     )}
-                    {selectedCategory && (selectedCategory.receiver_kyc_required || selectedCategory.new_card_payment_delay_hours > 0) && (
+                    {selectedCategory && (
+                      selectedCategory.new_card_payment_delay_hours > 0 ||
+                      (selectedCategory.receiver_kyc_required && !selectedBeneficiary?.is_verified_merchant)
+                    ) && (
                       <div className="mt-3 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
                         <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                         <ul className="text-xs text-amber-800 leading-relaxed space-y-1.5 list-disc list-inside">
-                          {selectedCategory.receiver_kyc_required && (
+                          {selectedCategory.receiver_kyc_required && !selectedBeneficiary?.is_verified_merchant && (
                             <li>As per RBI guidelines, receiver KYC is required to complete payment settlement, if not already completed.</li>
                           )}
                           {selectedCategory.new_card_payment_delay_hours > 0 && (
                             <li>As per RBI guidelines, payments made using a new credit card will be settled after {selectedCategory.new_card_payment_delay_hours} hours.</li>
                           )}
-                          {selectedCategory.receiver_kyc_required && selectedCategory.refund_after_hours > 0 && (
+                          {selectedCategory.receiver_kyc_required && !selectedBeneficiary?.is_verified_merchant && selectedCategory.refund_after_hours > 0 && (
                             <li>As per RBI guidelines, if the receiver does not complete KYC within {selectedCategory.refund_after_hours} hours, the payment will be refunded to the card after deducting convenience charges.</li>
                           )}
                         </ul>
@@ -1965,7 +1968,7 @@ export default function MakePayment() {
                     )}
                   </div>
 
-                  {selectedCategory?.receiver_kyc_required && (
+                  {selectedCategory?.receiver_kyc_required && !selectedBeneficiary?.is_verified_merchant && (
                     <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
                       <div className="flex items-start gap-3">
                         <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />

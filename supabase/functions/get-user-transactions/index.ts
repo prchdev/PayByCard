@@ -33,6 +33,10 @@ function deriveDisplayStatus(payment: any, payout: any): string {
 
   if (s === "completed") return "completed";
 
+  // When a transaction is on hold by admin, show it as "processing" to the user
+  // so the user-facing dashboard is not confused by an unknown status.
+  if (s === "on_hold") return "processing";
+
   if (s === "settlement_pending") {
     if (payout && payout.status === "completed") return "completed";
     return "settlement_pending";

@@ -97,6 +97,9 @@ verify_jwt = false
 verify_jwt = false
 [functions.admin-toggle-account-status]
 verify_jwt = false
+[functions.admin-toggle-hold]
+verify_jwt = false
+
 [functions.admin-toggle-user-status]
 verify_jwt = false
 [functions.admin-update-ticket-status]

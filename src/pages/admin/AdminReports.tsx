@@ -24,6 +24,8 @@ import {
   IndianRupee,
   User,
   Building,
+  PauseCircle,
+  PlayCircle,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -71,6 +73,8 @@ interface TxRecord {
   receiver_pan: string | null;
   gateway_settlement_status?: string | null;
   invoice_number?: number | null;
+  pre_hold_status?: string | null;
+  hold_reason?: string | null;
 }
 
 const STATUS_OPTIONS = [
@@ -85,6 +89,7 @@ const STATUS_OPTIONS = [
   { value: 'refund_pending', label: 'Refund Pending' },
   { value: 'cancelled', label: 'Transaction Failed' },
   { value: 'processing', label: 'Processing' },
+  { value: 'on_hold', label: 'On Hold' },
 ];
 
 const STATUS_STYLES: Record<string, string> = {
@@ -99,6 +104,7 @@ const STATUS_STYLES: Record<string, string> = {
   settlement_in_progress: 'bg-blue-100 text-blue-700',
   refunded: 'bg-orange-100 text-orange-700',
   refund_pending: 'bg-rose-100 text-rose-700',
+  on_hold: 'bg-purple-100 text-purple-700',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -113,6 +119,7 @@ const STATUS_LABELS: Record<string, string> = {
   settlement_in_progress: 'Settlement In Progress',
   refunded: 'Refunded',
   refund_pending: 'Refund Pending',
+  on_hold: 'On Hold',
 };
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -1214,6 +1221,47 @@ export default function AdminReports() {
     }
   };
 
+  const [holdProcessingId, setHoldProcessingId] = useState<string | null>(null);
+  const [holdModal, setHoldModal] = useState<TxRecord | null>(null);
+  const [holdReason, setHoldReason] = useState('');
+  const [holdError, setHoldError] = useState('');
+
+  const openHoldModal = (record: TxRecord) => {
+    setHoldModal(record);
+    setHoldReason('');
+    setHoldError('');
+  };
+
+  const closeHoldModal = () => {
+    setHoldModal(null);
+    setHoldReason('');
+    setHoldError('');
+  };
+
+  const handleToggleHold = async (record: TxRecord, reason?: string) => {
+    const isOnHold = (record.display_status || record.status) === 'on_hold';
+    const action = isOnHold ? 'unhold' : 'hold';
+    setHoldProcessingId(record.id);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-toggle-hold`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminId, paymentId: record.id, action, reason: reason || null }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Action failed');
+      closeHoldModal();
+      fetchRecords(page, pageSize);
+    } catch (err: any) {
+      setHoldError(err.message || 'Action failed');
+    } finally {
+      setHoldProcessingId(null);
+    }
+  };
+
   useEffect(() => {
     if (!adminId) navigate('/admin/login');
   }, [adminId, navigate]);
@@ -1526,6 +1574,24 @@ export default function AdminReports() {
                                 </button>
                               </>
                             )}
+                            {ds !== 'on_hold' && ds !== 'failed' && ds !== 'cancelled' && ds !== 'refunded' && ds !== 'refund_pending' && (
+                              <button
+                                onClick={() => ds === 'on_hold' ? handleToggleHold(r) : openHoldModal(r)}
+                                disabled={holdProcessingId === r.id}
+                                className={
+                                  ds === 'on_hold'
+                                    ? 'flex items-center gap-1 px-2.5 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 transition-colors whitespace-nowrap disabled:opacity-50'
+                                    : 'flex items-center gap-1 px-2.5 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-medium hover:bg-amber-600 transition-colors whitespace-nowrap disabled:opacity-50'
+                                }
+                              >
+                                {holdProcessingId === r.id
+                                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  : ds === 'on_hold'
+                                    ? <PlayCircle className="w-3.5 h-3.5" />
+                                    : <PauseCircle className="w-3.5 h-3.5" />}
+                                {ds === 'on_hold' ? 'Unhold' : 'Hold'}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1770,6 +1836,68 @@ export default function AdminReports() {
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-red-500 to-red-600 disabled:opacity-50 transition-opacity"
               >
                 {refundProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-4 h-4" />Confirm Refund</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {holdModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-amber-500 to-amber-600">
+              <div className="flex items-center gap-2">
+                <PauseCircle className="w-5 h-5 text-white" />
+                <h3 className="text-lg font-semibold text-white">Put Transaction on Hold</h3>
+              </div>
+              <button onClick={closeHoldModal} className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div className="bg-gray-50 rounded-xl px-4 py-3 space-y-1">
+                <p className="text-xs text-gray-500">Transaction Reference</p>
+                <p className="text-sm font-semibold text-gray-900">{holdModal.payment_reference}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Reason for holding this transaction <span className="text-red-500">*</span></label>
+                <textarea
+                  value={holdReason}
+                  onChange={e => { setHoldReason(e.target.value); setHoldError(''); }}
+                  rows={3}
+                  placeholder="Enter the reason for putting this transaction on hold..."
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+                  autoFocus
+                />
+                {holdError && <p className="text-xs text-red-500 mt-1">{holdError}</p>}
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <p className="text-xs text-amber-700 font-medium">
+                  This will pause all processing for this transaction (auto-payout, polling, refunds). The original status will be saved and restored when you unhold.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 px-6 py-4 border-t border-gray-100">
+              <button
+                onClick={closeHoldModal}
+                disabled={holdProcessingId === holdModal.id}
+                className="flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-medium text-sm hover:border-gray-400 hover:bg-gray-50 transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!holdReason.trim()) { setHoldError('Please enter a reason for holding this transaction.'); return; }
+                  handleToggleHold(holdModal, holdReason.trim());
+                }}
+                disabled={holdProcessingId === holdModal.id || !holdReason.trim()}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-amber-500 to-amber-600 disabled:opacity-50 transition-opacity"
+              >
+                {holdProcessingId === holdModal.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><PauseCircle className="w-4 h-4" />Confirm Hold</>}
               </button>
             </div>
           </div>

@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
       if (p.status === "completed" || p.status === "settlement_pending") {
         amountProcessed += amt;
       }
-      if (p.status === "settlement_pending") {
+      if (p.status === "settlement_pending" || p.status === "on_hold") {
         amountInSettlement += amt;
       }
     }

@@ -208,6 +208,58 @@ async function refundEaseBuzz(
   };
 }
 
+async function refundPhonePe(
+  payment: any,
+  gateway: any,
+  isTest: boolean,
+): Promise<{ success: boolean; refund_id: string | null; gateway_response: any }> {
+  const baseUrl = isTest
+    ? "https://api-preprod.phonepe.com/apis/hermes"
+    : "https://api.phonepe.com/apis/hermes";
+  const merchantId = isTest ? gateway.test_api_key : gateway.production_api_key;
+  const saltKey = isTest ? gateway.test_api_secret : gateway.production_api_secret;
+  const txnId = payment.gateway_transaction_id;
+
+  if (!txnId) {
+    return {
+      success: false,
+      refund_id: null,
+      gateway_response: { error: "No gateway_transaction_id — PhonePe refund requires a transaction ID" },
+    };
+  }
+
+  const refundRef = `RFND-${payment.payment_reference}`;
+  const apiEndpoint = `/pg/v1/refund/${merchantId}/${txnId}`;
+  const body = JSON.stringify({
+    merchantId,
+    transactionId: txnId,
+    originalTransactionId: txnId,
+    amount: Math.round(parseFloat(String(payment.amount)) * 100),
+    merchantOrderId: payment.payment_reference,
+  });
+  const hashInput = apiEndpoint + body + saltKey;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+  const xVerify = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
+
+  const res = await fetch(`${baseUrl}${apiEndpoint}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-VERIFY": xVerify,
+      "X-MERCHANT-ID": merchantId,
+    },
+    body,
+  });
+  const data = await res.json();
+
+  const success = res.ok && data.success === true && (data.code === "PAYMENT_SUCCESS" || data.code === "SUCCESS" || data.data?.state === "TXN_SUCCESS" || data.data?.state === "REFUND_SUCCESS");
+  return {
+    success,
+    refund_id: data.data?.refundId ?? data.data?.transactionId ?? refundRef,
+    gateway_response: data,
+  };
+}
+
 async function initiateGatewayRefund(
   payment: any,
   gateway: any,
@@ -218,6 +270,7 @@ async function initiateGatewayRefund(
     case "cashfree":  return refundCashFree(payment, gateway, isTest);
     case "payu":      return refundPayU(payment, gateway, isTest);
     case "easebuzz":  return refundEaseBuzz(payment, gateway, isTest);
+    case "phonepe":  return refundPhonePe(payment, gateway, isTest);
     default:
       return { success: false, refund_id: null, gateway_response: { error: `Unsupported gateway for refund: ${gateway.gateway_name}` } };
   }
@@ -424,7 +477,7 @@ Deno.serve(async (req: Request) => {
     // Determine if we can call the gateway API.
     // Razorpay and PayU require gateway_transaction_id (captured payment ID).
     // CashFree and EaseBuzz can work with payment_reference / fall back to it.
-    const requiresTxnId = gatewayName === "razorpay" || gatewayName === "payu";
+    const requiresTxnId = gatewayName === "razorpay" || gatewayName === "payu" || gatewayName === "phonepe";
     const hasTxnId = !!payment.gateway_transaction_id;
 
     let refundResult: { success: boolean; refund_id: string | null; gateway_response: any };

@@ -1574,7 +1574,7 @@ export default function AdminReports() {
                                 </button>
                               </>
                             )}
-                            {ds !== 'on_hold' && ds !== 'failed' && ds !== 'cancelled' && ds !== 'refunded' && ds !== 'refund_pending' && (
+                            {ds !== 'on_hold' && ds !== 'failed' && ds !== 'cancelled' && ds !== 'refunded' && ds !== 'refund_pending' && ds !== 'completed' && (
                               <button
                                 onClick={() => ds === 'on_hold' ? handleToggleHold(r) : openHoldModal(r)}
                                 disabled={holdProcessingId === r.id}

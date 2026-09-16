@@ -828,7 +828,7 @@ function MerchantFooter() {
               <a href="https://www.facebook.com/PayByCardIn" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#8c76f0] transition-colors"><Facebook className="w-6 h-6" /></a>
               <a href="https://x.com/PayByCardIN" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#8c76f0] transition-colors"><Twitter className="w-6 h-6" /></a>
               <a href="https://linkedin.com/company/paybycard" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#8c76f0] transition-colors"><Linkedin className="w-6 h-6" /></a>
-              <a href="https://www.instagram.com/paybycard.in" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#8c76f0] transition-colors"><Instagram className="w-6 h-6" /></a>
+              <a href="https://www.instagram.com/paybycardin" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#8c76f0] transition-colors"><Instagram className="w-6 h-6" /></a>
             </div>
             <div className="space-y-2 text-gray-600 text-sm">
               <div className="flex items-center space-x-2">

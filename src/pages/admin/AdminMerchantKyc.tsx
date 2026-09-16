@@ -91,6 +91,13 @@ function PanImage({ url }: { url: string | null }) {
       <FileCode2 className="w-4 h-4" /> View XML
     </a>
   );
+  const isJson = url.toLowerCase().endsWith('.json') || url.toLowerCase().includes('.json?');
+  if (isJson) return (
+    <a href={url} target="_blank" rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 underline">
+      <FileCode2 className="w-4 h-4" /> View JSON
+    </a>
+  );
   return (
     <>
       <div className="relative group cursor-pointer w-full max-w-xs" onClick={() => setZoomed(true)}>

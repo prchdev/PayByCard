@@ -23,6 +23,27 @@ function DocImage({ url, label }: { url: string | null; label: string }) {
   const lower = url.toLowerCase();
   const isPdf = lower.endsWith('.pdf') || lower.includes('.pdf?');
   const isXml = lower.endsWith('.xml') || lower.includes('.xml?');
+  const isJson = lower.endsWith('.json') || lower.includes('.json?');
+
+  if (isJson) {
+    return (
+      <div className="space-y-2">
+        <div className="bg-blue-50 rounded-lg border border-blue-200 p-4 flex flex-col items-center justify-center h-32">
+          <FileCode className="w-12 h-12 text-blue-600 mb-2" />
+          <p className="text-sm font-medium text-blue-800">DigiLocker JSON</p>
+          <p className="text-xs text-blue-600 mt-0.5">Verified document</p>
+        </div>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-center text-sm text-blue-600 hover:text-blue-700 underline"
+        >
+          Download {label}
+        </a>
+      </div>
+    );
+  }
 
   if (isPdf) {
     return (

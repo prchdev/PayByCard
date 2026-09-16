@@ -63,7 +63,12 @@ interface ReviewModalProps {
   canEdit?: boolean;
 }
 
-function DocImage({ url, label }: { url: string | null; label: string }) {
+function DocImage({ url, label, digilockerVerified, digilockerProvider }: {
+  url: string | null;
+  label: string;
+  digilockerVerified?: boolean | null;
+  digilockerProvider?: string | null;
+}) {
   const [zoomed, setZoomed] = useState(false);
   const { download, loading, error } = useKycDownload();
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
@@ -77,11 +82,23 @@ function DocImage({ url, label }: { url: string | null; label: string }) {
     }
   };
 
-  if (!url) return (
-    <div className="bg-slate-100 rounded-lg h-32 flex items-center justify-center text-slate-400 text-sm">
-      No {label} uploaded
-    </div>
-  );
+  if (!url) {
+    if (digilockerVerified) {
+      return (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg h-32 flex flex-col items-center justify-center text-center px-2">
+          <FileCode className="w-10 h-10 text-emerald-600 mb-1.5" />
+          <p className="text-sm font-medium text-emerald-800">DigiLocker Verified</p>
+          <p className="text-xs text-emerald-600 mt-0.5">{label} not stored</p>
+          {digilockerProvider && <p className="text-[10px] text-emerald-500 mt-0.5">{digilockerProvider}</p>}
+        </div>
+      );
+    }
+    return (
+      <div className="bg-slate-100 rounded-lg h-32 flex items-center justify-center text-slate-400 text-sm">
+        No {label} uploaded
+      </div>
+    );
+  }
 
   const lower = url.toLowerCase();
   const isPdf = lower.endsWith('.pdf') || lower.includes('.pdf?');
@@ -456,7 +473,7 @@ export default function ReviewModal({ entry, onClose, onReview, onAccountAction,
                   <p className="font-mono font-semibold text-slate-800">{pan.pan_number || '—'}</p>
                 </div>
               </div>
-              <DocImage url={pan.pan_photo_url} label="PAN Card" />
+              <DocImage url={pan.pan_photo_url} label="PAN Card" digilockerVerified={pan.digilocker_verified} digilockerProvider={pan.digilocker_provider} />
               <AuditInfo
                 uploadedAt={pan.uploaded_at}
                 uploadIp={pan.upload_ip}
@@ -511,8 +528,8 @@ export default function ReviewModal({ entry, onClose, onReview, onAccountAction,
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <DocImage url={address.front_photo_url} label="Front" />
-                <DocImage url={address.back_photo_url} label="Back" />
+                <DocImage url={address.front_photo_url} label="Front" digilockerVerified={address.digilocker_verified} digilockerProvider={address.digilocker_provider} />
+                <DocImage url={address.back_photo_url} label="Back" digilockerVerified={address.digilocker_verified} digilockerProvider={address.digilocker_provider} />
               </div>
               <AuditInfo
                 uploadedAt={address.uploaded_at}

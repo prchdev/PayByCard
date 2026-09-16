@@ -117,10 +117,21 @@ function StatusBadge({ status }: { status: MerchantStatus }) {
   );
 }
 
-function PanImage({ url }: { url: string | null }) {
+function PanImage({ url, digilockerVerified }: { url: string | null; digilockerVerified?: boolean | null }) {
   const [zoomed, setZoomed] = useState(false);
   const { download, loading, error } = useKycDownload();
-  if (!url) return <p className="text-sm text-gray-400 italic">No image uploaded</p>;
+  if (!url) {
+    if (digilockerVerified) {
+      return (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 flex items-center gap-2">
+          <FileCode2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+          <span className="text-sm text-emerald-800 font-medium">DigiLocker Verified</span>
+          <span className="text-xs text-emerald-600">(document not stored)</span>
+        </div>
+      );
+    }
+    return <p className="text-sm text-gray-400 italic">No image uploaded</p>;
+  }
   const lower = url.toLowerCase();
   const isPdf = lower.includes('.pdf');
   const isXml = lower.endsWith('.xml') || lower.includes('.xml?');
@@ -396,7 +407,7 @@ function ReviewModal({
               </div>
               <div>
                 <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">PAN Card Document</p>
-                <PanImage url={record.pan_photo_url} />
+                <PanImage url={record.pan_photo_url} digilockerVerified={record.digilocker_verified} />
               </div>
             </div>
           )}
@@ -480,7 +491,22 @@ function ReviewModal({
                     url: record.aadhaar_back_url,
                   });
                 }
-                if (docs.length === 0) return null;
+                if (docs.length === 0) {
+                  return (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                        KYC Documents
+                      </p>
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 flex items-center gap-2">
+                        <FileCode2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-emerald-800">DigiLocker Verified</p>
+                          <p className="text-xs text-emerald-600">Documents were not stored. KYC data was verified via {record.digilocker_provider || 'DigiLocker'}.</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <DigiLockerDocLinks docs={docs} />
                 );

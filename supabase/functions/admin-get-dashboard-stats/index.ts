@@ -79,11 +79,11 @@ Deno.serve(async (req: Request) => {
         .from("kyc_business_info")
         .select("user_id, status, incorporation_certificate_url, gst_certificate_url, loa_url"),
 
-      // Merchant KYC awaiting review
+      // Merchant KYC submitted and awaiting admin review
       supabase
         .from("merchant_onboarding")
         .select("id", { count: "exact", head: true })
-        .in("status", ["pending", "under_review"]),
+        .in("status", ["submitted", "under_review"]),
 
       // Payouts awaiting processing (pending + processing) — existing payout records
       supabase

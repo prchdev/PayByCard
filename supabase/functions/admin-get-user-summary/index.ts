@@ -23,7 +23,7 @@ function deriveDisplayStatus(payment: any, payout: any): string {
   return "processing";
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(withSignedKycUrls(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -241,7 +241,7 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));
 
 
 // redeploy

@@ -101,7 +101,7 @@ export default function Footer({ onNavigate }: FooterProps) {
               <a href="https://linkedin.com/company/paybycard" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#8c76f0] transition-colors">
                 <Linkedin className="w-6 h-6" />
               </a>
-              <a href="https://www.instagram.com/paybycard.in" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#8c76f0] transition-colors">
+              <a href="https://www.instagram.com/paybycardin" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#8c76f0] transition-colors">
                 <Instagram className="w-6 h-6" />
               </a>
             </div>

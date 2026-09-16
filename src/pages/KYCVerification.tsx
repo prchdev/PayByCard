@@ -7,7 +7,6 @@ import {
   CheckCircle,
   ScanFace,
   FileText,
-  RefreshCw,
 } from 'lucide-react';
 import { useKycData } from './kyc/useKycData';
 import PanSection from './kyc/PanSection';
@@ -143,13 +142,7 @@ export default function KYCVerification() {
   const alreadyVerified =
     kycData?.pan?.status === 'verified' && kycData?.address?.status === 'verified';
 
-  const digilockerMissingDocs =
-    kycData?.pan?.digilocker_verified === true &&
-    kycData?.pan?.status === 'verification_pending' &&
-    kycData?.address?.status === 'verification_pending' &&
-    (!kycData?.pan?.pan_photo_url || !kycData?.address?.front_photo_url);
-
-  const showDigilockerOption = !providerLoading && provider !== null && (!alreadyVerified || digilockerMissingDocs);
+  const showDigilockerOption = !providerLoading && provider !== null && !alreadyVerified;
 
   const effectiveMethod = kycMethod ?? (showDigilockerOption ? 'digilocker' : 'manual');
 
@@ -187,7 +180,7 @@ export default function KYCVerification() {
               </p>
             </div>
 
-            {overallStatus === 'verification_pending' && !digilockerMissingDocs && (
+            {overallStatus === 'verification_pending' && (
               <div className="mb-6 bg-amber-50 border-2 border-amber-300 rounded-2xl px-5 py-4 flex items-start gap-3">
                 <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <CheckCircle className="w-4 h-4 text-amber-600" />
@@ -212,23 +205,6 @@ export default function KYCVerification() {
                   <p className="text-sm text-red-700 mt-0.5">
                     One or more of your documents were rejected. Please review the rejection reasons
                     below and re-submit corrected documents.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {digilockerMissingDocs && !digilockerDone && (
-              <div className="mb-6 bg-blue-50 border-2 border-blue-300 rounded-2xl px-5 py-4 flex items-start gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <RefreshCw className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-blue-800">Re-verify to Restore Documents</p>
-                  <p className="text-sm text-blue-700 mt-0.5">
-                    Your KYC was previously verified via DigiLocker, but the document files were not
-                    stored due to a system issue that has now been fixed. Please re-run the DigiLocker
-                    verification below to restore your document links. Your KYC will be re-verified
-                    automatically once the documents are fetched.
                   </p>
                 </div>
               </div>
@@ -276,7 +252,7 @@ export default function KYCVerification() {
                 />
 
                 {/* KYC Method Selector — shown when a provider is enabled and KYC not yet done */}
-                {showDigilockerOption && !digilockerDone && (!alreadyVerified || digilockerMissingDocs) && (
+                {showDigilockerOption && !digilockerDone && !alreadyVerified && (
                   <div className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] overflow-hidden transition-all hover:shadow-xl">
                     <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-violet-50">
                       <h3 className="font-semibold text-gray-900 text-sm">Select Verification Method</h3>

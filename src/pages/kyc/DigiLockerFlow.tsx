@@ -151,7 +151,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
   // "Authorization code doesn't exist or is invalid" on the second attempt.
   const handleCode = useCallback((code: string, source: string) => {
     if (codeReceivedRef.current) return; // already processing
-    if (stepRef.current !== 'waiting_popup') return;
+    if (stepRef.current !== 'waiting_popup' && stepRef.current !== 'idle') return;
     codeReceivedRef.current = true;
     localStorage.removeItem('digilocker_code');
     logEvent(userId, providerName, 'localstorage_code', true, { source });
@@ -166,7 +166,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
     // Bridge-based callback: digilocker-redirect edge function sends { type: 'digilocker_callback', code, state }
     if (d.type === 'digilocker_callback') {
       if (d.error) {
-        if (stepRef.current === 'waiting_popup') {
+        if (stepRef.current === 'waiting_popup' || stepRef.current === 'idle') {
           logEvent(userId, providerName, 'bridge_postmessage_error', false, {
             error_code: 'DIGILOCKER_ERROR',
             error_message: d.error,
@@ -205,7 +205,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
 
   // ── Primary channel: localStorage polling + storage event ────────────────────
   useEffect(() => {
-    if (step !== 'waiting_popup') return;
+    if (step !== 'waiting_popup' && step !== 'idle') return;
 
     localStorage.removeItem('digilocker_code');
     localStorage.removeItem('digilocker_error');
@@ -216,7 +216,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
       }
       if (e.key === 'digilocker_error' && e.newValue) {
         localStorage.removeItem('digilocker_error');
-        if (stepRef.current === 'waiting_popup') {
+        if (stepRef.current === 'waiting_popup' || stepRef.current === 'idle') {
           const errVal = e.newValue;
           logEvent(userId, providerName, 'localstorage_error', false, {
             error_code: 'DIGILOCKER_ERROR',
@@ -239,7 +239,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
       const err = localStorage.getItem('digilocker_error');
       if (err) {
         localStorage.removeItem('digilocker_error');
-        if (stepRef.current === 'waiting_popup') {
+        if (stepRef.current === 'waiting_popup' || stepRef.current === 'idle') {
           logEvent(userId, providerName, 'localstorage_error', false, {
             error_code: 'DIGILOCKER_ERROR',
             error_message: err,
@@ -260,7 +260,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
 
   // ── Popup closed watcher ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (step !== 'waiting_popup') return;
+    if (step !== 'waiting_popup' && step !== 'idle') return;
     const interval = setInterval(() => {
       if (popupRef.current && popupRef.current.closed) {
         clearInterval(interval);

@@ -16,7 +16,13 @@ Deno.serve(async (req: Request) => {
 
   const isMerchant = state.startsWith('m');
   const fallbackPath = isMerchant ? '/merchant-onboarding' : '/kyc-verification';
-  const appUrl = 'https://paybycard.in';
+
+  const origin = req.headers.get('origin') || req.headers.get('referer') || '';
+  let appUrl = 'https://paybycard.in';
+  if (origin) {
+    try { appUrl = new URL(origin).origin; } catch { /* keep default */ }
+  }
+  if (appUrl.includes('supabase')) appUrl = 'https://paybycard.in';
 
   const html = `<!DOCTYPE html>
 <html>

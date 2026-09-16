@@ -144,8 +144,9 @@ export default function KYCVerification() {
     kycData?.pan?.status === 'verified' && kycData?.address?.status === 'verified';
 
   const digilockerMissingDocs =
-    alreadyVerified &&
     kycData?.pan?.digilocker_verified === true &&
+    kycData?.pan?.status === 'verification_pending' &&
+    kycData?.address?.status === 'verification_pending' &&
     (!kycData?.pan?.pan_photo_url || !kycData?.address?.front_photo_url);
 
   const showDigilockerOption = !providerLoading && provider !== null && (!alreadyVerified || digilockerMissingDocs);
@@ -186,7 +187,7 @@ export default function KYCVerification() {
               </p>
             </div>
 
-            {overallStatus === 'verification_pending' && (
+            {overallStatus === 'verification_pending' && !digilockerMissingDocs && (
               <div className="mb-6 bg-amber-50 border-2 border-amber-300 rounded-2xl px-5 py-4 flex items-start gap-3">
                 <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <CheckCircle className="w-4 h-4 text-amber-600" />
@@ -224,9 +225,10 @@ export default function KYCVerification() {
                 <div>
                   <p className="font-semibold text-blue-800">Re-verify to Restore Documents</p>
                   <p className="text-sm text-blue-700 mt-0.5">
-                    Your KYC was verified via DigiLocker, but the document files were not stored due to a
-                    system issue that has now been fixed. Please re-run the DigiLocker verification below
-                    to restore your document links. Your KYC status will remain verified.
+                    Your KYC was previously verified via DigiLocker, but the document files were not
+                    stored due to a system issue that has now been fixed. Please re-run the DigiLocker
+                    verification below to restore your document links. Your KYC will be re-verified
+                    automatically once the documents are fetched.
                   </p>
                 </div>
               </div>

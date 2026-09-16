@@ -1,7 +1,59 @@
-import React, { useState, useRef } from 'react';
-import { X, CheckCircle, XCircle, ZoomIn, Percent, ShieldOff, Shield, Lock, Unlock, Loader2, Save, FileCode } from 'lucide-react';
+import React, { useState, useRef, useCallback } from 'react';
+import { X, CheckCircle, XCircle, ZoomIn, Percent, ShieldOff, Shield, Lock, Unlock, Loader2, Save, FileCode, Download } from 'lucide-react';
 import { KycUserEntry, KycStatus } from './types';
 import KycStatusBadge from './KycStatusBadge';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+function extractKycFilePath(url: string): string | null {
+  const marker = '/storage/v1/object/public/kyc-documents/';
+  const signMarker = '/storage/v1/object/sign/kyc-documents/';
+  let rawPath: string | null = null;
+  if (url.includes(marker)) {
+    rawPath = url.split(marker)[1];
+  } else if (url.includes(signMarker)) {
+    rawPath = url.split(signMarker)[1];
+  }
+  if (!rawPath) return null;
+  return rawPath.split('?')[0];
+}
+
+function useKycDownload() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const download = useCallback(async (url: string) => {
+    const filePath = extractKycFilePath(url);
+    if (!filePath) {
+      setError('Invalid file URL');
+      return null;
+    }
+    const adminId = sessionStorage.getItem('adminId') ?? '';
+    if (!adminId) {
+      setError('Admin session required');
+      return null;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/functions/v1/download-kyc-file?filePath=${encodeURIComponent(filePath)}&adminId=${encodeURIComponent(adminId)}`,
+        { headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Download failed');
+      return data.signedUrl as string;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Download failed');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { download, loading, error };
+}
 
 interface ReviewModalProps {
   entry: KycUserEntry;
@@ -13,6 +65,17 @@ interface ReviewModalProps {
 
 function DocImage({ url, label }: { url: string | null; label: string }) {
   const [zoomed, setZoomed] = useState(false);
+  const { download, loading, error } = useKycDownload();
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+
+  const handleDownload = async () => {
+    if (!url) return;
+    const result = await download(url);
+    if (result) {
+      setSignedUrl(result);
+      window.open(result, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   if (!url) return (
     <div className="bg-slate-100 rounded-lg h-32 flex items-center justify-center text-slate-400 text-sm">
@@ -24,64 +87,34 @@ function DocImage({ url, label }: { url: string | null; label: string }) {
   const isPdf = lower.endsWith('.pdf') || lower.includes('.pdf?');
   const isXml = lower.endsWith('.xml') || lower.includes('.xml?');
   const isJson = lower.endsWith('.json') || lower.includes('.json?');
+  const isDigiLockerDoc = isXml || isJson || isPdf;
 
-  if (isJson) {
+  if (isDigiLockerDoc) {
+    const iconColor = isXml ? 'text-emerald-600' : isJson ? 'text-blue-600' : 'text-red-600';
+    const bgColor = isXml ? 'bg-emerald-50 border-emerald-200' : isJson ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200';
+    const label2 = isXml ? 'DigiLocker XML' : isJson ? 'DigiLocker JSON' : 'PDF Document';
     return (
       <div className="space-y-2">
-        <div className="bg-blue-50 rounded-lg border border-blue-200 p-4 flex flex-col items-center justify-center h-32">
-          <FileCode className="w-12 h-12 text-blue-600 mb-2" />
-          <p className="text-sm font-medium text-blue-800">DigiLocker JSON</p>
-          <p className="text-xs text-blue-600 mt-0.5">Verified document</p>
+        <div className={`${bgColor} rounded-lg border p-4 flex flex-col items-center justify-center h-32`}>
+          {isPdf ? (
+            <svg className="w-12 h-12 text-red-600 mb-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+            </svg>
+          ) : (
+            <FileCode className={`w-12 h-12 ${iconColor} mb-2`} />
+          )}
+          <p className="text-sm font-medium text-slate-700">{label2}</p>
+          {signedUrl && <p className="text-xs text-slate-500 mt-0.5">Verified document</p>}
         </div>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block text-center text-sm text-blue-600 hover:text-blue-700 underline"
+        <button
+          onClick={handleDownload}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-700 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
         >
-          Download {label}
-        </a>
-      </div>
-    );
-  }
-
-  if (isPdf) {
-    return (
-      <div className="space-y-2">
-        <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 flex flex-col items-center justify-center h-32">
-          <svg className="w-12 h-12 text-red-600 mb-2" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-          </svg>
-          <p className="text-sm font-medium text-slate-700">PDF Document</p>
-        </div>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block text-center text-sm text-blue-600 hover:text-blue-700 underline"
-        >
-          View {label}
-        </a>
-      </div>
-    );
-  }
-
-  if (isXml) {
-    return (
-      <div className="space-y-2">
-        <div className="bg-emerald-50 rounded-lg border border-emerald-200 p-4 flex flex-col items-center justify-center h-32">
-          <FileCode className="w-12 h-12 text-emerald-600 mb-2" />
-          <p className="text-sm font-medium text-emerald-800">DigiLocker XML</p>
-          <p className="text-xs text-emerald-600 mt-0.5">Verified document</p>
-        </div>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block text-center text-sm text-emerald-600 hover:text-emerald-700 underline"
-        >
-          Download {label} XML
-        </a>
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          {loading ? 'Generating link...' : `Download ${label}`}
+        </button>
+        {error && <p className="text-xs text-red-600 text-center">{error}</p>}
       </div>
     );
   }

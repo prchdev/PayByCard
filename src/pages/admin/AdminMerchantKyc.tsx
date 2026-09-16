@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   RefreshCw, Users, Clock, XCircle, CheckCircle, Search,
@@ -12,6 +12,49 @@ import { downloadCsv } from '../../utils/csvExport';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+function extractKycFilePath(url: string): string | null {
+  const marker = '/storage/v1/object/public/kyc-documents/';
+  const signMarker = '/storage/v1/object/sign/kyc-documents/';
+  let rawPath: string | null = null;
+  if (url.includes(marker)) {
+    rawPath = url.split(marker)[1];
+  } else if (url.includes(signMarker)) {
+    rawPath = url.split(signMarker)[1];
+  }
+  if (!rawPath) return null;
+  return rawPath.split('?')[0];
+}
+
+function useKycDownload() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const download = useCallback(async (url: string) => {
+    const filePath = extractKycFilePath(url);
+    if (!filePath) return null;
+    const adminId = sessionStorage.getItem('adminId') ?? '';
+    if (!adminId) return null;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/functions/v1/download-kyc-file?filePath=${encodeURIComponent(filePath)}&adminId=${encodeURIComponent(adminId)}`,
+        { headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Download failed');
+      return data.signedUrl as string;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Download failed');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { download, loading, error };
+}
 
 type MerchantStatus = 'pending' | 'submitted' | 'verified' | 'rejected' | 'expired' | 'refunded';
 
@@ -76,28 +119,33 @@ function StatusBadge({ status }: { status: MerchantStatus }) {
 
 function PanImage({ url }: { url: string | null }) {
   const [zoomed, setZoomed] = useState(false);
+  const { download, loading, error } = useKycDownload();
   if (!url) return <p className="text-sm text-gray-400 italic">No image uploaded</p>;
-  const isPdf = url.toLowerCase().includes('.pdf');
-  const isXml = url.toLowerCase().endsWith('.xml');
-  if (isPdf) return (
-    <a href={url} target="_blank" rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 underline">
-      <Eye className="w-4 h-4" /> View PDF
-    </a>
-  );
-  if (isXml) return (
-    <a href={url} target="_blank" rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 underline">
-      <FileCode2 className="w-4 h-4" /> View XML
-    </a>
-  );
-  const isJson = url.toLowerCase().endsWith('.json') || url.toLowerCase().includes('.json?');
-  if (isJson) return (
-    <a href={url} target="_blank" rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 underline">
-      <FileCode2 className="w-4 h-4" /> View JSON
-    </a>
-  );
+  const lower = url.toLowerCase();
+  const isPdf = lower.includes('.pdf');
+  const isXml = lower.endsWith('.xml') || lower.includes('.xml?');
+  const isJson = lower.endsWith('.json') || lower.includes('.json?');
+  const isDigiLockerDoc = isPdf || isXml || isJson;
+
+  if (isDigiLockerDoc) {
+    const label = isXml ? 'XML' : isJson ? 'JSON' : 'PDF';
+    return (
+      <div className="space-y-1.5">
+        <button
+          onClick={async () => {
+            const signed = await download(url);
+            if (signed) window.open(signed, '_blank', 'noopener,noreferrer');
+          }}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCode2 className="w-4 h-4" />}
+          {loading ? 'Generating...' : `View ${label}`}
+        </button>
+        {error && <p className="text-xs text-red-600">{error}</p>}
+      </div>
+    );
+  }
   return (
     <>
       <div className="relative group cursor-pointer w-full max-w-xs" onClick={() => setZoomed(true)}>
@@ -122,6 +170,49 @@ function PanImage({ url }: { url: string | null }) {
 
 type PayoutResult = { payout: string; error?: string } | null;
 type RefundResult = { refund: 'initiated' | 'failed' | 'no_payment' | 'notified'; refund_id?: string; refund_error?: string; message?: string } | null;
+
+function DigiLockerDocLinks({ docs }: { docs: { label: string; subtitle: string; url: string }[] }) {
+  const { download, loading } = useKycDownload();
+  const [errorIdx, setErrorIdx] = useState<number | null>(null);
+
+  const handleClick = async (e: React.MouseEvent, url: string, idx: number) => {
+    e.preventDefault();
+    setErrorIdx(null);
+    const signed = await download(url);
+    if (signed) {
+      window.open(signed, '_blank', 'noopener,noreferrer');
+    } else {
+      setErrorIdx(idx);
+    }
+  };
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+        KYC Documents
+      </p>
+      <div className="space-y-2">
+        {docs.map((doc, idx) => (
+          <div key={doc.url}>
+            <a
+              href="#"
+              onClick={(e) => handleClick(e, doc.url, idx)}
+              className="flex items-center gap-2.5 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors group cursor-pointer"
+            >
+              {loading ? <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" /> : <FileCode2 className="w-4 h-4 text-blue-600 flex-shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-blue-800">{doc.label}</p>
+                <p className="text-xs text-blue-600 truncate">{doc.subtitle}</p>
+              </div>
+              <Download className="w-3.5 h-3.5 text-blue-400 group-hover:text-blue-600 flex-shrink-0" />
+            </a>
+            {errorIdx === idx && <p className="text-xs text-red-600 mt-1 ml-3">Failed to generate download link</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function ReviewModal({
   record,
@@ -391,29 +482,7 @@ function ReviewModal({
                 }
                 if (docs.length === 0) return null;
                 return (
-                  <div>
-                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                      KYC Documents
-                    </p>
-                    <div className="space-y-2">
-                      {docs.map((doc) => (
-                        <a
-                          key={doc.url}
-                          href={doc.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2.5 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors group"
-                        >
-                          <FileCode2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-blue-800">{doc.label}</p>
-                            <p className="text-xs text-blue-600 truncate">{doc.subtitle}</p>
-                          </div>
-                          <Eye className="w-3.5 h-3.5 text-blue-400 group-hover:text-blue-600 flex-shrink-0" />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
+                  <DigiLockerDocLinks docs={docs} />
                 );
               })()}
             </div>

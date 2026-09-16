@@ -992,6 +992,7 @@ Deno.serve(async (req: Request) => {
       const ipAddress =
         req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
         req.headers.get('x-real-ip') ||
+        req.headers.get('cf-connecting-ip') ||
         undefined;
       await writeMerchantKyc(supabase, record, kycData, provider.provider_name, ipAddress);
 

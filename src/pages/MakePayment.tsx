@@ -581,6 +581,11 @@ export default function MakePayment() {
       if (!amount) errors.amount = 'Please enter an amount';
       if (!selectedCategory) errors.category = 'Please select a payment category';
 
+      const isBusinessVendorCategory = selectedCategory?.category_name === 'Business, Vendor & Professional Service Payments';
+      if (isBusinessVendorCategory && !billFile) {
+        errors.billFile = 'Please upload a bill for this payment category';
+      }
+
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
         return;
@@ -1646,7 +1651,7 @@ export default function MakePayment() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Upload Bill (Optional)
+                      Upload Bill {selectedCategory?.category_name === 'Business, Vendor & Professional Service Payments' ? <span className="text-red-600">*</span> : '(Optional)'}
                     </label>
                     <p className="text-xs text-gray-500 mb-2">PNG, JPEG, or PDF. Max size: 1 MB</p>
 

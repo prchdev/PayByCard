@@ -258,6 +258,13 @@ export default function MyBeneficiaries() {
       return;
     }
 
+    if (!formData.pan_number.trim()) {
+      setError('PAN Number is required.'); return;
+    }
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.pan_number)) {
+      setError('Please enter a valid PAN number (e.g., ABCDE1234F).'); return;
+    }
+
     if (isCreditCardIfsc(formData.ifsc)) {
       setError('This IFSC code is for credit card bill payments. Adding credit card accounts as beneficiaries is not allowed.');
       return;
@@ -787,14 +794,15 @@ export default function MyBeneficiaries() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        PAN Number (Optional)
+                        PAN Number <span className="text-red-600">*</span>
                       </label>
                       <input
                         type="text"
+                        required
                         value={formData.pan_number}
                         onChange={(e) => setFormData({ ...formData, pan_number: e.target.value.toUpperCase() })}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white"
-                        placeholder="Enter PAN number"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white font-mono tracking-wider"
+                        placeholder="ABCDE1234F"
                         maxLength={10}
                       />
                     </div>

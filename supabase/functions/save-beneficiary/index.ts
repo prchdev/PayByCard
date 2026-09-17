@@ -99,11 +99,12 @@ Deno.serve(async (req: Request) => {
     if (!mobileRegex.test(mobile.replace(/^\+91/, '').replace(/\D/g, ''))) {
       return new Response(JSON.stringify({ error: 'Mobile number must be 10 digits' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    if (pan_number) {
-      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-      if (!panRegex.test(pan_number.toUpperCase())) {
-        return new Response(JSON.stringify({ error: 'Invalid PAN format (e.g. ABCDE1234F)' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
+    if (!pan_number || !String(pan_number).trim()) {
+      return new Response(JSON.stringify({ error: 'PAN Number is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    if (!panRegex.test(String(pan_number).toUpperCase())) {
+      return new Response(JSON.stringify({ error: 'Invalid PAN format (e.g. ABCDE1234F)' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const ifscUpper = ifsc.toUpperCase();

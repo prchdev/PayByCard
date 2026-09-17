@@ -27,9 +27,25 @@ export default function FileUploadField({
 
   const localPreview = file ? URL.createObjectURL(file) : null;
   const displayUrl = (localPreview ?? (removedExisting ? null : existingUrl));
-  const isImage = accept.includes('image') || accept.includes('png') || accept.includes('jpg');
-  const isPdf = accept.includes('pdf');
   const isExistingFile = !localPreview && !!existingUrl && !removedExisting;
+
+  const isImage = (() => {
+    if (file) return file.type.startsWith('image/');
+    if (displayUrl) {
+      const ext = displayUrl.split('?')[0].split('.').pop()?.toLowerCase();
+      return ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'gif' || ext === 'webp';
+    }
+    return accept.includes('image') || accept.includes('png') || accept.includes('jpg');
+  })();
+
+  const isPdf = (() => {
+    if (file) return file.type === 'application/pdf';
+    if (displayUrl) {
+      const ext = displayUrl.split('?')[0].split('.').pop()?.toLowerCase();
+      return ext === 'pdf';
+    }
+    return accept.includes('pdf');
+  })();
 
   useEffect(() => {
     if (file) {

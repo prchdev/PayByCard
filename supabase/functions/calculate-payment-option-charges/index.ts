@@ -146,5 +146,5 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-// redeploy
+// redeploy v2
 // renamed from calculate-payment-charges

@@ -77,6 +77,14 @@ Deno.serve(async (req: Request) => {
     }
 
     // F4: Recompute charges, GST, discount and total server-side — never trust the browser.
+    // Fetch the user's KYC business surge charge to fold into platform charges.
+    const { data: kycBusiness } = await supabase
+      .from("kyc_business_info")
+      .select("business_category_surge_charge")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const surgeCharge = parseFloat(kycBusiness?.business_category_surge_charge || 0);
+
     const chargesRes = await fetch(`${supabaseUrl}/functions/v1/calculate-payment-option-charges`, {
       method: "POST",
       headers: {
@@ -87,6 +95,7 @@ Deno.serve(async (req: Request) => {
         amount: parsedAmount,
         categoryId: paymentOptionId,
         gatewayId: gatewayId,
+        businessCategorySurgeCharge: surgeCharge,
       }),
     });
     if (!chargesRes.ok) {

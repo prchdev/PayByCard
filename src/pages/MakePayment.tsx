@@ -143,7 +143,7 @@ export default function MakePayment() {
   const [billFileUrl, setBillFileUrl] = useState<string>('');
   const [chargesDetails, setChargesDetails] = useState<ChargesDetails | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [kycStatus, setKycStatus] = useState<{ isVerified: boolean; status: string; isRestricted?: boolean } | null>(null);
+  const [kycStatus, setKycStatus] = useState<{ isVerified: boolean; status: string; isRestricted?: boolean; businessCategorySurgeCharge?: number } | null>(null);
   const [isCheckingKyc, setIsCheckingKyc] = useState(true);
   const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -543,6 +543,7 @@ export default function MakePayment() {
             amount: parseFloat(amount),
             categoryId: selectedCategory.id,
             gatewayId: selectedGateway.id,
+            businessCategorySurgeCharge: kycStatus?.businessCategorySurgeCharge || 0,
           }),
         }
       );
@@ -622,7 +623,8 @@ export default function MakePayment() {
         ? selectedPaymentOption.discounted_charges_percentage
         : selectedPaymentOption.charges_percentage;
       const surchargePercentage = isBusiness ? (selectedPaymentOption.business_surcharge_percentage || 0) : 0;
-      const effectiveChargesPercentage = baseChargePercentage + surchargePercentage;
+      const surgeChargePercentage = kycStatus?.businessCategorySurgeCharge || 0;
+      const effectiveChargesPercentage = baseChargePercentage + surchargePercentage + surgeChargePercentage;
 
       const normalCharges = (baseAmount * selectedPaymentOption.charges_percentage) / 100;
       const charges = (baseAmount * effectiveChargesPercentage) / 100;
@@ -1727,13 +1729,14 @@ export default function MakePayment() {
                           const discountedChargePercentage = option.discounted_charges_percentage;
                           const baseChargePercentage = useDiscountedCharges ? discountedChargePercentage : normalChargePercentage;
                           const surchargePercentage = isBusiness ? (option.business_surcharge_percentage || 0) : 0;
-                          const effectiveChargePercentage = baseChargePercentage + surchargePercentage;
+                          const surgeChargePercentage = kycStatus?.businessCategorySurgeCharge || 0;
+                          const effectiveChargePercentage = baseChargePercentage + surchargePercentage + surgeChargePercentage;
 
                           const normalCharges = (baseAmount * normalChargePercentage) / 100;
                           const effectiveCharges = (baseAmount * effectiveChargePercentage) / 100;
                           const gst = (effectiveCharges * option.gst_percentage) / 100;
                           const total = baseAmount + effectiveCharges + gst;
-                          const chargesLabel = surchargePercentage > 0 ? 'Charges & Surcharge' : 'Charges';
+                          const chargesLabel = (surchargePercentage > 0 || surgeChargePercentage > 0) ? 'Charges & Surcharge' : 'Charges';
 
                           return (
                             <div

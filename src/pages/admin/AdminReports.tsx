@@ -26,6 +26,7 @@ import {
   Building,
   PauseCircle,
   PlayCircle,
+  Paperclip,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -75,6 +76,7 @@ interface TxRecord {
   invoice_number?: number | null;
   pre_hold_status?: string | null;
   hold_reason?: string | null;
+  bill_file_url?: string | null;
 }
 
 const STATUS_OPTIONS = [
@@ -999,6 +1001,21 @@ function DetailModal({ record, onClose }: { record: TxRecord; onClose: () => voi
               )}
             </div>
           </div>
+
+          {record.bill_file_url && (
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Uploaded Bill</h3>
+              <a
+                href={record.bill_file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-[#8c76f0] hover:text-[#7c63e0] font-medium transition-colors"
+              >
+                <Paperclip className="w-4 h-4" />
+                View / Download Bill
+              </a>
+            </div>
+          )}
 
           {payout && (
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">

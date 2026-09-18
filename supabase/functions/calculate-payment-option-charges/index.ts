@@ -94,8 +94,8 @@ Deno.serve(async (req: Request) => {
       baseChargesPercentage = parseFloat(category.discounted_charges_percentage);
     }
 
-    // Business surcharge on top of base charges
-    const surchargePercentage = isBusiness ? parseFloat(category.business_surcharge_percentage || 0) : 0;
+    // Business surcharge on top of base charges (applies to all beneficiaries)
+    const surchargePercentage = parseFloat(category.business_surcharge_percentage || 0);
     // Additional per-user surge charge from KYC business info (percentage)
     const surgeChargePercentage = parseFloat(businessCategorySurgeCharge || 0);
     const effectiveChargesPercentage = baseChargesPercentage + surchargePercentage + surgeChargePercentage;

@@ -622,7 +622,7 @@ export default function MakePayment() {
       const baseChargePercentage = useDiscountedCharges
         ? selectedPaymentOption.discounted_charges_percentage
         : selectedPaymentOption.charges_percentage;
-      const surchargePercentage = isBusiness ? (selectedPaymentOption.business_surcharge_percentage || 0) : 0;
+      const surchargePercentage = selectedPaymentOption.business_surcharge_percentage || 0;
       const surgeChargePercentage = kycStatus?.businessCategorySurgeCharge || 0;
       const effectiveChargesPercentage = baseChargePercentage + surchargePercentage + surgeChargePercentage;
 
@@ -1728,7 +1728,7 @@ export default function MakePayment() {
                           const normalChargePercentage = option.charges_percentage;
                           const discountedChargePercentage = option.discounted_charges_percentage;
                           const baseChargePercentage = useDiscountedCharges ? discountedChargePercentage : normalChargePercentage;
-                          const surchargePercentage = isBusiness ? (option.business_surcharge_percentage || 0) : 0;
+                          const surchargePercentage = option.business_surcharge_percentage || 0;
                           const surgeChargePercentage = kycStatus?.businessCategorySurgeCharge || 0;
                           const effectiveChargePercentage = baseChargePercentage + surchargePercentage + surgeChargePercentage;
 

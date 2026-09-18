@@ -77,6 +77,7 @@ interface TxRecord {
   pre_hold_status?: string | null;
   hold_reason?: string | null;
   bill_file_url?: string | null;
+  payment_option_name?: string | null;
 }
 
 const STATUS_OPTIONS = [
@@ -908,7 +909,7 @@ function DetailModal({ record, onClose }: { record: TxRecord; onClose: () => voi
   const bene = record.beneficiary_details || {};
   const ds = record.display_status || record.status;
   const payout = record.payout;
-  const option = record.selected_payment_option?.card_type || record.card_type || '—';
+  const option = record.payment_option_name || record.selected_payment_option?.card_type || record.card_type || '—';
   const [branchName, setBranchName] = useState<string>('');
 
   useEffect(() => {
@@ -959,7 +960,7 @@ function DetailModal({ record, onClose }: { record: TxRecord; onClose: () => voi
               <div><p className="text-gray-500 text-xs mb-0.5">Mobile</p><p className="font-medium text-gray-900">{record.sender?.mobile || '—'}</p></div>
               <div><p className="text-gray-500 text-xs mb-0.5">Environment</p><p className="font-medium text-gray-900">{record.gateway_environment || '—'}</p></div>
               <div><p className="text-gray-500 text-xs mb-0.5">Initiated At</p><p className="font-medium text-gray-900">{fmtDate(record.created_at)}</p></div>
-              <div><p className="text-gray-500 text-xs mb-0.5">IP Address</p><p className="font-mono text-xs text-gray-900">{record.ip_address || '—'}</p></div>
+              <div><p className="text-gray-500 text-xs mb-0.5">IP Address</p><p className="font-mono text-xs text-gray-900">{(!record.ip_address || record.ip_address === 'unknown') ? '—' : record.ip_address}</p></div>
             </div>
           </div>
 
@@ -993,6 +994,7 @@ function DetailModal({ record, onClose }: { record: TxRecord; onClose: () => voi
               <div><p className="text-gray-500 text-xs mb-0.5">Gateway</p><p className="font-medium text-gray-900">{record.gateway_name || '—'}</p></div>
               <div><p className="text-gray-500 text-xs mb-0.5">Payment Option</p><p className="font-medium text-gray-900">{option}</p></div>
               <div><p className="text-gray-500 text-xs mb-0.5">Category</p><p className="font-medium text-gray-900">{record.category_details?.category_name || '—'}</p></div>
+              <div><p className="text-gray-500 text-xs mb-0.5">Settlement Cycle</p><p className="font-medium text-gray-900">{formatSettlementTime(record.category_details?.settlement_time)}</p></div>
               {record.gateway_transaction_id && (
                 <div className="col-span-2"><p className="text-gray-500 text-xs mb-0.5">Gateway Transaction ID</p><p className="font-mono text-xs text-gray-900">{record.gateway_transaction_id}</p></div>
               )}

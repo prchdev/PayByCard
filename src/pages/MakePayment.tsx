@@ -1736,7 +1736,7 @@ export default function MakePayment() {
                           const effectiveCharges = (baseAmount * effectiveChargePercentage) / 100;
                           const gst = (effectiveCharges * option.gst_percentage) / 100;
                           const total = baseAmount + effectiveCharges + gst;
-                          const chargesLabel = (surchargePercentage > 0 || surgeChargePercentage > 0) ? 'Charges & Surcharge' : 'Charges';
+                          const chargesLabel = 'Charges';
 
                           return (
                             <div
@@ -1757,11 +1757,7 @@ export default function MakePayment() {
                                         Discounted
                                       </span>
                                     )}
-                                    {surchargePercentage > 0 && (
-                                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                                        Business
-                                      </span>
-                                    )}
+
                                   </div>
                                   <p className="text-sm text-gray-600 mb-1">{option.gateway_name}</p>
                                   {option.settlement_time && (
@@ -1788,7 +1784,7 @@ export default function MakePayment() {
                                         )}
                                         {useDiscountedCharges ? (
                                           <span className="text-green-600 ml-1">
-                                            ({discountedChargePercentage.toFixed(2)}%{surchargePercentage > 0 ? ` + ${surchargePercentage.toFixed(2)}%` : ''})
+                                            ({discountedChargePercentage.toFixed(2)}%)
                                           </span>
                                         ) : (
                                           <span>({effectiveChargePercentage.toFixed(2)}%)</span>
@@ -1915,7 +1911,7 @@ export default function MakePayment() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-700">
-                            {chargesDetails.surchargePercentage > 0 ? 'Charges & Surcharge' : 'Platform Charges'}
+                            {'Platform Charges'}
                             <span className="ml-1 text-gray-500 text-xs">
                               ({chargesDetails.effectiveChargesPercentage?.toFixed(2)}%)
                             </span>

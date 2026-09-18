@@ -298,7 +298,7 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
   const statusLabel = STATUS_LABELS[ds] || ds;
   const statusColor = ds === 'completed' ? '#16a34a' : ds === 'failed' || ds === 'cancelled' ? '#dc2626' : ds === 'refunded' ? '#ea580c' : '#d97706';
   const statusBg = ds === 'completed' ? '#dcfce7' : ds === 'failed' || ds === 'cancelled' ? '#fee2e2' : ds === 'refunded' ? '#ffedd5' : '#fef3c7';
-  const option = r.selected_payment_option?.card_type || r.card_type || '—';
+  const option = r.payment_option_name || r.selected_payment_option?.card_type || r.card_type || '—';
   const payout = r.payout;
   const baseAmt = parseFloat(r.amount || '0');
   const charges = parseFloat(r.charges || '0');
@@ -1529,7 +1529,7 @@ export default function AdminReports() {
                           <p className="font-mono text-xs text-gray-400 mt-0.5">{bene.ifsc || '—'}</p>
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-gray-700 text-xs truncate max-w-[100px]">{r.selected_payment_option?.card_type || r.card_type || '—'}</p>
+                          <p className="text-gray-700 text-xs truncate max-w-[100px]">{r.payment_option_name || r.selected_payment_option?.card_type || r.card_type || '—'}</p>
                           <p className="text-xs text-gray-400">{r.gateway_name || ''}</p>
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">

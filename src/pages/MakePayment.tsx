@@ -166,6 +166,18 @@ export default function MakePayment() {
     }
   }, [userId, navigate]);
 
+  useEffect(() => {
+    if (currentStep === 3 && selectedPaymentOption?.gateway_name?.toLowerCase() === 'razorpay') {
+      const src = 'https://checkout.razorpay.com/v1/checkout.js';
+      if (!document.querySelector(`script[src="${src}"]`)) {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    }
+  }, [currentStep, selectedPaymentOption]);
+
   // Poll every 15 seconds (max 20 attempts = 5 minutes) after payment window is closed
   useEffect(() => {
     if (!pendingPaymentId) {
@@ -802,9 +814,7 @@ export default function MakePayment() {
           gatewayName: result.gatewayConfig.gateway,
         }));
 
-        setTimeout(() => {
-          openGatewayPayment(result.gatewayConfig, result.payment);
-        }, 500);
+        openGatewayPayment(result.gatewayConfig, result.payment);
       } else {
         setMessage({
           type: 'success',

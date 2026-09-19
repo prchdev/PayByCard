@@ -13,13 +13,7 @@ verify_jwt = false
 [functions.check-payment-status]
 verify_jwt = false
 
-[functions.check-payout-status]
-verify_jwt = false
-
 [functions.auto-payout]
-verify_jwt = false
-
-[functions.process-phonepe-payment]
 verify_jwt = false
 
 [functions.process-phonepe-payout]
@@ -54,15 +48,11 @@ verify_jwt = false
 verify_jwt = false
 [functions.admin-get-email-settings]
 verify_jwt = false
-[functions.admin-get-expired-onboarding]
-verify_jwt = false
 [functions.admin-get-kyc-list]
 verify_jwt = false
 [functions.admin-get-master-settings]
 verify_jwt = false
 [functions.admin-get-merchant-kyc]
-verify_jwt = false
-[functions.admin-get-non-kyced-transactions]
 verify_jwt = false
 [functions.admin-get-notifications]
 verify_jwt = false
@@ -79,8 +69,6 @@ verify_jwt = false
 [functions.admin-login]
 verify_jwt = false
 [functions.admin-process-manual-payout]
-verify_jwt = false
-[functions.admin-process-refund]
 verify_jwt = false
 [functions.admin-reset-password]
 verify_jwt = false
@@ -188,31 +176,17 @@ verify_jwt = false
 verify_jwt = false
 [functions.poll-stale-payments]
 verify_jwt = false
-[functions.process-cashfree-payment]
-verify_jwt = false
 [functions.process-cashfree-payout]
-verify_jwt = false
-[functions.process-ccavenue-payment]
 verify_jwt = false
 [functions.process-ccavenue-payout]
 verify_jwt = false
-[functions.process-easebuzz-payment]
-verify_jwt = false
 [functions.process-easebuzz-payout]
-verify_jwt = false
-[functions.process-enkash-payment]
 verify_jwt = false
 [functions.process-enkash-payout]
 verify_jwt = false
-[functions.process-payu-payment]
-verify_jwt = false
 [functions.process-payu-payout]
 verify_jwt = false
-[functions.process-razorpay-payment]
-verify_jwt = false
 [functions.process-razorpay-payout]
-verify_jwt = false
-[functions.process-zaakpay-payment]
 verify_jwt = false
 [functions.process-zaakpay-payout]
 verify_jwt = false

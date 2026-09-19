@@ -105,7 +105,7 @@ Deno.serve(async (req: Request) => {
     const parsedCharges = parseFloat(chargesData.charges || 0);
     const parsedGst = parseFloat(chargesData.gst || 0);
     const parsedDiscount = parseFloat(chargesData.discount || 0);
-    const parsedTotal = parsedAmount + parsedCharges + parsedGst - parsedDiscount;
+    const parsedTotal = parsedAmount + parsedCharges + parsedGst;
 
     // ── Duplicate payment guard ───────────────────────────────────────────────
     // Detects double-submit within 30 s: same user + beneficiary + amount.

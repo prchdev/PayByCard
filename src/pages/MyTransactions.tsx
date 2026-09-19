@@ -512,12 +512,6 @@ export default function MyTransactions() {
                     <span className="text-gray-600">GST on Charges</span>
                     <span className="font-medium">₹{fmt(selectedTxn.gst)}</span>
                   </div>
-                  {parseFloat(selectedTxn.discount || '0') > 0 && (
-                    <div className="flex justify-between text-sm text-green-700">
-                      <span>Discount</span>
-                      <span className="font-medium">-₹{fmt(selectedTxn.discount)}</span>
-                    </div>
-                  )}
                   <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
                     <span className="font-bold text-gray-900">Total Charged</span>
                     <span className="font-bold text-blue-700 text-lg">₹{fmt(selectedTxn.total_amount)}</span>

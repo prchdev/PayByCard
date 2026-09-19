@@ -1922,12 +1922,6 @@ export default function MakePayment() {
                           <span className="text-sm text-gray-700">GST ({chargesDetails.category.gstPercentage}%)</span>
                           <span className="text-sm font-semibold text-gray-900">₹{chargesDetails.gst}</span>
                         </div>
-                        {chargesDetails.discountApplied && parseFloat(chargesDetails.discount) > 0 && (
-                          <div className="flex justify-between text-green-700">
-                            <span className="text-sm">Discount Applied</span>
-                            <span className="text-sm font-semibold">-₹{chargesDetails.discount}</span>
-                          </div>
-                        )}
                         <div className="border-t-2 border-[#8c76f0] pt-2 flex justify-between">
                           <span className="text-base font-bold text-gray-900">Total Amount</span>
                           <span className="text-xl font-bold text-[#8c76f0]">₹{chargesDetails.totalAmount}</span>

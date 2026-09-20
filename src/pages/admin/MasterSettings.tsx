@@ -14,6 +14,7 @@ import {
   CreditCard,
   Search,
   Landmark,
+  Smartphone,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -36,6 +37,7 @@ interface MasterSettingsData {
   bank_branch_name: string;
   bank_name: string;
   bank_account_type: string;
+  mobile_app_enabled: boolean;
 }
 
 const EMPTY_SETTINGS: MasterSettingsData = {
@@ -55,6 +57,7 @@ const EMPTY_SETTINGS: MasterSettingsData = {
   bank_branch_name: '',
   bank_name: '',
   bank_account_type: 'current',
+  mobile_app_enabled: true,
 };
 
 export default function MasterSettings() {
@@ -486,6 +489,43 @@ export default function MasterSettings() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Mobile Application */}
+          <div className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] p-6 transition-all hover:shadow-xl">
+            <div className="flex items-center gap-3 pb-4 mb-6 border-b border-gray-200">
+              <div className="w-10 h-10 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl flex items-center justify-center">
+                <Smartphone className="w-5 h-5 text-[#8c76f0]" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Mobile Application</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Enable or disable access from the mobile app</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Enable Mobile App Access</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  When enabled, users can log in and transact from the mobile application. When disabled, mobile app access is blocked.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.mobile_app_enabled}
+                onClick={() => setSettings({ ...settings, mobile_app_enabled: !settings.mobile_app_enabled })}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${
+                  settings.mobile_app_enabled ? 'bg-[#8c76f0]' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                    settings.mobile_app_enabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
           </div>
 

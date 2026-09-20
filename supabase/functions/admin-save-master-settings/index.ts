@@ -31,6 +31,7 @@ Deno.serve(async (req: Request) => {
       bank_branch_name,
       bank_name,
       bank_account_type,
+      mobile_app_enabled,
     } = await req.json();
 
     if (!adminId) {
@@ -75,6 +76,7 @@ Deno.serve(async (req: Request) => {
       bank_branch_name: bank_branch_name || "",
       bank_name: bank_name || "",
       bank_account_type: bank_account_type || "current",
+      mobile_app_enabled: mobile_app_enabled !== undefined ? !!mobile_app_enabled : true,
       updated_by: adminId,
       updated_at: new Date().toISOString(),
     };

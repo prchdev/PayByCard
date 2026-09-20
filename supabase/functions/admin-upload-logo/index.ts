@@ -87,10 +87,14 @@ Deno.serve(async (req: Request) => {
       throw new Error(uploadError.message);
     }
 
+    const { data: signedData } = await supabase.storage
+      .from("kyc-documents")
+      .createSignedUrl(path, 3600);
+
     const canonicalUrl = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/kyc-documents/${path}`;
 
     return new Response(
-      JSON.stringify({ url: canonicalUrl }),
+      JSON.stringify({ url: canonicalUrl, signedUrl: signedData?.signedUrl }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

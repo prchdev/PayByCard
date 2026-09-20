@@ -118,8 +118,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const settingsData = result.data;
+    if (settingsData?.company_logo_url) {
+      const bucketMatch = settingsData.company_logo_url.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.*)/);
+      if (bucketMatch) {
+        const [, bucket, filePath] = bucketMatch;
+        const { data: signedData } = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(filePath, 3600);
+        if (signedData?.signedUrl) {
+          settingsData.company_logo_url = signedData.signedUrl;
+        }
+      }
+    }
+
     return new Response(
-      JSON.stringify({ success: true, settings: result.data }),
+      JSON.stringify({ success: true, settings: settingsData }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

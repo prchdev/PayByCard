@@ -46,6 +46,19 @@ Deno.serve(async (req: Request) => {
       .limit(1)
       .maybeSingle();
 
+    if (settings?.company_logo_url) {
+      const bucketMatch = settings.company_logo_url.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.*)/);
+      if (bucketMatch) {
+        const [, bucket, filePath] = bucketMatch;
+        const { data: signedData } = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(filePath, 3600);
+        if (signedData?.signedUrl) {
+          settings.company_logo_url = signedData.signedUrl;
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({ settings: settings || null }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -155,7 +155,7 @@ export default function MasterSettings() {
 
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Failed to upload logo');
-    return data.url;
+    return data.signedUrl || data.url;
   };
 
   const handleIfscLookup = async () => {
@@ -221,6 +221,9 @@ export default function MasterSettings() {
       if (!response.ok) throw new Error(data.error || 'Failed to save settings');
 
       setSettings(data.settings);
+      if (data.settings?.company_logo_url) {
+        setLogoPreview(data.settings.company_logo_url);
+      }
       setLogoFile(null);
       setMessage({ type: 'success', text: 'Master settings saved successfully' });
     } catch (error) {

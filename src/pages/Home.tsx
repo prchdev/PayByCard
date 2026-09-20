@@ -287,14 +287,14 @@ function HowItWorksSection() {
 
 export default function Home() {
   const VisaLogo = () => (
-    <div className="flex items-center justify-center w-32 h-32">
+    <div className="flex items-center justify-center w-full h-full">
       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Visa_Inc._logo_%282021%E2%80%93present%29.svg/1280px-Visa_Inc._logo_%282021%E2%80%93present%29.svg.png" alt="Visa" className="max-h-full max-w-full object-contain" />
     </div>
   );
 
   const MastercardLogo = () => (
-    <div className="flex items-center justify-center w-32 h-32">
-      <svg viewBox="0 0 48 30" fill="none" className="h-16 w-auto">
+    <div className="flex items-center justify-center w-full h-full">
+      <svg viewBox="0 0 48 30" fill="none" className="h-10 w-auto">
         <circle cx="18" cy="15" r="11" fill="#EB001B"/>
         <circle cx="30" cy="15" r="11" fill="#F79E1B"/>
         <path d="M24 7.5C26.2 9.2 27.5 11.9 27.5 15C27.5 18.1 26.2 20.8 24 22.5C21.8 20.8 20.5 18.1 20.5 15C20.5 11.9 21.8 9.2 24 7.5Z" fill="#FF5F00"/>
@@ -303,25 +303,25 @@ export default function Home() {
   );
 
   const RuPayLogo = () => (
-    <div className="flex items-center justify-center w-32 h-32">
+    <div className="flex items-center justify-center w-full h-full">
       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/RuPay.svg/330px-RuPay.svg.png" alt="RuPay" className="max-h-full max-w-full object-contain" />
     </div>
   );
 
   const AmericanExpressLogo = () => (
-    <div className="flex items-center justify-center w-32 h-32">
+    <div className="flex items-center justify-center w-full h-full">
       <img src="/assets/images/major-cards/American-Express-Color.png" alt="American Express" className="max-h-full max-w-full object-contain" />
     </div>
   );
 
   const DinersClubLogo = () => (
-    <div className="flex items-center justify-center w-32 h-32">
+    <div className="flex items-center justify-center w-full h-full">
       <img src="/assets/images/major-cards/Diners-Club-logo.png" alt="Diners Club" className="max-h-full max-w-full object-contain" />
     </div>
   );
 
   const DiscoverLogo = () => (
-    <div className="flex items-center justify-center w-32 h-32">
+    <div className="flex items-center justify-center w-full h-full">
       <img src="/assets/images/major-cards/Discover-logo.png" alt="Discover" className="max-h-full max-w-full object-contain" />
     </div>
   );
@@ -443,19 +443,18 @@ export default function Home() {
 
             <div className="pt-8">
               <h3 className="text-lg text-gray-600 mb-6">Works with All Major Cards</h3>
-              <div className="flex flex-wrap justify-center gap-6">
+              <div className="flex flex-wrap justify-center gap-4">
                 {cardBrands.map((brand, index) => (
                   <div
                     key={brand.name}
                     className="group relative"
                     style={{ animationDelay: `${index * 150}ms` }}
                   >
-                    <div className={`absolute inset-0 bg-gradient-to-r ${brand.color} rounded-2xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity`}></div>
-                    <div className="relative bg-white rounded-2xl p-6 border-2 border-gray-300 hover:border-[#8c76f0] transition-all hover:scale-105 cursor-pointer shadow-lg hover:shadow-xl w-48">
-                      <div className="flex items-center justify-center mx-auto mb-4">
+                    <div className={`absolute inset-0 bg-gradient-to-r ${brand.color} rounded-xl blur-lg opacity-20 group-hover:opacity-30 transition-opacity`}></div>
+                    <div className="relative bg-white rounded-xl p-4 border-2 border-gray-300 hover:border-[#8c76f0] transition-all hover:scale-105 cursor-pointer shadow-md hover:shadow-lg w-24 h-24">
+                      <div className="flex items-center justify-center w-full h-full">
                         <brand.logo />
                       </div>
-                      <p className="text-center text-gray-900 font-bold text-lg">{brand.name}</p>
                     </div>
                   </div>
                 ))}

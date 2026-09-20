@@ -32,6 +32,10 @@ Deno.serve(async (req: Request) => {
       bank_name,
       bank_account_type,
       mobile_app_enabled,
+      android_min_version,
+      android_min_build,
+      ios_min_version,
+      ios_min_build,
     } = await req.json();
 
     if (!adminId) {
@@ -77,6 +81,10 @@ Deno.serve(async (req: Request) => {
       bank_name: bank_name || "",
       bank_account_type: bank_account_type || "current",
       mobile_app_enabled: mobile_app_enabled !== undefined ? !!mobile_app_enabled : true,
+      android_min_version: android_min_version || "",
+      android_min_build: android_min_build || "",
+      ios_min_version: ios_min_version || "",
+      ios_min_build: ios_min_build || "",
       updated_by: adminId,
       updated_at: new Date().toISOString(),
     };

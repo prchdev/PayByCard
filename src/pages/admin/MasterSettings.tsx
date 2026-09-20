@@ -15,6 +15,8 @@ import {
   Search,
   Landmark,
   Smartphone,
+  Apple,
+  Bot,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -38,6 +40,10 @@ interface MasterSettingsData {
   bank_name: string;
   bank_account_type: string;
   mobile_app_enabled: boolean;
+  android_min_version: string;
+  android_min_build: string;
+  ios_min_version: string;
+  ios_min_build: string;
 }
 
 const EMPTY_SETTINGS: MasterSettingsData = {
@@ -58,6 +64,10 @@ const EMPTY_SETTINGS: MasterSettingsData = {
   bank_name: '',
   bank_account_type: 'current',
   mobile_app_enabled: true,
+  android_min_version: '',
+  android_min_build: '',
+  ios_min_version: '',
+  ios_min_build: '',
 };
 
 export default function MasterSettings() {
@@ -526,6 +536,79 @@ export default function MasterSettings() {
                   }`}
                 />
               </button>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <p className="text-sm font-medium text-gray-900 mb-4">Minimum App Version Requirements</p>
+              <p className="text-xs text-gray-500 mb-4">Users on older app versions will be prompted to update. Leave blank to enforce no minimum.</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-semibold text-gray-700">Android</span>
+                  </div>
+                  <div>
+                    <label htmlFor="android_min_version" className="block text-xs font-medium text-gray-600 mb-1.5">
+                      Minimum Version
+                    </label>
+                    <input
+                      type="text"
+                      id="android_min_version"
+                      value={settings.android_min_version}
+                      onChange={(e) => setSettings({ ...settings, android_min_version: e.target.value })}
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                      placeholder="e.g. 1.2.0"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="android_min_build" className="block text-xs font-medium text-gray-600 mb-1.5">
+                      Minimum Build Number
+                    </label>
+                    <input
+                      type="text"
+                      id="android_min_build"
+                      value={settings.android_min_build}
+                      onChange={(e) => setSettings({ ...settings, android_min_build: e.target.value })}
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                      placeholder="e.g. 42"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Apple className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-semibold text-gray-700">iOS</span>
+                  </div>
+                  <div>
+                    <label htmlFor="ios_min_version" className="block text-xs font-medium text-gray-600 mb-1.5">
+                      Minimum Version
+                    </label>
+                    <input
+                      type="text"
+                      id="ios_min_version"
+                      value={settings.ios_min_version}
+                      onChange={(e) => setSettings({ ...settings, ios_min_version: e.target.value })}
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                      placeholder="e.g. 1.2.0"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="ios_min_build" className="block text-xs font-medium text-gray-600 mb-1.5">
+                      Minimum Build Number
+                    </label>
+                    <input
+                      type="text"
+                      id="ios_min_build"
+                      value={settings.ios_min_build}
+                      onChange={(e) => setSettings({ ...settings, ios_min_build: e.target.value })}
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                      placeholder="e.g. 42"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

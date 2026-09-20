@@ -140,11 +140,10 @@ export default function MasterSettings() {
 
     const formData = new FormData();
     formData.append('file', logoFile);
-    formData.append('userId', 'master-settings');
-    formData.append('fileKey', 'company_logo');
+    formData.append('adminId', adminId || '');
 
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-kyc-file`,
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-upload-logo`,
       {
         method: 'POST',
         headers: {

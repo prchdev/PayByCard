@@ -99,8 +99,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Build the base URL for the KYC link — uses the site URL from env or falls back
-    const siteUrl = Deno.env.get("SITE_URL") || Deno.env.get("SUPABASE_URL") || "";
+    // Build the base URL for the KYC link
+    const siteUrl = "https://paybycard.in";
 
     for (const onboarding of candidates) {
       try {

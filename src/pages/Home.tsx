@@ -308,10 +308,31 @@ export default function Home() {
     </div>
   );
 
+  const AmericanExpressLogo = () => (
+    <div className="flex items-center justify-center w-32 h-32">
+      <img src="/assets/images/major-cards/American-Express-Color.png" alt="American Express" className="max-h-full max-w-full object-contain" />
+    </div>
+  );
+
+  const DinersClubLogo = () => (
+    <div className="flex items-center justify-center w-32 h-32">
+      <img src="/assets/images/major-cards/Diners-Club-logo.png" alt="Diners Club" className="max-h-full max-w-full object-contain" />
+    </div>
+  );
+
+  const DiscoverLogo = () => (
+    <div className="flex items-center justify-center w-32 h-32">
+      <img src="/assets/images/major-cards/Discover-logo.png" alt="Discover" className="max-h-full max-w-full object-contain" />
+    </div>
+  );
+
   const cardBrands = [
     { name: 'Visa', color: 'from-blue-600 to-blue-400', logo: VisaLogo },
     { name: 'Mastercard', color: 'from-red-600 to-orange-400', logo: MastercardLogo },
     { name: 'RuPay', color: 'from-green-600 to-emerald-400', logo: RuPayLogo },
+    { name: 'American Express', color: 'from-blue-500 to-blue-300', logo: AmericanExpressLogo },
+    { name: 'Diners Club', color: 'from-slate-600 to-slate-400', logo: DinersClubLogo },
+    { name: 'Discover', color: 'from-orange-600 to-amber-400', logo: DiscoverLogo },
   ];
 
   const features = [
@@ -323,7 +344,7 @@ export default function Home() {
     {
       icon: CreditCard,
       title: 'All Indian Credit Cards',
-      description: 'Works seamlessly with Visa, Mastercard, and RuPay cards',
+      description: 'Works seamlessly with Visa, Mastercard, RuPay, American Express, Diners Club, and Discover cards',
     },
     {
       icon: Landmark,

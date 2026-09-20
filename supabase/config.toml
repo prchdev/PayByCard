@@ -75,6 +75,9 @@ verify_jwt = false
 
 [functions.admin-save-email-settings]
 verify_jwt = false
+[functions.send-kyc-reminder]
+verify_jwt = false
+
 [functions.admin-upload-logo]
 verify_jwt = false
 

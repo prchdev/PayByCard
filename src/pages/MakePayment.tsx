@@ -156,6 +156,8 @@ export default function MakePayment() {
     lastConfirmedAt?: string;
   } | null>(null);
   const [checkingInvoice, setCheckingInvoice] = useState(false);
+  const [billRequired, setBillRequired] = useState(false);
+  const [checkingBillRequired, setCheckingBillRequired] = useState(false);
   // Check if bill is required whenever amount, category, or beneficiary changes
   useEffect(() => {
     const checkRequirement = async () => {

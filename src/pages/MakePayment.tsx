@@ -1761,7 +1761,7 @@ export default function MakePayment() {
                         type="number"
                         id="amount"
                         value={amount}
-                        onChange={(e) => { setAmount(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.amount; return n; }); }}
+                        onChange={(e) => { setAmount(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.amount; delete n.billFile; return n; }); }}
                         min={paymentLimits?.min_amount || 0}
                         max={paymentLimits?.max_amount || 999999}
                         step="0.01"
@@ -1809,7 +1809,7 @@ export default function MakePayment() {
                         const category = paymentCategories.find(c => c.id === categoryId);
                         if (category) {
                           setSelectedCategory(category);
-                          setFieldErrors(prev => { const n = {...prev}; delete n.category; return n; });
+                          setFieldErrors(prev => { const n = {...prev}; delete n.category; delete n.billFile; return n; });
                         }
                       }}
                       className={`w-full px-4 py-2.5 border-2 rounded-xl focus:ring-4 focus:ring-purple-50 outline-none transition-all ${fieldErrors.category ? 'border-red-500' : 'border-gray-300 focus:border-[#8c76f0]'}`}

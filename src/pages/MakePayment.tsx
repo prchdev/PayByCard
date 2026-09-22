@@ -1909,7 +1909,6 @@ export default function MakePayment() {
                             {invoiceCheck.hasConfirmedInvoice
                               ? 'The previous confirmed invoice for this beneficiary is outside the frequency period for this category. Please upload a new invoice/bill for verification.'
                               : 'No previously confirmed invoice exists for this beneficiary in this category. Please upload an invoice/bill for verification by the admin.'}
-                            {' '}After upload, the transaction will be held for invoice verification by the admin before proceeding.
                           </p>
                         </div>
                       </div>

@@ -148,6 +148,14 @@ export default function MakePayment() {
   const [monthlyLimitExceeded, setMonthlyLimitExceeded] = useState(false);
   const [monthlyLimitInfo, setMonthlyLimitInfo] = useState<{ max: number; total: number } | null>(null);
   const [checkingMonthlyLimit, setCheckingMonthlyLimit] = useState(false);
+  const [invoiceCheck, setInvoiceCheck] = useState<{
+    invoiceRequired: boolean;
+    hasConfirmedInvoice: boolean;
+    canUsePreviousInvoice: boolean;
+    needsInvoiceUpload: boolean;
+    lastConfirmedAt?: string;
+  } | null>(null);
+  const [checkingInvoice, setCheckingInvoice] = useState(false);
   // Check if bill is required whenever amount, category, or beneficiary changes
   useEffect(() => {
     const checkRequirement = async () => {
@@ -213,6 +221,43 @@ export default function MakePayment() {
       }
     };
     checkLimit();
+  }, [selectedCategory, selectedBeneficiary, userId]);
+
+  // Check invoice verification status whenever category or beneficiary changes
+  useEffect(() => {
+    const checkInvoice = async () => {
+      if (!selectedCategory || !selectedBeneficiary) {
+        setInvoiceCheck(null);
+        return;
+      }
+      setCheckingInvoice(true);
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-invoice-verification`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId,
+              beneficiaryId: selectedBeneficiary.id,
+              categoryId: selectedCategory.id,
+            }),
+          }
+        );
+        const result = await response.json();
+        if (response.ok) {
+          setInvoiceCheck(result);
+        }
+      } catch (err) {
+        console.error('Error checking invoice verification:', err);
+      } finally {
+        setCheckingInvoice(false);
+      }
+    };
+    checkInvoice();
   }, [selectedCategory, selectedBeneficiary, userId]);
   const [chargesDetails, setChargesDetails] = useState<ChargesDetails | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -1829,6 +1874,42 @@ export default function MakePayment() {
                     </label>
                     {checkingBillRequired && (
                       <p className="text-xs text-gray-400 mb-1">Checking requirement...</p>
+                    )}
+                    {checkingInvoice && (
+                      <p className="text-xs text-gray-400 mb-1">Checking invoice verification status...</p>
+                    )}
+                    {invoiceCheck && invoiceCheck.canUsePreviousInvoice && (
+                      <div className="flex items-start gap-2.5 bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-2">
+                        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-semibold text-green-800 mb-0.5">Previous Invoice Confirmed</p>
+                          <p className="text-xs text-green-700 leading-relaxed">
+                            A previously uploaded invoice for this beneficiary has been confirmed by the admin
+                            {invoiceCheck.lastConfirmedAt && (
+                              <> on {new Date(invoiceCheck.lastConfirmedAt).toLocaleDateString('en-IN')}</>
+                            )}
+                            . It is still within the frequency period for this category, so you do not need to upload a new invoice. The previous confirmed invoice will be applied to this transaction.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {invoiceCheck && invoiceCheck.needsInvoiceUpload && invoiceCheck.invoiceRequired && (
+                      <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-semibold text-amber-800 mb-0.5">
+                            {invoiceCheck.hasConfirmedInvoice
+                              ? 'Invoice Verification Required — Previous Invoice Expired'
+                              : 'Invoice Verification Required'}
+                          </p>
+                          <p className="text-xs text-amber-700 leading-relaxed">
+                            {invoiceCheck.hasConfirmedInvoice
+                              ? 'The previous confirmed invoice for this beneficiary is outside the frequency period for this category. Please upload a new invoice/bill for verification.'
+                              : 'No previously confirmed invoice exists for this beneficiary in this category. Please upload an invoice/bill for verification by the admin.'}
+                            {' '}After upload, the transaction will be held for invoice verification by the admin before proceeding.
+                          </p>
+                        </div>
+                      </div>
                     )}
                     {billRequired && selectedCategory?.invoice_min_amount > 0 && (
                       <p className="text-xs text-amber-600 mb-1">

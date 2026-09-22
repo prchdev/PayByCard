@@ -89,6 +89,11 @@ interface MerchantRecord {
   address_proof_type: string | null;
   ip_address: string | null;
   kyc_completed_at: string | null;
+  bill_file_url: string | null;
+  invoice_status: string | null;
+  invoice_verified_at: string | null;
+  invoice_rejection_reason: string | null;
+  invoice_confirmed_at: string | null;
 }
 
 const STATUS_FILTERS = [
@@ -181,6 +186,7 @@ function PanImage({ url, digilockerVerified }: { url: string | null; digilockerV
 
 type PayoutResult = { payout: string; error?: string } | null;
 type RefundResult = { refund: 'initiated' | 'failed' | 'no_payment' | 'notified'; refund_id?: string; refund_error?: string; message?: string } | null;
+type InvoiceResult = { success?: boolean; message?: string; invoiceStatus?: string; error?: string } | null;
 
 function DigiLockerDocLinks({ docs }: { docs: { label: string; subtitle: string; url: string }[] }) {
   const { download, loading } = useKycDownload();
@@ -225,15 +231,210 @@ function DigiLockerDocLinks({ docs }: { docs: { label: string; subtitle: string;
   );
 }
 
+function InvoiceStatusBadge({ status }: { status: string | null }) {
+  if (!status || status === 'not_required') {
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">Not Required</span>;
+  }
+  const map: Record<string, { label: string; cls: string }> = {
+    pending_verification: { label: 'Pending Verification', cls: 'bg-amber-100 text-amber-700' },
+    verified: { label: 'Verified', cls: 'bg-green-100 text-green-700' },
+    rejected: { label: 'Rejected', cls: 'bg-red-100 text-red-700' },
+  };
+  const { label, cls } = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-600' };
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+function InvoiceSection({
+  record,
+  canEdit,
+  onInvoiceReview,
+}: {
+  record: MerchantRecord;
+  canEdit: boolean;
+  onInvoiceReview: (paymentId: string, action: 'verified' | 'rejected', reason?: string) => Promise<InvoiceResult>;
+}) {
+  const [invoiceAction, setInvoiceAction] = useState<'verified' | 'rejected' | null>(null);
+  const [invoiceReason, setInvoiceReason] = useState('');
+  const [invoiceSaving, setInvoiceSaving] = useState(false);
+  const [invoiceError, setInvoiceError] = useState('');
+  const [invoiceResult, setInvoiceResult] = useState<InvoiceResult>(null);
+  const [invoiceDone, setInvoiceDone] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
+  const { download, loading } = useKycDownload();
+
+  if (!record.bill_file_url) return null;
+
+  const handleInvoiceSubmit = async () => {
+    if (!invoiceAction) return;
+    if (invoiceAction === 'rejected' && !invoiceReason.trim()) {
+      setInvoiceError('Please provide a rejection reason.');
+      return;
+    }
+    setInvoiceSaving(true);
+    setInvoiceError('');
+    try {
+      const result = await onInvoiceReview(record.payment_id!, invoiceAction, invoiceReason.trim() || undefined);
+      setInvoiceResult(result);
+      setInvoiceDone(true);
+    } catch (e) {
+      setInvoiceError(e instanceof Error ? e.message : 'Action failed');
+    } finally {
+      setInvoiceSaving(false);
+    }
+  };
+
+  const lower = record.bill_file_url.toLowerCase();
+  const isPdf = lower.includes('.pdf');
+  const isImage = lower.includes('.png') || lower.includes('.jpg') || lower.includes('.jpeg');
+
+  return (
+    <div className="bg-white border-2 border-teal-200 rounded-2xl p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <FileText className="w-4 h-4 text-teal-600" />
+        <h3 className="text-sm font-semibold text-gray-800">Invoice / Bill Document</h3>
+        <span className="ml-auto"><InvoiceStatusBadge status={record.invoice_status} /></span>
+      </div>
+
+      {record.invoice_confirmed_at && (
+        <div className="text-xs text-gray-500">
+          Confirmed on {new Date(record.invoice_confirmed_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' })} IST
+        </div>
+      )}
+
+      {record.invoice_status === 'rejected' && record.invoice_rejection_reason && (
+        <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+          <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <div><strong>Rejection reason:</strong> {record.invoice_rejection_reason}</div>
+        </div>
+      )}
+
+      {/* Document preview */}
+      <div>
+        {isImage ? (
+          <>
+            <div className="relative group cursor-pointer w-full max-w-xs" onClick={() => setZoomed(true)}>
+              <img src={record.bill_file_url} alt="Invoice/Bill" className="w-full h-40 object-cover rounded-xl border-2 border-gray-200 group-hover:opacity-90 transition-opacity" />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-xl">
+                <ZoomIn className="w-6 h-6 text-white" />
+              </div>
+            </div>
+            {zoomed && (
+              <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setZoomed(false)}>
+                <div className="relative max-w-3xl w-full">
+                  <button onClick={() => setZoomed(false)} className="absolute -top-10 right-0 text-white hover:text-gray-300">
+                    <X className="w-7 h-7" />
+                  </button>
+                  <img src={record.bill_file_url} alt="Invoice/Bill" className="w-full rounded-xl shadow-2xl" />
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <button
+            onClick={async () => {
+              const signed = await download(record.bill_file_url!);
+              if (signed) window.open(signed, '_blank', 'noopener,noreferrer');
+            }}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 text-sm text-teal-600 hover:text-teal-700 disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+            {loading ? 'Generating...' : `View ${isPdf ? 'PDF' : 'Document'}`}
+          </button>
+        )}
+      </div>
+
+      {/* Invoice review actions — only when pending_verification and not already done */}
+      {record.invoice_status === 'pending_verification' && !invoiceDone && canEdit && record.payment_id && (
+        <div className="space-y-3 border-t border-gray-200 pt-3">
+          <h4 className="text-sm font-semibold text-gray-800">Invoice Decision</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => { setInvoiceAction('verified'); setInvoiceError(''); }}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 font-medium text-sm transition-all ${
+                invoiceAction === 'verified'
+                  ? 'border-green-500 bg-green-50 text-green-700'
+                  : 'border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50'
+              }`}
+            >
+              <CheckCircle className="w-4 h-4" /> Approve Invoice
+            </button>
+            <button
+              onClick={() => { setInvoiceAction('rejected'); setInvoiceError(''); }}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 font-medium text-sm transition-all ${
+                invoiceAction === 'rejected'
+                  ? 'border-red-500 bg-red-50 text-red-700'
+                  : 'border-gray-200 text-gray-700 hover:border-red-300 hover:bg-red-50'
+              }`}
+            >
+              <XCircle className="w-4 h-4" /> Reject Invoice
+            </button>
+          </div>
+
+          {invoiceAction === 'rejected' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Rejection Reason <span className="text-red-500">*</span></label>
+              <textarea
+                value={invoiceReason}
+                onChange={(e) => setInvoiceReason(e.target.value)}
+                rows={2}
+                placeholder="Explain why the invoice is being rejected..."
+                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl text-sm focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all resize-none"
+              />
+            </div>
+          )}
+
+          {invoiceError && (
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {invoiceError}
+            </div>
+          )}
+
+          <button
+            onClick={handleInvoiceSubmit}
+            disabled={!invoiceAction || invoiceSaving}
+            className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {invoiceSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : 'Submit Invoice Decision'}
+          </button>
+        </div>
+      )}
+
+      {/* Invoice result */}
+      {invoiceDone && invoiceResult && (
+        <div className={`flex flex-col gap-2 text-sm border rounded-xl px-4 py-3 ${
+          invoiceResult.success
+            ? 'text-green-700 bg-green-50 border-green-200'
+            : 'text-red-700 bg-red-50 border-red-200'
+        }`}>
+          <div className="flex items-center gap-2 font-semibold">
+            {invoiceResult.success ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <XCircle className="w-4 h-4 flex-shrink-0" />}
+            {invoiceResult.success ? 'Invoice Approved' : 'Invoice Rejected'}
+          </div>
+          <p>{invoiceResult.message}</p>
+          {invoiceResult.error && <p className="text-xs opacity-75">{invoiceResult.error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReviewModal({
   record,
   onClose,
   onReview,
+  onInvoiceReview,
   canEdit,
 }: {
   record: MerchantRecord;
   onClose: () => void;
   onReview: (id: string, action: 'verified' | 'rejected', reason?: string) => Promise<{ payout?: string; refund?: string; refund_id?: string; refund_error?: string; message?: string; error?: string } | null>;
+  onInvoiceReview: (paymentId: string, action: 'verified' | 'rejected', reason?: string) => Promise<InvoiceResult>;
   canEdit: boolean;
 }) {
   const [action, setAction] = useState<'verified' | 'rejected' | null>(null);
@@ -522,6 +723,15 @@ function ReviewModal({
             </div>
           )}
 
+          {/* Invoice / Bill verification section */}
+          {record.bill_file_url && record.invoice_status && record.invoice_status !== 'not_required' && (
+            <InvoiceSection
+              record={record}
+              canEdit={canEdit}
+              onInvoiceReview={onInvoiceReview}
+            />
+          )}
+
           {/* Payout result after approval */}
           {done && action === 'verified' && payoutResult && (
             <div className={`flex flex-col gap-2 text-sm border rounded-xl px-4 py-3 ${
@@ -696,6 +906,23 @@ export default function AdminMerchantKyc() {
       refund_id: data.refund_id,
       refund_error: data.refund_error,
       message: data.message,
+      error: data.error,
+    };
+  };
+
+  const handleInvoiceReview = async (paymentId: string, action: 'verified' | 'rejected', reason?: string) => {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-review-invoice`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId, paymentId, action, rejectionReason: reason }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Action failed');
+    await fetchRecords();
+    return {
+      success: data.success,
+      message: data.message,
+      invoiceStatus: data.invoiceStatus,
       error: data.error,
     };
   };
@@ -1021,6 +1248,7 @@ export default function AdminMerchantKyc() {
           record={selected}
           onClose={() => setSelected(null)}
           onReview={handleReview}
+          onInvoiceReview={handleInvoiceReview}
           canEdit={canEdit}
         />
       )}

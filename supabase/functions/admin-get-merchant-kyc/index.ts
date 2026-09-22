@@ -72,16 +72,26 @@ Deno.serve(withSignedKycUrls(async (req: Request) => {
     const enriched = await Promise.all((records || []).map(async (rec: any) => {
       let payment_reference = null;
       let amount = null;
+      let bill_file_url = null;
+      let invoice_status = null;
+      let invoice_verified_at = null;
+      let invoice_rejection_reason = null;
+      let invoice_confirmed_at = null;
       if (rec.payment_id) {
         const { data: payment } = await supabase
           .from("payments")
-          .select("payment_reference, amount")
+          .select("payment_reference, amount, bill_file_url, invoice_status, invoice_verified_at, invoice_rejection_reason, invoice_confirmed_at")
           .eq("id", rec.payment_id)
           .maybeSingle();
         payment_reference = payment?.payment_reference ?? null;
         amount = payment?.amount ?? null;
+        bill_file_url = payment?.bill_file_url ?? null;
+        invoice_status = payment?.invoice_status ?? null;
+        invoice_verified_at = payment?.invoice_verified_at ?? null;
+        invoice_rejection_reason = payment?.invoice_rejection_reason ?? null;
+        invoice_confirmed_at = payment?.invoice_confirmed_at ?? null;
       }
-      return { ...rec, payment_reference, amount };
+      return { ...rec, payment_reference, amount, bill_file_url, invoice_status, invoice_verified_at, invoice_rejection_reason, invoice_confirmed_at };
     }));
 
     return new Response(

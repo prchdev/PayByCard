@@ -208,6 +208,7 @@ Deno.serve(async (req: Request) => {
         total_amount: parsedTotal,
         payment_reference: paymentReference,
         bill_file_url: billFileUrl || null,
+        invoice_status: billFileUrl ? "pending_verification" : "not_required",
         status: "pending",
         ip_address: ipAddress || "unknown",
         transaction_summary: transactionSummary,

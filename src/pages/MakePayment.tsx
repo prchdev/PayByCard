@@ -244,6 +244,7 @@ export default function MakePayment() {
               userId,
               beneficiaryId: selectedBeneficiary.id,
               categoryId: selectedCategory.id,
+              amount: parseFloat(amount) || 0,
             }),
           }
         );
@@ -258,7 +259,7 @@ export default function MakePayment() {
       }
     };
     checkInvoice();
-  }, [selectedCategory, selectedBeneficiary, userId]);
+  }, [selectedCategory, selectedBeneficiary, userId, amount]);
   const [chargesDetails, setChargesDetails] = useState<ChargesDetails | null>(null);
   const [processing, setProcessing] = useState(false);
   const [kycStatus, setKycStatus] = useState<{ isVerified: boolean; status: string; isRestricted?: boolean; businessCategorySurgeCharge?: number } | null>(null);

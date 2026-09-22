@@ -16,7 +16,7 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { userId, beneficiaryId, categoryId } = await req.json();
+    const { userId, beneficiaryId, categoryId, amount } = await req.json();
 
     if (!userId || !beneficiaryId || !categoryId) {
       return new Response(
@@ -44,6 +44,20 @@ Deno.serve(async (req: Request) => {
     const minAmount = Number(category.invoice_min_amount) || 0;
 
     if (!invoiceRequired) {
+      return new Response(
+        JSON.stringify({
+          invoiceRequired: false,
+          hasConfirmedInvoice: false,
+          canUsePreviousInvoice: false,
+          needsInvoiceUpload: false,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // If invoice_min_amount is set and the payment amount is below it, no invoice needed
+    const paymentAmount = Number(amount) || 0;
+    if (minAmount > 0 && paymentAmount < minAmount) {
       return new Response(
         JSON.stringify({
           invoiceRequired: false,

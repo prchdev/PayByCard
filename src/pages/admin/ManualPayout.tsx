@@ -366,7 +366,10 @@ export default function ManualPayout() {
       p.beneficiary?.beneficiary_name?.toLowerCase().includes(t) ||
       p.beneficiary?.ifsc_code?.toLowerCase().includes(t) ||
       p.payment_reference?.toLowerCase().includes(t);
-    const matchesStatus = !statusFilter || (p.payment_status || p.status) === statusFilter;
+    const rawStatus = p.payment_status || p.status;
+    const matchesStatus = !statusFilter || rawStatus === statusFilter ||
+      (statusFilter === 'processing' && rawStatus === 'pending') ||
+      (statusFilter === 'settlement_pending' && rawStatus === 'settlement_in_progress');
     return matchesSearch && matchesStatus;
   });
 
@@ -458,9 +461,7 @@ export default function ManualPayout() {
               >
                 <option value="">All Statuses</option>
                 <option value="processing">Processing</option>
-                <option value="pending">Processing</option>
                 <option value="settlement_pending">Settlement In Progress</option>
-                <option value="settlement_in_progress">Settlement In Progress</option>
                 <option value="kyc_pending">Merchant Onboarding Required</option>
                 <option value="merchant_kyc_review">Merchant KYC Pending</option>
                 <option value="completed">Completed</option>

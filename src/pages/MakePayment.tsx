@@ -1873,7 +1873,7 @@ export default function MakePayment() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Upload Bill {billRequired ? <span className="text-red-600">*</span> : '(Optional)'}
+                      Upload Agreement/Invoice/Bill {billRequired ? <span className="text-red-600">*</span> : '(Optional)'}
                     </label>
                     {checkingBillRequired && (
                       <p className="text-xs text-gray-400 mb-1">Checking requirement...</p>

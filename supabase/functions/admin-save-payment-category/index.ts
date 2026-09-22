@@ -30,6 +30,7 @@ Deno.serve(async (req: Request) => {
       invoice_required,
       invoice_frequency_months,
       invoice_min_amount,
+      max_payment_per_beneficiary,
     } = await req.json();
 
     if (!adminId) {
@@ -77,6 +78,7 @@ Deno.serve(async (req: Request) => {
     const refundHours = Math.max(0, Math.floor(Number(refund_after_hours) || 0));
     const invoiceFreqMonths = Math.max(0, Math.floor(Number(invoice_frequency_months) || 0));
     const invoiceMinAmount = Math.max(0, Number(invoice_min_amount) || 0);
+    const maxPerBeneficiary = Math.max(0, Number(max_payment_per_beneficiary) || 0);
 
     if (id) {
       const { data: updated, error: updateError } = await supabase
@@ -92,6 +94,7 @@ Deno.serve(async (req: Request) => {
           invoice_required: !!invoice_required,
           invoice_frequency_months: invoice_required ? invoiceFreqMonths : 0,
           invoice_min_amount: invoice_required ? invoiceMinAmount : 0,
+          max_payment_per_beneficiary: maxPerBeneficiary,
           updated_by_admin_id: adminId,
           updated_at: new Date().toISOString(),
         })
@@ -141,6 +144,7 @@ Deno.serve(async (req: Request) => {
         invoice_required: !!invoice_required,
         invoice_frequency_months: invoice_required ? invoiceFreqMonths : 0,
         invoice_min_amount: invoice_required ? invoiceMinAmount : 0,
+        max_payment_per_beneficiary: maxPerBeneficiary,
         created_by_admin_id: adminId,
         updated_by_admin_id: adminId,
         updated_at: new Date().toISOString(),

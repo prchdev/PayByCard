@@ -33,6 +33,7 @@ interface PaymentCategory {
   invoice_required: boolean;
   invoice_frequency_months: number;
   invoice_min_amount: number;
+  max_payment_per_beneficiary: number;
   created_at: string;
   updated_at: string;
 }
@@ -49,6 +50,7 @@ interface CategoryFormData {
   invoice_required: boolean;
   invoice_frequency_months: number;
   invoice_min_amount: number;
+  max_payment_per_beneficiary: number;
 }
 
 const SETTLEMENT_TIME_OPTIONS = [
@@ -69,6 +71,7 @@ const EMPTY_FORM: CategoryFormData = {
   invoice_required: false,
   invoice_frequency_months: 0,
   invoice_min_amount: 0,
+  max_payment_per_beneficiary: 0,
 };
 
 export default function PaymentCategories() {
@@ -177,6 +180,7 @@ export default function PaymentCategories() {
       invoice_required: cat.invoice_required ?? false,
       invoice_frequency_months: cat.invoice_frequency_months ?? 0,
       invoice_min_amount: cat.invoice_min_amount ?? 0,
+      max_payment_per_beneficiary: cat.max_payment_per_beneficiary ?? 0,
     });
     setShowForm(true);
     setMessage(null);
@@ -596,6 +600,41 @@ export default function PaymentCategories() {
               )}
             </div>
 
+            {/* Max Payment Per Beneficiary */}
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label
+                  htmlFor="max_payment_per_beneficiary"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Maximum Permitted Payment Per Beneficiary
+                </label>
+                <div className="relative max-w-xs">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <IndianRupee className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="number"
+                    id="max_payment_per_beneficiary"
+                    min="0"
+                    step="0.01"
+                    value={formData.max_payment_per_beneficiary}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        max_payment_per_beneficiary: Math.max(0, parseFloat(e.target.value) || 0),
+                      }))
+                    }
+                    className="w-full pl-12 pr-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                    placeholder="0.00"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Maximum amount a single beneficiary can receive in this category. Set to 0 for no limit.
+                </p>
+              </div>
+            </div>
+
             {/* Submit */}
             <div className="pt-4 border-t border-gray-200 flex items-center gap-3">
               <button
@@ -659,6 +698,9 @@ export default function PaymentCategories() {
                     Invoice
                   </th>
                   <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Max/Beneficiary
+                  </th>
+                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Card Delay
                   </th>
                   <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -675,7 +717,7 @@ export default function PaymentCategories() {
               <tbody className="divide-y divide-gray-100">
                 {filteredCategories.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center">
+                    <td colSpan={10} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center">
                         <Tag className="w-10 h-10 text-gray-300 mb-3" />
                         <p className="text-gray-500 font-medium">No categories found</p>
@@ -747,6 +789,16 @@ export default function PaymentCategories() {
                           </div>
                         ) : (
                           <span className="text-xs text-gray-400">--</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {cat.max_payment_per_beneficiary > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 text-teal-700 text-xs font-medium rounded-full border border-teal-200">
+                            <IndianRupee className="w-3.5 h-3.5" />
+                            {cat.max_payment_per_beneficiary.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">No limit</span>
                         )}
                       </td>
                       <td className="px-4 py-4 text-center">

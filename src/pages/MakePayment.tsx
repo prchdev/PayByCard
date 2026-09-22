@@ -1902,13 +1902,13 @@ export default function MakePayment() {
                         <div>
                           <p className="text-xs font-semibold text-amber-800 mb-0.5">
                             {invoiceCheck.hasConfirmedInvoice
-                              ? 'Invoice Verification Required — Previous Invoice Expired'
-                              : 'Invoice Verification Required'}
+                              ? 'Agreement/Invoice/Bill Verification Required — Previous Invoice Expired'
+                              : 'Agreement/Invoice/Bill Verification Required'}
                           </p>
                           <p className="text-xs text-amber-700 leading-relaxed">
                             {invoiceCheck.hasConfirmedInvoice
                               ? 'The previous confirmed invoice for this beneficiary is outside the frequency period for this category. Please upload a new invoice/bill for verification.'
-                              : 'No previously confirmed invoice exists for this beneficiary in this category. Please upload an invoice/bill for verification by the admin.'}
+                              : 'No previously confirmed agreement/invoice/bill exists for this beneficiary in this category. Please upload an agreement/invoice/bill for verification by the admin.'}
                           </p>
                         </div>
                       </div>

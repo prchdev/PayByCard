@@ -67,24 +67,45 @@ Deno.serve(withSignedKycUrls(async (req: Request) => {
 
     const kycData = await Promise.all(
       users.map(async (user) => {
-        const [panRes, addressRes, businessRes] = await Promise.all([
+        const [panRes, addressRes, businessRes, merchantRes] = await Promise.all([
           supabase.from("kyc_pan_verification").select("*").eq("user_id", user.id).maybeSingle(),
           supabase.from("kyc_address_proof").select("*").eq("user_id", user.id).maybeSingle(),
           supabase.from("kyc_business_info").select("*").eq("user_id", user.id).maybeSingle(),
+          supabase.from("merchant_onboarding").select("payment_id").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
         ]);
+
+        let invoice_status = null;
+        let bill_file_url = null;
+        let payment_reference = null;
+        if (merchantRes.data?.payment_id) {
+          const { data: payment } = await supabase
+            .from("payments")
+            .select("invoice_status, bill_file_url, payment_reference")
+            .eq("id", merchantRes.data.payment_id)
+            .maybeSingle();
+          invoice_status = payment?.invoice_status ?? null;
+          bill_file_url = payment?.bill_file_url ?? null;
+          payment_reference = payment?.payment_reference ?? null;
+        }
 
         return {
           user,
           pan: panRes.data,
           address: addressRes.data,
           business: businessRes.data,
+          invoice_status,
+          bill_file_url,
+          payment_reference,
         };
       })
     );
 
     let filtered = kycData;
     if (statusFilter && statusFilter !== "all") {
-      filtered = kycData.filter((entry) => {
+      if (statusFilter === "invoice_pending") {
+        filtered = kycData.filter((entry: any) => entry.invoice_status === "pending_verification");
+      } else {
+        filtered = kycData.filter((entry) => {
         const panStatus = entry.pan?.status;
         const addressStatus = entry.address?.status;
         const businessStatus = entry.business?.status;
@@ -119,6 +140,7 @@ Deno.serve(withSignedKycUrls(async (req: Request) => {
 
         return statusFilter === "pending";
       });
+      }
     }
 
     return new Response(

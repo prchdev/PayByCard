@@ -99,6 +99,7 @@ interface MerchantRecord {
 const STATUS_FILTERS = [
   { value: 'all', label: 'All' },
   { value: 'submitted', label: 'KYC In Review' },
+  { value: 'invoice_pending', label: 'Invoice Pending' },
   { value: 'pending', label: 'Pending' },
   { value: 'verified', label: 'Verified' },
   { value: 'rejected', label: 'Rejected' },
@@ -928,6 +929,7 @@ export default function AdminMerchantKyc() {
   };
 
   const filtered = records.filter((r) => {
+    if (statusFilter === 'invoice_pending' && r.invoice_status !== 'pending_verification') return false;
     const q = search.toLowerCase();
     return (
       !q ||
@@ -942,6 +944,7 @@ export default function AdminMerchantKyc() {
   const counts = {
     all: records.length,
     submitted: records.filter((r) => r.status === 'submitted').length,
+    invoice_pending: records.filter((r) => r.invoice_status === 'pending_verification').length,
     pending: records.filter((r) => r.status === 'pending').length,
     verified: records.filter((r) => r.status === 'verified').length,
     rejected: records.filter((r) => r.status === 'rejected').length,
@@ -1159,6 +1162,11 @@ export default function AdminMerchantKyc() {
                           {rec.kyc_method === 'digilocker' && (
                             <span className="mt-1 inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
                               <ScanFace className="w-3 h-3" /> DigiLocker
+                            </span>
+                          )}
+                          {rec.invoice_status === 'pending_verification' && (
+                            <span className="mt-1 block">
+                              <InvoiceStatusBadge status={rec.invoice_status} />
                             </span>
                           )}
                         </td>

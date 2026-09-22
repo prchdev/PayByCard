@@ -93,4 +93,7 @@ export interface KycUserEntry {
   pan: PanRecord | null;
   address: AddressRecord | null;
   business: BusinessRecord | null;
+  invoice_status?: string | null;
+  bill_file_url?: string | null;
+  payment_reference?: string | null;
 }

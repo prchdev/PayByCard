@@ -9,6 +9,7 @@ import ReviewModal from './ReviewModal';
 const STATUS_FILTERS = [
   { value: 'all', label: 'All Users' },
   { value: 'verification_pending', label: 'Needs Review' },
+  { value: 'invoice_pending', label: 'Invoice Pending' },
   { value: 'verified', label: 'Verified' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'pending', label: 'Pending' },
@@ -104,6 +105,7 @@ export default function AdminDashboard() {
   const counts = {
     all: entries.length,
     verification_pending: entries.filter((e) => getOverallStatus(e) === 'verification_pending').length,
+    invoice_pending: entries.filter((e) => e.invoice_status === 'pending_verification').length,
     verified: entries.filter((e) => getOverallStatus(e) === 'verified').length,
     rejected: entries.filter((e) => getOverallStatus(e) === 'rejected').length,
     pending: entries.filter((e) => getOverallStatus(e) === 'pending').length,
@@ -285,6 +287,13 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-4 py-3">
                           <KycStatusBadge status={getOverallStatus(entry)} />
+                          {entry.invoice_status === 'pending_verification' && (
+                            <span className="mt-1 block">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+                                Invoice Pending
+                              </span>
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button

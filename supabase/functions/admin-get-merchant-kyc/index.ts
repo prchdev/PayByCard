@@ -55,7 +55,7 @@ Deno.serve(withSignedKycUrls(async (req: Request) => {
       `)
       .order("created_at", { ascending: false });
 
-    if (statusFilter && statusFilter !== "all") {
+    if (statusFilter && statusFilter !== "all" && statusFilter !== "invoice_pending") {
       query = query.eq("status", statusFilter);
     }
 

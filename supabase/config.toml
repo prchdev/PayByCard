@@ -262,3 +262,6 @@ verify_jwt = false
 
 [functions.dashboard-notifications]
 verify_jwt = false
+
+[functions.check-beneficiary-monthly-limit]
+verify_jwt = false

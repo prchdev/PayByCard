@@ -46,6 +46,7 @@ interface PaymentCategory {
   invoice_required: boolean;
   invoice_frequency_months: number;
   invoice_min_amount: number;
+  max_payment_per_beneficiary: number;
 }
 
 interface PaymentGateway {
@@ -144,6 +145,9 @@ export default function MakePayment() {
   const [selectedPaymentOption, setSelectedPaymentOption] = useState<PaymentOption | null>(null);
   const [billFile, setBillFile] = useState<File | null>(null);
   const [billFileUrl, setBillFileUrl] = useState<string>('');
+  const [monthlyLimitExceeded, setMonthlyLimitExceeded] = useState(false);
+  const [monthlyLimitInfo, setMonthlyLimitInfo] = useState<{ max: number; total: number } | null>(null);
+  const [checkingMonthlyLimit, setCheckingMonthlyLimit] = useState(false);
   // Check if bill is required whenever amount, category, or beneficiary changes
   useEffect(() => {
     const checkRequirement = async () => {
@@ -163,6 +167,53 @@ export default function MakePayment() {
     };
     checkRequirement();
   }, [selectedCategory, selectedBeneficiary, amount]);
+
+  // Check monthly beneficiary limit whenever category or beneficiary changes
+  useEffect(() => {
+    const checkLimit = async () => {
+      if (!selectedCategory || !selectedBeneficiary) {
+        setMonthlyLimitExceeded(false);
+        setMonthlyLimitInfo(null);
+        return;
+      }
+      if (!selectedCategory.max_payment_per_beneficiary || selectedCategory.max_payment_per_beneficiary <= 0) {
+        setMonthlyLimitExceeded(false);
+        setMonthlyLimitInfo(null);
+        return;
+      }
+      setCheckingMonthlyLimit(true);
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-beneficiary-monthly-limit`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId,
+              beneficiaryId: selectedBeneficiary.id,
+              categoryId: selectedCategory.id,
+            }),
+          }
+        );
+        const result = await response.json();
+        if (response.ok) {
+          setMonthlyLimitExceeded(result.limitExceeded);
+          setMonthlyLimitInfo({
+            max: result.maxPerBeneficiary,
+            total: result.totalThisMonth,
+          });
+        }
+      } catch (err) {
+        console.error('Error checking monthly limit:', err);
+      } finally {
+        setCheckingMonthlyLimit(false);
+      }
+    };
+    checkLimit();
+  }, [selectedCategory, selectedBeneficiary, userId]);
   const [chargesDetails, setChargesDetails] = useState<ChargesDetails | null>(null);
   const [processing, setProcessing] = useState(false);
   const [kycStatus, setKycStatus] = useState<{ isVerified: boolean; status: string; isRestricted?: boolean; businessCategorySurgeCharge?: number } | null>(null);
@@ -696,6 +747,14 @@ export default function MakePayment() {
           setFieldErrors({ amount: `Amount cannot exceed ₹${paymentLimits.max_amount.toFixed(2)}` });
           return;
         }
+      }
+
+      if (monthlyLimitExceeded) {
+        setMessage({
+          type: 'error',
+          text: `The maximum permitted payment of ₹${monthlyLimitInfo?.max.toLocaleString('en-IN', { minimumFractionDigits: 2 })} per beneficiary per month for "${selectedCategory.category_name}" has already been reached for ${selectedBeneficiary?.full_name || 'this beneficiary'} this month. You cannot make another payment to this beneficiary in this category until next month.`,
+        });
+        return;
       }
 
       setCurrentStep(3);
@@ -1737,6 +1796,32 @@ export default function MakePayment() {
                       </div>
                     )}
                   </div>
+
+                  {checkingMonthlyLimit && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Checking beneficiary monthly limit...
+                    </div>
+                  )}
+
+                  {monthlyLimitExceeded && monthlyLimitInfo && (
+                    <div className="flex items-start gap-3 bg-red-50 border-2 border-red-300 rounded-xl px-4 py-3.5">
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-bold text-red-900 mb-1">
+                          Monthly Limit Exceeded for this Beneficiary
+                        </p>
+                        <p className="text-xs text-red-800 leading-relaxed">
+                          The maximum permitted payment for "{selectedCategory?.category_name}" is{' '}
+                          ₹{monthlyLimitInfo.max.toLocaleString('en-IN', { minimumFractionDigits: 2 })}{' '}
+                          per beneficiary per month. {selectedBeneficiary?.full_name || 'This beneficiary'}{' '}
+                          has already received payments totaling{' '}
+                          ₹{monthlyLimitInfo.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}{' '}
+                          this month. You cannot proceed with another payment to this beneficiary in this category until next month.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -21,7 +21,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: categories, error } = await supabase
       .from("payment_categories")
-      .select("id, category_name, is_enabled, display_order, receiver_kyc_required, new_card_payment_delay_hours, refund_after_hours, settlement_time")
+      .select("id, category_name, is_enabled, display_order, receiver_kyc_required, new_card_payment_delay_hours, refund_after_hours, settlement_time, invoice_required, invoice_frequency_months, invoice_min_amount")
       .eq("is_enabled", true)
       .order("display_order", { ascending: true });
 

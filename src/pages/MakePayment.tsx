@@ -43,6 +43,9 @@ interface PaymentCategory {
   new_card_payment_delay_hours: number;
   refund_after_hours: number;
   settlement_time: string;
+  invoice_required: boolean;
+  invoice_frequency_months: number;
+  invoice_min_amount: number;
 }
 
 interface PaymentGateway {
@@ -141,6 +144,25 @@ export default function MakePayment() {
   const [selectedPaymentOption, setSelectedPaymentOption] = useState<PaymentOption | null>(null);
   const [billFile, setBillFile] = useState<File | null>(null);
   const [billFileUrl, setBillFileUrl] = useState<string>('');
+  // Check if bill is required whenever amount, category, or beneficiary changes
+  useEffect(() => {
+    const checkRequirement = async () => {
+      if (!selectedCategory || !selectedBeneficiary || !amount) {
+        setBillRequired(false);
+        return;
+      }
+      const amountValue = parseFloat(amount);
+      if (isNaN(amountValue) || amountValue <= 0) {
+        setBillRequired(false);
+        return;
+      }
+      setCheckingBillRequired(true);
+      const required = await checkBillRequired(selectedCategory.id, selectedBeneficiary.id, amountValue);
+      setBillRequired(required);
+      setCheckingBillRequired(false);
+    };
+    checkRequirement();
+  }, [selectedCategory, selectedBeneficiary, amount]);
   const [chargesDetails, setChargesDetails] = useState<ChargesDetails | null>(null);
   const [processing, setProcessing] = useState(false);
   const [kycStatus, setKycStatus] = useState<{ isVerified: boolean; status: string; isRestricted?: boolean; businessCategorySurgeCharge?: number } | null>(null);
@@ -508,6 +530,62 @@ export default function MakePayment() {
     }
   };
 
+  const checkBillRequired = async (
+    categoryId: string,
+    beneficiaryId: string,
+    amountValue: number,
+  ): Promise<boolean> => {
+    const category = paymentCategories.find((c) => c.id === categoryId);
+    if (!category || !category.invoice_required) return false;
+
+    // If amount is less than minimum amount, bill is optional
+    if (category.invoice_min_amount > 0 && amountValue < category.invoice_min_amount) {
+      return false;
+    }
+
+    // If frequency is 0, bill is required for every payment
+    if (category.invoice_frequency_months === 0) {
+      return true;
+    }
+
+    // Check if a bill was submitted for this beneficiary + category within the frequency period
+    try {
+      const frequencyMs = category.invoice_frequency_months * 30 * 24 * 60 * 60 * 1000;
+      const sinceDate = new Date(Date.now() - frequencyMs).toISOString();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-user-transactions`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId, status: 'all', page: 1, limit: 100 }),
+        },
+      );
+      const result = await response.json();
+      if (response.ok && result.payments) {
+        const recentWithBill = result.payments.some((tx: any) => {
+          const txBeneficiaryId = tx.beneficiary_details?.id || tx.beneficiary_id;
+          const txCategoryId = tx.category_details?.id || tx.business_category_id;
+          return (
+            txBeneficiaryId === beneficiaryId &&
+            txCategoryId === categoryId &&
+            tx.bill_file_url &&
+            new Date(tx.created_at) >= new Date(sinceDate)
+          );
+        });
+        // If a bill was submitted within the frequency period, bill is NOT required now
+        return !recentWithBill;
+      }
+    } catch (err) {
+      console.error('Error checking previous bill submissions:', err);
+    }
+
+    // Default to required if we can't check
+    return true;
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -597,6 +675,9 @@ export default function MakePayment() {
       const isBusinessVendorCategory = selectedCategory?.category_name === 'Business, Vendor & Professional Service Payments';
       if (isBusinessVendorCategory && !billFile) {
         errors.billFile = 'Please upload a bill for this payment category';
+      }
+      if (billRequired && !billFile) {
+        errors.billFile = 'Please upload a bill/invoice for this payment';
       }
 
       if (Object.keys(errors).length > 0) {
@@ -1663,8 +1744,21 @@ export default function MakePayment() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Upload Bill {selectedCategory?.category_name === 'Business, Vendor & Professional Service Payments' ? <span className="text-red-600">*</span> : '(Optional)'}
+                      Upload Bill {billRequired ? <span className="text-red-600">*</span> : '(Optional)'}
                     </label>
+                    {checkingBillRequired && (
+                      <p className="text-xs text-gray-400 mb-1">Checking requirement...</p>
+                    )}
+                    {billRequired && selectedCategory?.invoice_min_amount > 0 && (
+                      <p className="text-xs text-amber-600 mb-1">
+                        Invoice required for amounts ≥ ₹{selectedCategory.invoice_min_amount}
+                      </p>
+                    )}
+                    {billRequired && selectedCategory?.invoice_frequency_months > 0 && (
+                      <p className="text-xs text-amber-600 mb-1">
+                        Required every {selectedCategory.invoice_frequency_months} month(s) for this beneficiary
+                      </p>
+                    )}
                     <p className="text-xs text-gray-500 mb-2">PNG, JPEG, or PDF. Max size: 1 MB</p>
 
                     {fieldErrors.billFile && (

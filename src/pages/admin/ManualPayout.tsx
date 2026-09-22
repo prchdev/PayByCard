@@ -20,6 +20,7 @@ import {
   X,
   Download,
   Upload,
+  Filter,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -236,6 +237,7 @@ export default function ManualPayout() {
   const [pageSize, setPageSize] = useState(10);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [axisExporting, setAxisExporting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('');
 
   const adminId = sessionStorage.getItem('adminId') ?? localStorage.getItem('adminId');
 
@@ -356,7 +358,7 @@ export default function ManualPayout() {
 
   const filtered = payouts.filter(p => {
     const t = searchTerm.toLowerCase();
-    return !t ||
+    const matchesSearch = !t ||
       p.payout_reference?.toLowerCase().includes(t) ||
       p.account_holder_name?.toLowerCase().includes(t) ||
       p.sender?.full_name?.toLowerCase().includes(t) ||
@@ -364,6 +366,8 @@ export default function ManualPayout() {
       p.beneficiary?.beneficiary_name?.toLowerCase().includes(t) ||
       p.beneficiary?.ifsc_code?.toLowerCase().includes(t) ||
       p.payment_reference?.toLowerCase().includes(t);
+    const matchesStatus = !statusFilter || (p.payment_status || p.status) === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -445,6 +449,27 @@ export default function ManualPayout() {
             />
           </div>
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <select
+                value={statusFilter}
+                onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+                className="border-2 border-gray-300 rounded-xl px-3 py-2 focus:border-[#8c76f0] focus:outline-none bg-white text-sm text-gray-700"
+              >
+                <option value="">All Statuses</option>
+                <option value="processing">Processing</option>
+                <option value="pending">Processing</option>
+                <option value="settlement_pending">Settlement In Progress</option>
+                <option value="settlement_in_progress">Settlement In Progress</option>
+                <option value="kyc_pending">Merchant Onboarding Required</option>
+                <option value="merchant_kyc_review">Merchant KYC Pending</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="cancelled">Transaction Failed</option>
+                <option value="refunded">Refunded</option>
+                <option value="refund_pending">Refund Pending</option>
+              </select>
+            </div>
             <p className="text-sm text-gray-500 whitespace-nowrap">
               <span className="font-semibold text-gray-800">{filtered.length}</span> pending payout{filtered.length !== 1 ? 's' : ''}
             </p>

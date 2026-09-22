@@ -14,6 +14,9 @@ import {
   ToggleLeft,
   ToggleRight,
   RotateCcw,
+  FileText,
+  Calendar,
+  IndianRupee,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -27,6 +30,9 @@ interface PaymentCategory {
   new_card_payment_delay_hours: number;
   refund_after_hours: number;
   settlement_time: string;
+  invoice_required: boolean;
+  invoice_frequency_months: number;
+  invoice_min_amount: number;
   created_at: string;
   updated_at: string;
 }
@@ -40,6 +46,9 @@ interface CategoryFormData {
   settlement_time: string;
   is_enabled: boolean;
   display_order: number;
+  invoice_required: boolean;
+  invoice_frequency_months: number;
+  invoice_min_amount: number;
 }
 
 const SETTLEMENT_TIME_OPTIONS = [
@@ -57,6 +66,9 @@ const EMPTY_FORM: CategoryFormData = {
   settlement_time: 'instant',
   is_enabled: true,
   display_order: 0,
+  invoice_required: false,
+  invoice_frequency_months: 0,
+  invoice_min_amount: 0,
 };
 
 export default function PaymentCategories() {
@@ -162,6 +174,9 @@ export default function PaymentCategories() {
       settlement_time: cat.settlement_time || 'instant',
       is_enabled: cat.is_enabled,
       display_order: cat.display_order,
+      invoice_required: cat.invoice_required ?? false,
+      invoice_frequency_months: cat.invoice_frequency_months ?? 0,
+      invoice_min_amount: cat.invoice_min_amount ?? 0,
     });
     setShowForm(true);
     setMessage(null);
@@ -481,6 +496,106 @@ export default function PaymentCategories() {
               </div>
             )}
 
+            {/* Invoice/Bill Required */}
+            <div className="grid grid-cols-1 gap-4">
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl hover:border-[#8c76f0] transition-colors cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.invoice_required}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      invoice_required: e.target.checked,
+                      invoice_frequency_months: e.target.checked ? prev.invoice_frequency_months : 0,
+                      invoice_min_amount: e.target.checked ? prev.invoice_min_amount : 0,
+                    }))
+                  }
+                  className="w-5 h-5 text-[#8c76f0] border-gray-300 rounded focus:ring-[#8c76f0]"
+                />
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-[#8c76f0]" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Invoice/Bill Required</p>
+                    <p className="text-xs text-gray-500">
+                      Require users to upload an invoice or bill for this category
+                    </p>
+                  </div>
+                </div>
+              </label>
+
+              {formData.invoice_required && (
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5 space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Frequency */}
+                    <div>
+                      <label
+                        htmlFor="invoice_frequency_months"
+                        className="block text-sm font-medium text-gray-900 mb-2"
+                      >
+                        Ask Every X Months
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <Calendar className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <input
+                          type="number"
+                          id="invoice_frequency_months"
+                          min="0"
+                          step="1"
+                          value={formData.invoice_frequency_months}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              invoice_frequency_months: Math.max(0, parseInt(e.target.value) || 0),
+                            }))
+                          }
+                          className="w-full pl-12 pr-4 py-2.5 border-2 border-blue-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all bg-white"
+                          placeholder="0"
+                        />
+                      </div>
+                      <p className="text-xs text-blue-700 mt-1.5">
+                        Ask for invoice every X months. Set to 0 to ask for every payment.
+                      </p>
+                    </div>
+
+                    {/* Min Amount */}
+                    <div>
+                      <label
+                        htmlFor="invoice_min_amount"
+                        className="block text-sm font-medium text-gray-900 mb-2"
+                      >
+                        Ask Only If Amount Greater Than
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <IndianRupee className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <input
+                          type="number"
+                          id="invoice_min_amount"
+                          min="0"
+                          step="0.01"
+                          value={formData.invoice_min_amount}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              invoice_min_amount: Math.max(0, parseFloat(e.target.value) || 0),
+                            }))
+                          }
+                          className="w-full pl-12 pr-4 py-2.5 border-2 border-blue-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all bg-white"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <p className="text-xs text-blue-700 mt-1.5">
+                        Only ask for invoice if payment amount exceeds this value. Set to 0 to always ask.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Submit */}
             <div className="pt-4 border-t border-gray-200 flex items-center gap-3">
               <button
@@ -541,6 +656,9 @@ export default function PaymentCategories() {
                     Settlement
                   </th>
                   <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Invoice
+                  </th>
+                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Card Delay
                   </th>
                   <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -557,7 +675,7 @@ export default function PaymentCategories() {
               <tbody className="divide-y divide-gray-100">
                 {filteredCategories.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center">
+                    <td colSpan={9} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center">
                         <Tag className="w-10 h-10 text-gray-300 mb-3" />
                         <p className="text-gray-500 font-medium">No categories found</p>
@@ -610,6 +728,26 @@ export default function PaymentCategories() {
                           <Clock className="w-3.5 h-3.5" />
                           {SETTLEMENT_TIME_OPTIONS.find((o) => o.value === cat.settlement_time)?.label || 'Instant'}
                         </span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {cat.invoice_required ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-full border border-indigo-200">
+                              <FileText className="w-3.5 h-3.5" />
+                              Yes
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {cat.invoice_frequency_months > 0
+                                ? `Every ${cat.invoice_frequency_months}mo`
+                                : 'Every payment'}
+                              {cat.invoice_min_amount > 0
+                                ? ` > ₹${cat.invoice_min_amount}`
+                                : ''}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">--</span>
+                        )}
                       </td>
                       <td className="px-4 py-4 text-center">
                         {cat.new_card_payment_delay_hours > 0 ? (

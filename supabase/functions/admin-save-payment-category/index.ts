@@ -27,6 +27,9 @@ Deno.serve(async (req: Request) => {
       settlement_time,
       is_enabled,
       display_order,
+      invoice_required,
+      invoice_frequency_months,
+      invoice_min_amount,
     } = await req.json();
 
     if (!adminId) {
@@ -72,6 +75,8 @@ Deno.serve(async (req: Request) => {
 
     const delayHours = Math.max(0, Math.floor(Number(new_card_payment_delay_hours) || 0));
     const refundHours = Math.max(0, Math.floor(Number(refund_after_hours) || 0));
+    const invoiceFreqMonths = Math.max(0, Math.floor(Number(invoice_frequency_months) || 0));
+    const invoiceMinAmount = Math.max(0, Number(invoice_min_amount) || 0);
 
     if (id) {
       const { data: updated, error: updateError } = await supabase
@@ -84,6 +89,9 @@ Deno.serve(async (req: Request) => {
           settlement_time: settlement_time || 'instant',
           is_enabled: !!is_enabled,
           display_order: Number(display_order) || 0,
+          invoice_required: !!invoice_required,
+          invoice_frequency_months: invoice_required ? invoiceFreqMonths : 0,
+          invoice_min_amount: invoice_required ? invoiceMinAmount : 0,
           updated_by_admin_id: adminId,
           updated_at: new Date().toISOString(),
         })
@@ -130,6 +138,9 @@ Deno.serve(async (req: Request) => {
         settlement_time: settlement_time || 'instant',
         is_enabled: !!is_enabled,
         display_order: Number(display_order) || nextOrder,
+        invoice_required: !!invoice_required,
+        invoice_frequency_months: invoice_required ? invoiceFreqMonths : 0,
+        invoice_min_amount: invoice_required ? invoiceMinAmount : 0,
         created_by_admin_id: adminId,
         updated_by_admin_id: adminId,
         updated_at: new Date().toISOString(),

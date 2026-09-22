@@ -672,10 +672,6 @@ export default function MakePayment() {
       if (!amount) errors.amount = 'Please enter an amount';
       if (!selectedCategory) errors.category = 'Please select a payment category';
 
-      const isBusinessVendorCategory = selectedCategory?.category_name === 'Business, Vendor & Professional Service Payments';
-      if (isBusinessVendorCategory && !billFile) {
-        errors.billFile = 'Please upload a bill for this payment category';
-      }
       if (billRequired && !billFile) {
         errors.billFile = 'Please upload a bill/invoice for this payment';
       }

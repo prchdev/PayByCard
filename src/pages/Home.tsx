@@ -1,7 +1,7 @@
 import {
   CreditCard, Shield, Building2, TrendingUp, Lock, FileCheck, Clock, CheckCircle,
   Landmark, ArrowRight, Banknote, RefreshCw, UserCheck, Briefcase, Home as HomeIcon,
-  Zap, GraduationCap, Bus, Users, Download
+  Zap, GraduationCap, Bus, Users
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -429,16 +429,22 @@ export default function Home() {
               Break payment barriers. Use your credit card to pay bills and expenses—where cards aren't accepted.
             </p>
 
-            <div className="pt-6">
+            <div className="pt-6 flex flex-col items-center gap-3">
               <a
                 href="https://play.google.com/store/apps/details?id=in.paybycard.app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group relative inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                className="group inline-block transition-all duration-300 hover:scale-105"
               >
-                <Download className="w-5 h-5" />
-                Download Android Application
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                  alt="Get it on Google Play"
+                  className="h-16 w-auto"
+                />
               </a>
+              <p className="text-sm text-gray-500">
+                Currently the PayByCard application is available only on the Google Play Store. We do not have an iOS application.
+              </p>
             </div>
 
             <div className="flex flex-wrap justify-center gap-4 pt-8">

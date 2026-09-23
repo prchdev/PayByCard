@@ -1,7 +1,7 @@
 import {
   CreditCard, Shield, Building2, TrendingUp, Lock, FileCheck, Clock, CheckCircle,
   Landmark, ArrowRight, Banknote, RefreshCw, UserCheck, Briefcase, Home as HomeIcon,
-  Zap, GraduationCap, Bus, Users
+  Zap, GraduationCap, Bus, Users, Download
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -428,6 +428,18 @@ export default function Home() {
             <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto">
               Break payment barriers. Use your credit card to pay bills and expenses—where cards aren't accepted.
             </p>
+
+            <div className="pt-6">
+              <a
+                href="https://play.google.com/store/apps/details?id=in.paybycard.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-semibold rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+              >
+                <Download className="w-5 h-5" />
+                Download Android Application
+              </a>
+            </div>
 
             <div className="flex flex-wrap justify-center gap-4 pt-8">
               {['Instant Processing', 'Zero Hassle', 'Maximum Rewards', 'Complete Security'].map((benefit, index) => (

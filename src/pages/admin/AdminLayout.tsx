@@ -126,10 +126,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const adminId = localStorage.getItem('adminId');
 
   useEffect(() => {
-    if (adminId) {
-      fetchUserPermissions();
+    const sessionToken = sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session');
+    if (!adminId || !sessionToken) {
+      sessionStorage.removeItem('adminId');
+      sessionStorage.removeItem('adminEmail');
+      sessionStorage.removeItem('adminName');
+      sessionStorage.removeItem('pbc_admin_session');
+      localStorage.removeItem('adminId');
+      localStorage.removeItem('adminRole');
+      localStorage.removeItem('pbc_admin_session');
+      navigate('/admin/login');
+      return;
     }
-  }, [adminId]);
+    fetchUserPermissions();
+  }, [adminId, navigate]);
 
   const fetchUserPermissions = async () => {
     try {

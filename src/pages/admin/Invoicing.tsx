@@ -105,7 +105,7 @@ export default function Invoicing() {
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const adminSessionToken = sessionStorage.getItem('adminSessionToken') || '';
+  const adminSessionToken = sessionStorage.getItem('pbc_admin_session') || '';
 
   const getSignedUrl = async (documentId: string, entityType: 'invoice' | 'payment'): Promise<string | null> => {
     try {

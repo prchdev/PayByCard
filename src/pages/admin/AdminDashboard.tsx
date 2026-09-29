@@ -63,6 +63,14 @@ export default function AdminDashboard() {
       navigate('/admin/login');
       return;
     }
+    const sessionToken = sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session');
+    if (!sessionToken) {
+      sessionStorage.clear();
+      localStorage.removeItem('adminId');
+      localStorage.removeItem('adminRole');
+      navigate('/admin/login');
+      return;
+    }
     fetchList(statusFilter);
   }, [adminId, statusFilter]);
 

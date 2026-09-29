@@ -989,15 +989,7 @@ export default function Invoicing() {
                         </div>
                       </div>
                     ))}
-                    {canEdit && viewInvoice.invoice_status !== 'cancelled' && (
-                      <FileUploadButton
-                        label="Attach Invoice File (PDF/Image)"
-                        accept="image/jpeg,image/png,image/webp,application/pdf"
-                        uploading={uploadingDoc === `invoice_${viewInvoice.id}_invoice_pdf`}
-                        onFile={(file) => uploadFile(file, 'invoice_pdf', 'invoice', viewInvoice.id)}
-                      />
-                    )}
-                    {(viewInvoice.documents || []).length === 0 && !canEdit && (
+                    {(viewInvoice.documents || []).length === 0 && (
                       <p className="text-sm text-gray-400 py-2 text-center">No documents attached</p>
                     )}
                   </div>
@@ -1203,16 +1195,6 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
       <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</p>
       <p className="text-sm text-gray-700 mt-0.5 capitalize">{value || '—'}</p>
     </div>
-  );
-}
-
-function FileUploadButton({ label, accept, uploading, onFile, compact }: { label: string; accept: string; uploading: boolean; onFile: (file: File) => void; compact?: boolean }) {
-  return (
-    <label className={`flex items-center gap-1.5 ${compact ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'} font-medium text-[#8c76f0] bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-      {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-      {label}
-      <input type="file" accept={accept} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} />
-    </label>
   );
 }
 

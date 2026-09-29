@@ -52,7 +52,7 @@ Deno.serve(withUserSession(async (req: Request) => {
     if (!userId) return err("Unauthorized: userId is required", 401);
     const { data: userRow, error: userErr } = await supabase
       .from("users")
-      .select("id, is_disabled")
+      .select("id, is_disabled, full_name, first_name, last_name, email, mobile_number")
       .eq("id", userId)
       .maybeSingle();
     if (userErr || !userRow) return err("Unauthorized", 401);
@@ -118,6 +118,60 @@ Deno.serve(withUserSession(async (req: Request) => {
     });
     if (isDuplicate) {
       return err("A duplicate payment was submitted within the last 30 seconds. Please wait before trying again.", 429);
+    }
+
+    // ── Self-transfer check ────────────────────────────────────────────────
+    // Block payments to beneficiaries that match the logged-in user's identity,
+    // even if the beneficiary was created before the save-beneficiary check.
+    const { data: selfBen } = await supabase
+      .from("beneficiaries")
+      .select("full_name, email, mobile, pan_number")
+      .eq("id", beneficiaryId)
+      .maybeSingle();
+    if (selfBen) {
+      const normalize = (s: string) => (s || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const userFullName = normalize(
+        userRow.full_name ||
+        `${userRow.first_name || ""} ${userRow.last_name || ""}`.trim()
+      );
+      const bName = normalize(selfBen.full_name || "");
+      const nameMatch = userFullName && bName && userFullName === bName;
+
+      const userEmail = normalize(userRow.email || "");
+      const bEmail = normalize(selfBen.email || "");
+      const emailMatch = userEmail && bEmail && userEmail === bEmail;
+
+      const userMobile = (userRow.mobile_number || "").replace(/\D/g, "").slice(-10);
+      const bMobile = (selfBen.mobile || "").replace(/\D/g, "").slice(-10);
+      const mobileMatch = userMobile && bMobile && userMobile === bMobile;
+
+      let panMatch = false;
+      if (selfBen.pan_number) {
+        const { data: panRecord } = await supabase
+          .from("kyc_pan_verification")
+          .select("pan_number")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (panRecord?.pan_number) {
+          panMatch = panRecord.pan_number.trim().toUpperCase() === selfBen.pan_number.trim().toUpperCase();
+        }
+      }
+
+      if (emailMatch || mobileMatch || panMatch || nameMatch) {
+        const matchedField = panMatch ? "PAN number"
+          : nameMatch ? "name"
+          : emailMatch ? "email address"
+          : "mobile number";
+        return new Response(
+          JSON.stringify({
+            error:
+              `Sending money to your own account using this platform is strictly prohibited as per RBI norms. ` +
+              `The beneficiary ${matchedField} matches your registered account.`,
+            self_transfer: true,
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const { data: gatewaySettings, error: gatewayError } = await supabase

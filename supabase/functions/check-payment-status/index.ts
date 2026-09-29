@@ -1,10 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
+import { serveUser } from "../_shared/session.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 async function checkCashFreeStatus(payment: any, gateway: any, isTestMode: boolean) {
@@ -186,7 +187,7 @@ async function checkPhonePeStatus(payment: any, gateway: any, isTestMode: boolea
   };
 }
 
-Deno.serve(async (req: Request) => {
+serveUser(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -330,7 +331,7 @@ Deno.serve(async (req: Request) => {
   } catch (error: any) {
     console.error("Check payment status error:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message || "Internal server error" }),
+      JSON.stringify({ success: false, error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -457,3 +458,4 @@ async function triggerAutoPayout(supabase: any, payment: any, gateway: any) {
 
 
 // redeploy
+// redeploy-1790387697

@@ -5,8 +5,13 @@ import { issueSessionToken } from "../_shared/session.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
 };
+
+// One wording for every credential failure, so responses never reveal whether an
+// account exists or whether it is locked.
+const GENERIC_LOGIN_FAILURE =
+  'Invalid email or password, or the account is temporarily locked after too many failed attempts. Please try again later or reset your password.';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 30;
@@ -49,7 +54,7 @@ Deno.serve(async (req: Request) => {
     const emailRegex = /^[a-zA-Z0-9._%+\-]{1,64}@[a-zA-Z0-9.\-]{1,255}\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(String(email).trim())) {
       return new Response(
-        JSON.stringify({ error: 'Invalid email or password' }),
+        JSON.stringify({ error: GENERIC_LOGIN_FAILURE }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -62,7 +67,7 @@ Deno.serve(async (req: Request) => {
 
     if (userError || !user) {
       return new Response(
-        JSON.stringify({ error: 'Invalid email or password' }),
+        JSON.stringify({ error: GENERIC_LOGIN_FAILURE }),
         {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -72,14 +77,12 @@ Deno.serve(async (req: Request) => {
 
     // Check if account is locked
     if (user.locked_until && new Date(user.locked_until) > new Date()) {
-      const minutesLeft = Math.ceil((new Date(user.locked_until).getTime() - Date.now()) / 60000);
       return new Response(
         JSON.stringify({
-          error: `Your account is temporarily locked due to too many failed login attempts. Please try again in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''} or reset your password using Forgot Password.`,
-          isLocked: true,
+          error: GENERIC_LOGIN_FAILURE,
         }),
         {
-          status: 403,
+          status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -105,20 +108,18 @@ Deno.serve(async (req: Request) => {
       if (shouldLock) {
         return new Response(
           JSON.stringify({
-            error: `Your account has been locked after ${MAX_FAILED_ATTEMPTS} failed login attempts. Please reset your password using Forgot Password or try again in ${LOCKOUT_MINUTES} minutes.`,
-            isLocked: true,
+            error: GENERIC_LOGIN_FAILURE,
           }),
           {
-            status: 403,
+            status: 401,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
       }
 
-      const remaining = MAX_FAILED_ATTEMPTS - newAttempts;
       return new Response(
         JSON.stringify({
-          error: `Invalid email or password. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining before account is locked.`,
+          error: GENERIC_LOGIN_FAILURE,
         }),
         {
           status: 401,
@@ -297,7 +298,7 @@ Deno.serve(async (req: Request) => {
     console.error('Login error:', error);
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : 'Login failed',
+        error: "An unexpected error occurred. Please try again.",
       }),
       {
         status: 500,
@@ -308,3 +309,4 @@ Deno.serve(async (req: Request) => {
 });
 
 // redeploy
+// redeploy-1790387697

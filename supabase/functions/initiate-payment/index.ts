@@ -1,10 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { withUserSession } from "../_shared/session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 const MAX_AMOUNT = 1_000_000;
@@ -12,13 +13,13 @@ const MIN_AMOUNT = 1;
 const MAX_STR = 500;
 
 function err(msg: string, status = 400) {
-  return new Response(JSON.stringify({ error: msg }), {
+  return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(withUserSession(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -225,7 +226,7 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           error: "Failed to create payment",
-          details: paymentError.message,
+          details: undefined,
           code: paymentError.code,
           hint: paymentError.hint
         }),
@@ -292,7 +293,7 @@ Deno.serve(async (req: Request) => {
       }
     );
   }
-});
+}));
 
 function extractSingleCardType(cardTypeName: string): string | null {
   const normalized = cardTypeName.toLowerCase();
@@ -719,7 +720,7 @@ async function generatePaymentReference(supabase: any): Promise<string> {
   while (attempts < maxAttempts) {
     const date = new Date();
     const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
-    const randomNum = Math.floor(Math.random() * 1000000).toString().padStart(6, "0");
+    const randomNum = Array.from(crypto.getRandomValues(new Uint32Array(1)))[0].toString().padStart(6, "0").slice(-6);
     const reference = `PAY-${dateStr}-${randomNum}`;
 
     const { data } = await supabase

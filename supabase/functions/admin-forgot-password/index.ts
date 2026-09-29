@@ -4,7 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 function generateOTP(): string {
@@ -45,12 +45,11 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (adminError || !admin) {
+      // Same answer for a known and an unknown address, so this form cannot be used
+      // to discover administrator accounts.
       return new Response(
-        JSON.stringify({ error: "Admin account not found" }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ success: true, message: "If that account exists, an OTP has been sent." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -181,3 +180,4 @@ Deno.serve(async (req: Request) => {
 });
 
 // redeploy
+// redeploy-1790387697

@@ -80,6 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem('userId');
     sessionStorage.removeItem('userEmail');
     sessionStorage.removeItem('isRestricted');
+    sessionStorage.removeItem('pbc_session');
+    localStorage.removeItem('pbc_session');
     setIsAuthenticated(false);
     setUserId(null);
     setUserEmail(null);

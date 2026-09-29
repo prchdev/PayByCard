@@ -87,6 +87,7 @@ export default function AdminLogin() {
       sessionStorage.setItem('adminEmail', data.email);
       sessionStorage.setItem('adminName', data.fullName);
       sessionStorage.setItem('adminRole', data.role);
+      if (data.sessionToken) sessionStorage.setItem('pbc_admin_session', data.sessionToken);
       localStorage.setItem('adminId', data.adminId);
       localStorage.setItem('adminRole', data.role);
 

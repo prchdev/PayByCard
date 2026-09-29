@@ -2,10 +2,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { withSignedKycUrls } from "../_shared/kycUrls.ts";
 
+import { serveAdmin } from "../_shared/session.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 function deriveDisplayStatus(payment: any, payout: any): string {
@@ -23,7 +24,7 @@ function deriveDisplayStatus(payment: any, payout: any): string {
   return "processing";
 }
 
-Deno.serve(withSignedKycUrls(async (req: Request) => {
+serveAdmin(withSignedKycUrls(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -236,7 +237,7 @@ Deno.serve(withSignedKycUrls(async (req: Request) => {
     );
   } catch (error: any) {
     console.error("Error in admin-get-user-summary:", error);
-    return new Response(JSON.stringify({ error: error.message || "Internal server error" }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -245,3 +246,4 @@ Deno.serve(withSignedKycUrls(async (req: Request) => {
 
 
 // redeploy
+// redeploy-1790387697

@@ -27,7 +27,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 // ─── Terminal gateway_settlement_status values (skip re-checking) ─────────────
@@ -277,7 +277,7 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     console.error("check-settlement-status error:", err);
     return new Response(
-      JSON.stringify({ success: false, error: err?.message }),
+      JSON.stringify({ success: false, error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

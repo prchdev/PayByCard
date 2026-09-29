@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { isInternalCall } from "../_shared/session.ts";
 
 /**
  * auto-payout — FIFO batch payout processor (runs every 10 min via pg_cron)
@@ -26,7 +27,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 const SUPABASE_URL = () => Deno.env.get("SUPABASE_URL")!;
@@ -275,14 +276,14 @@ async function getRazorpayBalance(gateway: any, env: string): Promise<{ balance:
     if (!target) {
       const msg = `No matching banking account. count=${items.length}, configured_account=${accountNumber || "(none)"}`;
       console.warn(`[getRazorpayBalance] ${msg}`);
-      return { balance: null, error: msg };
+      return { balance: null, error: "An unexpected error occurred. Please try again." };
     }
 
     const raw = target.balance;
     if (raw == null) {
       const msg = `balance field missing: ${JSON.stringify(target)}`;
       console.warn(`[getRazorpayBalance] ${msg}`);
-      return { balance: null, error: msg };
+      return { balance: null, error: "An unexpected error occurred. Please try again." };
     }
     const parsed = typeof raw === "number" ? raw : parseFloat(String(raw));
     if (isNaN(parsed)) {
@@ -292,7 +293,7 @@ async function getRazorpayBalance(gateway: any, env: string): Promise<{ balance:
   } catch (e: any) {
     const msg = `Exception: ${e?.message}`;
     console.error(`[getRazorpayBalance] ${msg}`);
-    return { balance: null, error: msg };
+    return { balance: null, error: "An unexpected error occurred. Please try again." };
   }
 }
 
@@ -1109,6 +1110,14 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  // Reject public calls — auto-payout is only callable by cron or internal function-to-function
+  if (!isInternalCall(req)) {
+    return new Response(
+      JSON.stringify({ error: "Access denied" }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   const startedAt = Date.now();
   const results: { id: string; reference: string; action: string; error?: string }[] = [];
 
@@ -1465,7 +1474,7 @@ Deno.serve(async (req: Request) => {
               id:        payment.id,
               reference: payment.payment_reference,
               action:    "skipped_insufficient_balance",
-              error:     axisData.message || "Insufficient balance — will retry next run",
+              error: "Insufficient balance — will retry next run",
             });
             continue;
           }
@@ -1737,7 +1746,7 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     console.error("auto-payout fatal error:", err);
     return new Response(
-      JSON.stringify({ success: false, error: err?.message }),
+      JSON.stringify({ success: false, error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

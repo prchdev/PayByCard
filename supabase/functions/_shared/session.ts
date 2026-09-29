@@ -106,7 +106,12 @@ export function withSession(kind: "admin" | "user", idFields: string[]) {
       const session = await readSessionToken(req.headers.get(header));
       if (!session || session.kind !== kind) return unauthorized();
 
-      const hasBody = req.method !== "GET" && req.method !== "HEAD";
+      // Only JSON bodies are re-read and re-serialised. Multipart/binary bodies are
+      // forwarded untouched so file uploads are not corrupted; for those the token
+      // itself is the identity and the handler checks ownership.
+      const contentType = (req.headers.get("content-type") || "").toLowerCase();
+      const hasBody =
+        req.method !== "GET" && req.method !== "HEAD" && contentType.includes("application/json");
       let raw = "";
       if (hasBody) {
         try {
@@ -165,3 +170,68 @@ export function withSession(kind: "admin" | "user", idFields: string[]) {
 
 export const withAdminSession = withSession("admin", ["adminId", "admin_id"]);
 export const withUserSession = withSession("user", ["userId", "user_id"]);
+
+/**
+ * Drop-in replacements for `Deno.serve` that additionally require a valid session
+ * token of the given kind. Internal service-role calls and CORS preflights pass
+ * through untouched.
+ */
+export function serveAdmin(handler: Handler): void {
+  Deno.serve(withAdminSession(handler));
+}
+
+export function serveUser(handler: Handler): void {
+  Deno.serve(withUserSession(handler));
+}
+
+/**
+ * For endpoints that serve both the customer app and the admin console. Requests the
+ * predicate marks as customer-facing need any valid session; everything else needs a
+ * valid admin session whose id matches the one claimed in the request.
+ */
+export function serveMixed(
+  isCustomerFacing: (req: Request) => boolean,
+  handler: Handler,
+): void {
+  Deno.serve(async (req: Request) => {
+    if (req.method === "OPTIONS") return handler(req);
+    if (isInternalCall(req)) return handler(req);
+    let customerFacing = false;
+    try {
+      customerFacing = isCustomerFacing(req);
+    } catch {
+      customerFacing = false;
+    }
+    if (customerFacing) {
+      const user = await readSessionToken(req.headers.get(SESSION_HEADER));
+      const admin = await readSessionToken(req.headers.get(ADMIN_SESSION_HEADER));
+      if (!user && !admin) return unauthorized();
+      return handler(req);
+    }
+    return withAdminSession(handler)(req);
+  });
+}
+
+/**
+ * For endpoints the customer app and the admin console both call with the same shape
+ * (support tickets). A valid admin session is accepted as-is; otherwise a valid
+ * customer session is required and the claimed customer id must match it.
+ */
+export function serveUserOrAdmin(handler: Handler): void {
+  Deno.serve(async (req: Request) => {
+    if (req.method === "OPTIONS") return handler(req);
+    if (isInternalCall(req)) return handler(req);
+    const admin = await readSessionToken(req.headers.get(ADMIN_SESSION_HEADER));
+    if (admin && admin.kind === "admin") return handler(req);
+    return withUserSession(handler)(req);
+  });
+}
+
+/** Rejects any caller that is not another edge function using the service-role key. */
+export function serveInternal(handler: Handler): void {
+  Deno.serve((req: Request) => {
+    if (req.method === "OPTIONS") return handler(req);
+    if (!isInternalCall(req)) return unauthorized();
+    return handler(req);
+  });
+}

@@ -49,7 +49,7 @@ export default function KYCVerification() {
 
     if (cfId) {
       if (window.opener && !window.opener.closed) {
-        window.opener.postMessage({ cf_verification_id: cfId }, '*');
+        window.opener.postMessage({ cf_verification_id: cfId }, window.location.origin);
         window.close();
       } else {
         sessionStorage.setItem('cf_verification_id', cfId);

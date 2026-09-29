@@ -1,10 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { isInternalCall, serveUser } from "../_shared/session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 const SUPABASE_URL = () => Deno.env.get("SUPABASE_URL")!;
@@ -584,7 +585,7 @@ async function triggerPayout(supabase: any, payment: any) {
   }
 }
 
-Deno.serve(async (req: Request) => {
+serveUser(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -770,7 +771,7 @@ Deno.serve(async (req: Request) => {
 
       if (updateError) {
         return new Response(
-          JSON.stringify({ error: "Failed to update transaction status", details: updateError.message }),
+          JSON.stringify({ error: "Failed to update transaction status", details: undefined }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -801,7 +802,7 @@ Deno.serve(async (req: Request) => {
 
     if (insertError) {
       return new Response(
-        JSON.stringify({ error: "Failed to save transaction status", details: insertError.message }),
+        JSON.stringify({ error: "Failed to save transaction status", details: undefined }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -821,3 +822,4 @@ Deno.serve(async (req: Request) => {
 
 
 // redeploy
+// redeploy-1790387697

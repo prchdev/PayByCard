@@ -23,13 +23,8 @@ export function useAdminPermission(pageKey: string): PermissionState {
       return;
     }
 
-    // super_admin always has full access — skip the fetch
-    if (adminRole === 'super_admin') {
-      setState({ canView: true, canEdit: true, loading: false });
-      return;
-    }
-
-    // Dashboard and Change Password are always accessible to all admin users
+    // super_admin always has full access — but verify server-side via get-user-permissions
+    // Never trust client-stored role alone for authorization decisions.
     if (pageKey === 'dashboard' || pageKey === 'change-password') {
       setState({ canView: true, canEdit: false, loading: false });
       return;

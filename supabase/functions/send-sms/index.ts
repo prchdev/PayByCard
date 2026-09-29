@@ -1,9 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 
+import { serveInternal } from "../_shared/session.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
 };
 
 // message_type values and their enabled-flag + DLT template ID column mapping
@@ -97,7 +98,7 @@ async function sendFast2SMS(
       return { success: false, error: data.message || JSON.stringify(data) || 'Fast2SMS error' };
     }
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Fast2SMS request failed' };
+    return { success: false, error: "An unexpected error occurred. Please try again."};
   }
 }
 
@@ -149,7 +150,7 @@ async function sendMSG91(
       return { success: false, error: data.message || JSON.stringify(data) || 'MSG91 error' };
     }
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'MSG91 request failed' };
+    return { success: false, error: "An unexpected error occurred. Please try again."};
   }
 }
 
@@ -203,11 +204,11 @@ async function sendSMSGatewayHub(
       return { success: false, error: data.ErrorMessage || JSON.stringify(data) || 'SMSGatewayHub error' };
     }
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'SMSGatewayHub request failed' };
+    return { success: false, error: "An unexpected error occurred. Please try again."};
   }
 }
 
-Deno.serve(async (req: Request) => {
+serveInternal(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -341,3 +342,4 @@ Deno.serve(async (req: Request) => {
 });
 
 // redeploy
+// redeploy-1790387697

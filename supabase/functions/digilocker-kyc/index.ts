@@ -3,10 +3,11 @@ import { withSignedKycUrls } from "../_shared/kycUrls.ts";
 import { getKycPolicyAttachment } from "../_shared/kycPolicyAttachment.ts";
 import { lookupStateFromPincode } from "../_shared/pincodeLookup.ts";
 
+import { serveUser } from "../_shared/session.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
 };
 
 interface DigiLockerKycRequest {
@@ -1157,7 +1158,7 @@ async function writeKycRecords(supabase: ReturnType<typeof createClient>, userId
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
-Deno.serve(async (req: Request) => {
+serveUser(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -1298,7 +1299,7 @@ Deno.serve(async (req: Request) => {
           const msg = (e as Error).message;
           if (msg === 'DRIVING_LICENSE_UNAVAILABLE' || msg === 'ADDRESS_PROOF_UNAVAILABLE') {
             return new Response(
-              JSON.stringify({ success: false, autoApproved: false, error: msg }),
+              JSON.stringify({ success: false, autoApproved: false, error: "An unexpected error occurred. Please try again." }),
               { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
@@ -1400,7 +1401,7 @@ Deno.serve(async (req: Request) => {
     const msg = error instanceof Error ? error.message : 'An error occurred';
     console.error('DigiLocker KYC error:', msg);
     return new Response(
-      JSON.stringify({ error: msg }),
+      JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
@@ -1408,3 +1409,4 @@ Deno.serve(async (req: Request) => {
 
 
 // redeploy
+// redeploy-1790387697

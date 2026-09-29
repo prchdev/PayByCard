@@ -1,10 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { issueSessionToken } from "../_shared/session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-admin-session, x-pbc-session",
 };
 
 Deno.serve(async (req: Request) => {
@@ -76,12 +77,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const sessionToken = await issueSessionToken("admin", admin.id);
+
     return new Response(
       JSON.stringify({
         adminId: admin.id,
         email: admin.email,
         fullName: admin.full_name,
         role: admin.role,
+        sessionToken,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

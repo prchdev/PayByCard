@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X, Lock, Shield, Home, FileCheck, Users, Mail, MessageSquare, CreditCard, IndianRupee, LayoutDashboard, DollarSign, Tag, Settings, Wallet, AlertTriangle, Undo2, BarChart2, UserSearch, ScanFace, ShieldCheck, Bell, Send, Smartphone } from 'lucide-react';
+import { LogOut, Menu, X, Lock, Shield, Home, FileCheck, Users, Mail, MessageSquare, CreditCard, IndianRupee, LayoutDashboard, DollarSign, Tag, Settings, Wallet, AlertTriangle, Undo2, BarChart2, UserSearch, ScanFace, ShieldCheck, Bell, Send, Smartphone, Building2, ReceiptText } from 'lucide-react';
 import Footer from '../../components/Footer';
 import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import SessionTimeoutModal from '../../components/SessionTimeoutModal';
@@ -42,6 +42,8 @@ const ICON_MAP: Record<string, any> = {
   Bell,
   Send,
   Smartphone,
+  Building2,
+  ReceiptText,
 };
 
 interface MenuSection {
@@ -93,6 +95,13 @@ const MENU_SECTIONS: MenuSection[] = [
       { key: 'bulk-email', name: 'Bulk Email', path: '/admin/bulk-email', icon: 'Mail' },
       { key: 'bulk-sms', name: 'Bulk SMS', path: '/admin/bulk-sms', icon: 'MessageSquare' },
       { key: 'mobile-notifications', name: 'Mobile Notifications', path: '/admin/mobile-notifications', icon: 'Smartphone' },
+    ],
+  },
+  {
+    label: 'Finance',
+    items: [
+      { key: 'vendor-management', name: 'Vendor Management', path: '/admin/vendor-management', icon: 'Building2' },
+      { key: 'invoicing', name: 'Invoicing', path: '/admin/invoicing', icon: 'ReceiptText' },
     ],
   },
   {
@@ -185,6 +194,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     sessionStorage.removeItem('adminName');
     localStorage.removeItem('adminId');
     localStorage.removeItem('adminRole');
+    sessionStorage.removeItem('pbc_admin_session');
+    localStorage.removeItem('pbc_admin_session');
     navigate('/admin/login');
   };
 

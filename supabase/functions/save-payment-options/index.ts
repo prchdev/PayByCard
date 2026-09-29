@@ -1,10 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
+import { serveAdmin } from "../_shared/session.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 interface PaymentCategoryUpdate {
@@ -25,7 +26,7 @@ interface PaymentCategoryUpdate {
   updated_by_ip?: string;
 }
 
-Deno.serve(async (req: Request) => {
+serveAdmin(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -109,13 +110,13 @@ Deno.serve(async (req: Request) => {
 
         if (error) {
           console.error('Update error for category', category.id, ':', JSON.stringify(error));
-          return { categoryId: category.id, error: error.message, details: error };
+          return { categoryId: category.id, error: "An unexpected error occurred. Please try again.", details: error };
         }
 
         return null;
       } catch (err) {
         console.error('Exception updating category', category.id, ':', err);
-        return { categoryId: category.id, error: err instanceof Error ? err.message : String(err) };
+        return { categoryId: category.id, error: "An unexpected error occurred. Please try again."};
       }
     });
 
@@ -153,3 +154,4 @@ Deno.serve(async (req: Request) => {
 
 // redeploy
 // renamed from save-payment-categories
+// redeploy-1790387697

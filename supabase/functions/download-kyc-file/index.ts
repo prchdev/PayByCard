@@ -1,13 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { withAdminSession, isInternalCall } from "../_shared/session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-admin-session, x-pbc-session",
 };
 
-Deno.serve(async (req: Request) => {
+Deno.serve(withAdminSession(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -20,6 +21,7 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const filePath = url.searchParams.get("filePath");
     const adminId = url.searchParams.get("adminId");
+    const mode = url.searchParams.get("mode");
 
     if (!filePath || !adminId) {
       return new Response(
@@ -53,7 +55,7 @@ Deno.serve(async (req: Request) => {
     const { data: signedUrlData, error: signError } = await supabase.storage
       .from("kyc-documents")
       .createSignedUrl(filePath, 3600, {
-        download: true,
+        download: mode === "download",
       });
 
     if (signError || !signedUrlData?.signedUrl) {
@@ -75,4 +77,4 @@ Deno.serve(async (req: Request) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+}));

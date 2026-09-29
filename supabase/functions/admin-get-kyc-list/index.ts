@@ -2,13 +2,14 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { withSignedKycUrls } from "../_shared/kycUrls.ts";
 
+import { serveAdmin } from "../_shared/session.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
-Deno.serve(withSignedKycUrls(async (req: Request) => {
+serveAdmin(withSignedKycUrls(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -57,7 +58,7 @@ Deno.serve(withSignedKycUrls(async (req: Request) => {
 
     if (usersError) {
       return new Response(
-        JSON.stringify({ error: usersError.message }),
+        JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -160,6 +161,3 @@ Deno.serve(withSignedKycUrls(async (req: Request) => {
     );
   }
 }));
-
-
-// redeploy

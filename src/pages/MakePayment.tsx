@@ -918,6 +918,7 @@ export default function MakePayment() {
           headers: {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
+            'x-pbc-session': sessionStorage.getItem('pbc_session') || '',
           },
           body: JSON.stringify({
             userId,
@@ -1283,6 +1284,16 @@ export default function MakePayment() {
       const checkoutUrl = config.options?.checkoutUrl;
       if (!checkoutUrl) {
         throw new Error('PhonePe checkout URL not available');
+      }
+      // Validate the checkout URL belongs to PhonePe's domain to prevent open redirect
+      try {
+        const parsed = new URL(checkoutUrl);
+        const allowedHosts = ['api.phonepe.com', 'api-preprod.phonepe.com', 'phonepe.com', 'phonepe.merchant.sdk'];
+        if (!allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))) {
+          throw new Error('Invalid checkout URL');
+        }
+      } catch {
+        throw new Error('Invalid checkout URL');
       }
       window.location.href = checkoutUrl;
     } catch (error: any) {

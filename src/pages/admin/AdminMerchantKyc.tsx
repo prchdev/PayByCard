@@ -30,7 +30,7 @@ function useKycDownload() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const download = useCallback(async (url: string) => {
+  const download = useCallback(async (url: string, mode: 'view' | 'download' = 'view') => {
     const filePath = extractKycFilePath(url);
     if (!filePath) return null;
     const adminId = sessionStorage.getItem('adminId') ?? '';
@@ -39,7 +39,7 @@ function useKycDownload() {
     setError(null);
     try {
       const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/download-kyc-file?filePath=${encodeURIComponent(filePath)}&adminId=${encodeURIComponent(adminId)}`,
+        `${SUPABASE_URL}/functions/v1/download-kyc-file?filePath=${encodeURIComponent(filePath)}&adminId=${encodeURIComponent(adminId)}&mode=${mode}`,
         { headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
       );
       const data = await res.json();
@@ -126,6 +126,18 @@ function StatusBadge({ status }: { status: MerchantStatus }) {
 function PanImage({ url, digilockerVerified }: { url: string | null; digilockerVerified?: boolean | null }) {
   const [zoomed, setZoomed] = useState(false);
   const { download, loading, error } = useKycDownload();
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (!url) return;
+    let cancelled = false;
+    download(url, 'view').then((result) => {
+      if (!cancelled && result) setSignedUrl(result);
+    });
+    return () => { cancelled = true; };
+  }, [url]);
+
   if (!url) {
     if (digilockerVerified) {
       return (
@@ -150,7 +162,7 @@ function PanImage({ url, digilockerVerified }: { url: string | null; digilockerV
       <div className="space-y-1.5">
         <button
           onClick={async () => {
-            const signed = await download(url);
+            const signed = await download(url, 'download');
             if (signed) window.open(signed, '_blank', 'noopener,noreferrer');
           }}
           disabled={loading}
@@ -163,10 +175,36 @@ function PanImage({ url, digilockerVerified }: { url: string | null; digilockerV
       </div>
     );
   }
+  const displayUrl = signedUrl ?? url;
+
+  if (!signedUrl && !imgError) {
+    return (
+      <div className="w-full max-w-xs h-40 rounded-xl border-2 border-gray-200 flex items-center justify-center bg-gray-100">
+        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (imgError && !signedUrl) {
+    return (
+      <div className="w-full max-w-xs h-40 rounded-xl border-2 border-red-200 flex flex-col items-center justify-center bg-red-50 px-2 text-center">
+        <p className="text-xs text-red-600 mb-2">Failed to load image</p>
+        <button
+          onClick={async () => { const r = await download(url, 'view'); if (r) { setSignedUrl(r); setImgError(false); } }}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-800 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="relative group cursor-pointer w-full max-w-xs" onClick={() => setZoomed(true)}>
-        <img src={url} alt="PAN Card" className="w-full h-40 object-cover rounded-xl border-2 border-gray-200 group-hover:opacity-90 transition-opacity" />
+        <img src={displayUrl} alt="PAN Card" className="w-full h-40 object-cover rounded-xl border-2 border-gray-200 group-hover:opacity-90 transition-opacity" onError={() => setImgError(true)} />
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-xl">
           <ZoomIn className="w-6 h-6 text-white" />
         </div>
@@ -177,7 +215,7 @@ function PanImage({ url, digilockerVerified }: { url: string | null; digilockerV
             <button onClick={() => setZoomed(false)} className="absolute -top-10 right-0 text-white hover:text-gray-300">
               <X className="w-7 h-7" />
             </button>
-            <img src={url} alt="PAN Card" className="w-full rounded-xl shadow-2xl" />
+            <img src={displayUrl} alt="PAN Card" className="w-full rounded-xl shadow-2xl" />
           </div>
         </div>
       )}
@@ -196,7 +234,7 @@ function DigiLockerDocLinks({ docs }: { docs: { label: string; subtitle: string;
   const handleClick = async (e: React.MouseEvent, url: string, idx: number) => {
     e.preventDefault();
     setErrorIdx(null);
-    const signed = await download(url);
+    const signed = await download(url, 'download');
     if (signed) {
       window.open(signed, '_blank', 'noopener,noreferrer');
     } else {
@@ -291,6 +329,17 @@ function InvoiceSection({
   const lower = record.bill_file_url.toLowerCase();
   const isPdf = lower.includes('.pdf');
   const isImage = lower.includes('.png') || lower.includes('.jpg') || lower.includes('.jpeg');
+  const [billSignedUrl, setBillSignedUrl] = useState<string | null>(null);
+  const [billImgError, setBillImgError] = useState(false);
+
+  useEffect(() => {
+    if (!record.bill_file_url) return;
+    let cancelled = false;
+    download(record.bill_file_url, 'view').then((result) => {
+      if (!cancelled && result) setBillSignedUrl(result);
+    });
+    return () => { cancelled = true; };
+  }, [record.bill_file_url]);
 
   return (
     <div className="bg-white border-2 border-teal-200 rounded-2xl p-4 space-y-4">
@@ -317,27 +366,49 @@ function InvoiceSection({
       <div>
         {isImage ? (
           <>
-            <div className="relative group cursor-pointer w-full max-w-xs" onClick={() => setZoomed(true)}>
-              <img src={record.bill_file_url} alt="Invoice/Bill" className="w-full h-40 object-cover rounded-xl border-2 border-gray-200 group-hover:opacity-90 transition-opacity" />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-xl">
-                <ZoomIn className="w-6 h-6 text-white" />
+            {!billSignedUrl && !billImgError && (
+              <div className="w-full max-w-xs h-40 rounded-xl border-2 border-gray-200 flex items-center justify-center bg-gray-100">
+                <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
               </div>
-            </div>
-            {zoomed && (
-              <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setZoomed(false)}>
-                <div className="relative max-w-3xl w-full">
-                  <button onClick={() => setZoomed(false)} className="absolute -top-10 right-0 text-white hover:text-gray-300">
-                    <X className="w-7 h-7" />
-                  </button>
-                  <img src={record.bill_file_url} alt="Invoice/Bill" className="w-full rounded-xl shadow-2xl" />
+            )}
+            {billImgError && !billSignedUrl && (
+              <div className="w-full max-w-xs h-40 rounded-xl border-2 border-red-200 flex flex-col items-center justify-center bg-red-50 px-2 text-center">
+                <p className="text-xs text-red-600 mb-2">Failed to load image</p>
+                <button
+                  onClick={async () => { const r = await download(record.bill_file_url!, 'view'); if (r) { setBillSignedUrl(r); setBillImgError(false); } }}
+                  disabled={loading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-800 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                  Retry
+                </button>
+              </div>
+            )}
+            {billSignedUrl && !billImgError && (
+              <>
+                <div className="relative group cursor-pointer w-full max-w-xs" onClick={() => setZoomed(true)}>
+                  <img src={billSignedUrl} alt="Invoice/Bill" className="w-full h-40 object-cover rounded-xl border-2 border-gray-200 group-hover:opacity-90 transition-opacity" onError={() => setBillImgError(true)} />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-xl">
+                    <ZoomIn className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-              </div>
+                {zoomed && (
+                  <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setZoomed(false)}>
+                    <div className="relative max-w-3xl w-full">
+                      <button onClick={() => setZoomed(false)} className="absolute -top-10 right-0 text-white hover:text-gray-300">
+                        <X className="w-7 h-7" />
+                      </button>
+                      <img src={billSignedUrl} alt="Invoice/Bill" className="w-full rounded-xl shadow-2xl" />
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         ) : (
           <button
             onClick={async () => {
-              const signed = await download(record.bill_file_url!);
+              const signed = await download(record.bill_file_url!, 'download');
               if (signed) window.open(signed, '_blank', 'noopener,noreferrer');
             }}
             disabled={loading}
@@ -1141,10 +1212,25 @@ export default function AdminMerchantKyc() {
                         <td className="px-4 py-3">
                           <p className="font-mono text-xs text-gray-800 tracking-wider">{rec.pan_number || '—'}</p>
                           {rec.pan_photo_url && (
-                            <a href={rec.pan_photo_url} target="_blank" rel="noopener noreferrer"
-                              className="text-xs text-blue-600 hover:underline mt-0.5 block">
+                            <button
+                              onClick={async () => {
+                                const filePath = extractKycFilePath(rec.pan_photo_url!);
+                                if (!filePath) return;
+                                const adminId = sessionStorage.getItem('adminId') ?? '';
+                                if (!adminId) return;
+                                try {
+                                  const res = await fetch(
+                                    `${SUPABASE_URL}/functions/v1/download-kyc-file?filePath=${encodeURIComponent(filePath)}&adminId=${encodeURIComponent(adminId)}&mode=view`,
+                                    { headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+                                  );
+                                  const data = await res.json();
+                                  if (res.ok && data.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+                                } catch { /* ignore */ }
+                              }}
+                              className="text-xs text-blue-600 hover:underline mt-0.5 block text-left"
+                            >
                               View doc
-                            </a>
+                            </button>
                           )}
                         </td>
                         <td className="px-4 py-3">

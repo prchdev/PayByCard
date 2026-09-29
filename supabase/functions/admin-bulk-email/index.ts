@@ -1,15 +1,16 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
+import { serveAdmin } from "../_shared/session.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 const CRON_INTERVAL_MINUTES = 5;
 const MINUTES_PER_HOUR = 60;
 
-Deno.serve(async (req: Request) => {
+serveAdmin(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -403,3 +404,4 @@ async function processEmailCampaignBatch(
 
   return sentThisCycle + failedThisCycle;
 }
+// redeploy-1790387697

@@ -2,10 +2,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { PDFDocument, StandardFonts, rgb } from "npm:pdf-lib@1.17.1";
 
+import { serveUser } from "../_shared/session.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 function fmtDate(iso: string | null | undefined): string {
@@ -332,7 +333,7 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
-Deno.serve(async (req: Request) => {
+serveUser(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -478,10 +479,11 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     console.error("generate-invoice-pdf error:", err);
     return new Response(
-      JSON.stringify({ success: false, error: err?.message }),
+      JSON.stringify({ success: false, error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
 
 // redeploy
+// redeploy-1790387697

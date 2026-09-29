@@ -23,7 +23,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 const SUPABASE_URL = () => Deno.env.get("SUPABASE_URL")!;
@@ -642,7 +642,7 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     console.error("auto-refund-kyc-expired fatal error:", err);
     return new Response(
-      JSON.stringify({ success: false, error: err?.message }),
+      JSON.stringify({ success: false, error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

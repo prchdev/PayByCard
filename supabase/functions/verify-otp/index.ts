@@ -4,7 +4,7 @@ import { issueSessionToken } from '../_shared/session.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
 };
 
 interface VerifyOTPRequest {
@@ -159,7 +159,7 @@ Deno.serve(async (req: Request) => {
     console.error('OTP verification error:', error);
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : 'OTP verification failed',
+        error: "An unexpected error occurred. Please try again.",
       }),
       {
         status: 500,

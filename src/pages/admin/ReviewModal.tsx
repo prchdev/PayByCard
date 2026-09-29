@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { X, CheckCircle, XCircle, ZoomIn, Percent, ShieldOff, Shield, Lock, Unlock, Loader2, Save, FileCode, Download } from 'lucide-react';
 import { KycUserEntry, KycStatus } from './types';
 import KycStatusBadge from './KycStatusBadge';
@@ -23,7 +23,7 @@ function useKycDownload() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const download = useCallback(async (url: string) => {
+  const download = useCallback(async (url: string, mode: 'view' | 'download' = 'view') => {
     const filePath = extractKycFilePath(url);
     if (!filePath) {
       setError('Invalid file URL');
@@ -38,7 +38,7 @@ function useKycDownload() {
     setError(null);
     try {
       const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/download-kyc-file?filePath=${encodeURIComponent(filePath)}&adminId=${encodeURIComponent(adminId)}`,
+        `${SUPABASE_URL}/functions/v1/download-kyc-file?filePath=${encodeURIComponent(filePath)}&adminId=${encodeURIComponent(adminId)}&mode=${mode}`,
         { headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
       );
       const data = await res.json();
@@ -72,10 +72,20 @@ function DocImage({ url, label, digilockerVerified, digilockerProvider }: {
   const [zoomed, setZoomed] = useState(false);
   const { download, loading, error } = useKycDownload();
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (!url) return;
+    let cancelled = false;
+    download(url, 'view').then((result) => {
+      if (!cancelled && result) setSignedUrl(result);
+    });
+    return () => { cancelled = true; };
+  }, [url]);
 
   const handleDownload = async () => {
     if (!url) return;
-    const result = await download(url);
+    const result = await download(url, 'download');
     if (result) {
       setSignedUrl(result);
       window.open(result, '_blank', 'noopener,noreferrer');
@@ -136,26 +146,52 @@ function DocImage({ url, label, digilockerVerified, digilockerProvider }: {
     );
   }
 
+  const displayUrl = signedUrl ?? url;
+  const showSpinner = !signedUrl && !imgError;
+
   return (
     <>
-      <div className="relative group cursor-pointer" onClick={() => setZoomed(true)}>
-        <img
-          src={url}
-          alt={label}
-          className="w-full h-36 object-cover rounded-lg border border-slate-200 group-hover:opacity-90 transition-opacity"
-        />
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-lg">
-          <ZoomIn className="w-6 h-6 text-white" />
-        </div>
+      <div className="relative group cursor-pointer" onClick={() => signedUrl && setZoomed(true)}>
+        {showSpinner && (
+          <div className="w-full h-36 rounded-lg border border-slate-200 flex items-center justify-center bg-slate-100">
+            <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+          </div>
+        )}
+        {imgError && !signedUrl && (
+          <div className="w-full h-36 rounded-lg border border-red-200 flex flex-col items-center justify-center bg-red-50 px-2 text-center">
+            <p className="text-xs text-red-600 mb-2">Failed to load image</p>
+            <button
+              onClick={handleDownload}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+              {loading ? 'Loading...' : 'Retry'}
+            </button>
+          </div>
+        )}
+        {signedUrl && !imgError && (
+          <>
+            <img
+              src={displayUrl}
+              alt={label}
+              className="w-full h-36 object-cover rounded-lg border border-slate-200 group-hover:opacity-90 transition-opacity"
+              onError={() => setImgError(true)}
+            />
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-lg">
+              <ZoomIn className="w-6 h-6 text-white" />
+            </div>
+          </>
+        )}
         <p className="text-xs text-slate-500 mt-1">{label}</p>
       </div>
 
-      {zoomed && (
+      {zoomed && signedUrl && (
         <div
           className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4"
           onClick={() => setZoomed(false)}
         >
-          <img src={url} alt={label} className="max-w-full max-h-full rounded-xl shadow-2xl" />
+          <img src={displayUrl} alt={label} className="max-w-full max-h-full rounded-xl shadow-2xl" />
           <button
             className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition-colors"
             onClick={() => setZoomed(false)}

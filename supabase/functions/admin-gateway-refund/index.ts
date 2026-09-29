@@ -1,10 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
+import { serveAdmin } from "../_shared/session.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 const SUPABASE_URL = () => Deno.env.get("SUPABASE_URL")!;
@@ -391,7 +392,7 @@ const NON_REFUNDABLE_STATUSES = new Set(["refunded", "failed", "cancelled"]);
 // When gateway_settlement_status is one of these, the money has moved — check balance
 const SETTLED_STATUSES = new Set(["settled", "paid", "captured"]);
 
-Deno.serve(async (req: Request) => {
+serveAdmin(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -660,7 +661,7 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     console.error("admin-gateway-refund error:", err);
     return new Response(
-      JSON.stringify({ error: err?.message || "Internal server error" }),
+      JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
@@ -668,3 +669,4 @@ Deno.serve(async (req: Request) => {
 
 
 // redeploy
+// redeploy-1790387697

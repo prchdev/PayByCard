@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
+import { serveUser } from "../_shared/session.ts";
 /**
  * send-kyc-reminder
  *
@@ -25,7 +26,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 const SUPABASE_URL = () => Deno.env.get("SUPABASE_URL")!;
@@ -66,7 +67,7 @@ async function sendEmail(to: string, subject: string, body: string, buttonText?:
   }
 }
 
-Deno.serve(async (req: Request) => {
+serveUser(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -205,10 +206,11 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     console.error("send-kyc-reminder fatal error:", err);
     return new Response(
-      JSON.stringify({ success: false, error: err?.message }),
+      JSON.stringify({ success: false, error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
 
 // redeploy
+// redeploy-1790387697

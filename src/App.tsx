@@ -58,6 +58,8 @@ import BulkSMS from './pages/admin/BulkSMS';
 import KycMethodSettings from './pages/admin/KycMethodSettings';
 import DashboardNotification from './pages/admin/DashboardNotification';
 import AdminMerchantKyc from './pages/admin/AdminMerchantKyc';
+import VendorManagement from './pages/admin/VendorManagement';
+import Invoicing from './pages/admin/Invoicing';
 function MainLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -153,6 +155,8 @@ function App() {
           <Route path="/admin/mobile-notifications" element={<AdminNotifications />} />
           <Route path="/admin/bulk-email" element={<BulkEmail />} />
           <Route path="/admin/bulk-sms" element={<BulkSMS />} />
+          <Route path="/admin/vendor-management" element={<VendorManagement />} />
+          <Route path="/admin/invoicing" element={<Invoicing />} />
           <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

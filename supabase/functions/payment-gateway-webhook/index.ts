@@ -1,11 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { createHash, createHmac } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
 function triggerAutoPayout(supabaseUrl: string, supabaseKey: string, paymentId: string) {
@@ -43,13 +43,15 @@ function resolvePaymentStatus(payment: any): string {
 function verifyCashFreeSignature(payload: string, signature: string, timestamp: string, clientSecret: string): boolean {
   const signatureData = `${timestamp}${payload}`;
   const expectedSignature = createHmac("sha256", clientSecret).update(signatureData).digest("base64");
-  return signature === expectedSignature;
+  if (signature.length !== expectedSignature.length) return false;
+  return timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
 }
 
 function verifyPayUHash(payload: any, salt: string): boolean {
   const hashString = `${salt}|${payload.status}|||||||||||${payload.udf5}|${payload.udf4}|${payload.udf3}|${payload.udf2}|${payload.udf1}|${payload.email}|${payload.firstname}|${payload.productinfo}|${payload.amount}|${payload.txnid}|${payload.key}`;
   const expectedHash = createHash("sha512").update(hashString).digest("hex");
-  return payload.hash === expectedHash;
+  if (payload.hash.length !== expectedHash.length) return false;
+  return timingSafeEqual(Buffer.from(payload.hash), Buffer.from(expectedHash));
 }
 
 async function handleCashFreeWebhook(req: Request, supabase: any, supabaseUrl: string, supabaseKey: string) {
@@ -143,7 +145,8 @@ async function handleRazorPayWebhook(req: Request, supabase: any, supabaseUrl: s
     throw new Error("Missing Razorpay webhook signature");
   }
   const expectedSignature = createHmac("sha256", keySecret).update(payload).digest("hex");
-  if (signature !== expectedSignature) throw new Error("Invalid Razorpay webhook signature");
+  if (signature.length !== expectedSignature.length) throw new Error("Invalid Razorpay webhook signature");
+  if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) throw new Error("Invalid Razorpay webhook signature");
 
   let status = "pending";
   let failureReason = null;
@@ -271,7 +274,10 @@ async function handlePhonePeWebhook(req: Request, supabase: any, supabaseUrl: st
   const checkString = base64Response + "/pg/v1/status" + saltKey;
   const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(checkString));
   const expectedHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("") + "###" + 1;
-  if (xVerify !== expectedHash) {
+  if (xVerify.length !== expectedHash.length) {
+    throw new Error("Invalid PhonePe webhook signature");
+  }
+  if (!timingSafeEqual(Buffer.from(xVerify), Buffer.from(expectedHash))) {
     throw new Error("Invalid PhonePe webhook signature");
   }
 
@@ -312,19 +318,8 @@ async function handlePhonePeWebhook(req: Request, supabase: any, supabaseUrl: st
   return { success: true, status };
 }
 
-async function handleGenericWebhook(req: Request, supabase: any) {
-  const contentType = req.headers.get("content-type");
-  let payload: any;
-  if (contentType?.includes("application/json")) {
-    payload = await req.json();
-  } else if (contentType?.includes("application/x-www-form-urlencoded")) {
-    const formData = await req.formData();
-    payload = {};
-    for (const [key, value] of formData.entries()) payload[key] = value;
-  } else {
-    payload = await req.text();
-  }
-  return { success: true, message: "Webhook received", data: payload };
+async function handleGenericWebhook(_req: Request, _supabase: any) {
+  return { success: false, message: "Unknown gateway — rejected" };
 }
 
 Deno.serve(async (req: Request) => {
@@ -356,7 +351,10 @@ Deno.serve(async (req: Request) => {
         result = await handlePhonePeWebhook(req, supabase, supabaseUrl, supabaseKey);
         break;
       default:
-        result = await handleGenericWebhook(req, supabase);
+        return new Response(
+          JSON.stringify({ success: false, error: `Unknown gateway: ${gateway}` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
     }
 
     return new Response(
@@ -366,7 +364,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("Webhook error:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message || "Internal server error" }),
+      JSON.stringify({ success: false, error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

@@ -56,7 +56,35 @@ async function interceptedFetch(
     }
   }
 
-  return originalFetch(input, init);
+  return originalFetch(input, attachSessionHeaders(input, init));
+}
+
+// Edge functions now require a server-issued session token rather than trusting an
+// identifier in the request body. Attach whichever tokens this browser holds to every
+// edge function call so existing call sites keep working unchanged.
+function attachSessionHeaders(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): RequestInit | undefined {
+  let userToken: string | null = null;
+  let adminToken: string | null = null;
+  try {
+    userToken = sessionStorage.getItem('pbc_session') || localStorage.getItem('pbc_session');
+    adminToken =
+      sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session');
+  } catch {
+    // storage unavailable
+  }
+  if (!userToken && !adminToken) return init;
+
+  const headers = new Headers(
+    init?.headers ?? (typeof input === 'object' && 'headers' in input ? input.headers : undefined)
+  );
+  if (userToken && !headers.has('x-pbc-session')) headers.set('x-pbc-session', userToken);
+  if (adminToken && !headers.has('x-pbc-admin-session')) {
+    headers.set('x-pbc-admin-session', adminToken);
+  }
+  return { ...(init || {}), headers };
 }
 
 export function installWaf(): void {

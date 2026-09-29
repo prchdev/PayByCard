@@ -271,3 +271,21 @@ verify_jwt = false
 
 [functions.admin-review-invoice]
 verify_jwt = false
+
+[functions.admin-get-vendors]
+verify_jwt = false
+
+[functions.admin-save-vendor]
+verify_jwt = false
+
+[functions.admin-get-invoices]
+verify_jwt = false
+
+[functions.admin-save-invoice]
+verify_jwt = false
+
+[functions.admin-upload-finance-document]
+verify_jwt = false
+
+[functions.admin-download-finance-document]
+verify_jwt = false

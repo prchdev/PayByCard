@@ -2,10 +2,11 @@ import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { withSignedKycUrls } from "../_shared/kycUrls.ts";
 import { lookupStateFromPincode } from "../_shared/pincodeLookup.ts";
 
+import { serveUser } from "../_shared/session.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
 };
 
 interface MerchantDigiLockerRequest {
@@ -762,7 +763,7 @@ async function writeMerchantKyc(
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
-Deno.serve(async (req: Request) => {
+serveUser(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -1013,7 +1014,7 @@ Deno.serve(async (req: Request) => {
     const msg = error instanceof Error ? error.message : 'An error occurred';
     console.error('Merchant DigiLocker KYC error:', msg);
     return new Response(
-      JSON.stringify({ error: msg }),
+      JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
@@ -1021,3 +1022,4 @@ Deno.serve(async (req: Request) => {
 
 
 // redeploy
+// redeploy-1790387697

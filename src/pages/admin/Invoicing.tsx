@@ -490,56 +490,20 @@ export default function Invoicing() {
         XLSX.utils.book_append_sheet(wb, wsPayments, 'Payments');
       }
 
-      // Sheet 5: Documents (with embedded files)
+      // Sheet 5: Documents
       const docRows: Record<string, any>[] = [];
-      const docBuffers: { rowIdx: number; buffer: ArrayBuffer; ext: string }[] = [];
-      let docIdx = 0;
-
       for (const inv of data) {
         for (const doc of (inv.documents || [])) {
-          const signedUrl = (doc as any).signed_url;
-          let fileBuffer: ArrayBuffer | null = null;
-          let ext = 'pdf';
-          if (signedUrl) {
-            try {
-              const resp = await fetch(signedUrl);
-              if (resp.ok) {
-                fileBuffer = await resp.arrayBuffer();
-                const ct = resp.headers.get('content-type') || '';
-                if (ct.includes('image/png')) ext = 'png';
-                else if (ct.includes('image/jpeg')) ext = 'jpg';
-                else if (ct.includes('image/webp')) ext = 'webp';
-              }
-            } catch { /* skip */ }
-          }
           docRows.push({
             'Invoice ID': inv.invoice_id_code,
             'Invoice Number': inv.invoice_number,
             'Document Type': doc.document_type,
             'File Path': doc.file_url,
             'Uploaded At': new Date(doc.uploaded_at).toLocaleString('en-IN'),
-            'File Attached': fileBuffer ? 'Yes' : 'No (private/inaccessible)',
           });
-          if (fileBuffer) docBuffers.push({ rowIdx: docIdx, buffer: fileBuffer, ext });
-          docIdx++;
         }
         for (const pay of (inv.payments || [])) {
           for (const doc of ((pay as any).documents || [])) {
-            const signedUrl = (doc as any).signed_url;
-            let fileBuffer: ArrayBuffer | null = null;
-            let ext = 'pdf';
-            if (signedUrl) {
-              try {
-                const resp = await fetch(signedUrl);
-                if (resp.ok) {
-                  fileBuffer = await resp.arrayBuffer();
-                  const ct = resp.headers.get('content-type') || '';
-                  if (ct.includes('image/png')) ext = 'png';
-                  else if (ct.includes('image/jpeg')) ext = 'jpg';
-                  else if (ct.includes('image/webp')) ext = 'webp';
-                }
-              } catch { /* skip */ }
-            }
             docRows.push({
               'Invoice ID': inv.invoice_id_code,
               'Invoice Number': inv.invoice_number,
@@ -547,10 +511,7 @@ export default function Invoicing() {
               'Document Type': doc.document_type,
               'File Path': doc.file_url,
               'Uploaded At': new Date(doc.uploaded_at).toLocaleString('en-IN'),
-              'File Attached': fileBuffer ? 'Yes' : 'No (private/inaccessible)',
             });
-            if (fileBuffer) docBuffers.push({ rowIdx: docIdx, buffer: fileBuffer, ext });
-            docIdx++;
           }
         }
       }
@@ -559,21 +520,6 @@ export default function Invoicing() {
         const wsDocs = XLSX.utils.json_to_sheet(docRows);
         wsDocs['!cols'] = Object.keys(docRows[0]).map(() => ({ wch: 22 }));
         XLSX.utils.book_append_sheet(wb, wsDocs, 'Documents');
-      }
-
-      // Embed files into the workbook as a zip-like structure
-      // xlsx library doesn't support embedding arbitrary files directly,
-      // so we write them as base64 in a separate "Files" sheet
-      if (docBuffers.length > 0) {
-        const fileRows = docBuffers.map((b, i) => ({
-          'Index': i + 1,
-          'Document Row': b.rowIdx + 2, // +2 for header row in Documents sheet
-          'File Extension': b.ext,
-          'Base64 Data': arrayBufferToBase64(b.buffer),
-        }));
-        const wsFiles = XLSX.utils.json_to_sheet(fileRows);
-        wsFiles['!cols'] = [{ wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 60 }];
-        XLSX.utils.book_append_sheet(wb, wsFiles, 'Embedded Files');
       }
 
       const fileName = `invoices_export_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -1198,13 +1144,4 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
   );
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
-    binary += String.fromCharCode.apply(null, Array.from(chunk));
-  }
-  return btoa(binary);
-}
+

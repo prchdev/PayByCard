@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ReceiptText, Plus, Save, X, AlertCircle, CheckCircle, Loader2, Pencil,
   Search, Download, Eye, Ban, RotateCcw, CreditCard, FileText, IndianRupee,
-  Upload, FileImage, Paperclip, ExternalLink,
+  Upload, FileImage, ExternalLink,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -38,6 +38,7 @@ interface FinanceDocument {
   file_url: string;
   uploaded_by: string | null;
   uploaded_at: string;
+  signed_url?: string | null;
 }
 
 interface Invoice {
@@ -100,8 +101,6 @@ export default function Invoicing() {
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [paymentDocs, setPaymentDocs] = useState<Record<string, FinanceDocument[]>>({});
   const [pendingInvoiceFile, setPendingInvoiceFile] = useState<File | null>(null);
-  const [pendingReceiptFile, setPendingReceiptFile] = useState<File | null>(null);
-  const [pendingSnapshotFile, setPendingSnapshotFile] = useState<File | null>(null);
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -157,16 +156,16 @@ export default function Invoicing() {
     }
   };
 
-  const handleViewDoc = async (documentId: string, entityType: 'invoice' | 'payment') => {
-    setDownloadingDoc(documentId);
-    const url = await getSignedUrl(documentId, entityType);
+  const handleViewDoc = async (doc: FinanceDocument, entityType: 'invoice' | 'payment') => {
+    setDownloadingDoc(doc.id);
+    const url = doc.signed_url || await getSignedUrl(doc.id, entityType);
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
     setDownloadingDoc(null);
   };
 
-  const handleDownloadDoc = async (documentId: string, entityType: 'invoice' | 'payment') => {
-    setDownloadingDoc(`${documentId}_dl`);
-    const url = await getSignedUrl(documentId, entityType);
+  const handleDownloadDoc = async (doc: FinanceDocument, entityType: 'invoice' | 'payment') => {
+    setDownloadingDoc(`${doc.id}_dl`);
+    const url = doc.signed_url || await getSignedUrl(doc.id, entityType);
     if (url) {
       const a = document.createElement('a');
       a.href = url;
@@ -364,13 +363,8 @@ export default function Invoicing() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to save payment');
-      const savedPaymentId = data.payment?.id;
-      if (savedPaymentId) {
-        if (pendingReceiptFile) await uploadFile(pendingReceiptFile, 'receipt', 'payment', savedPaymentId);
-        if (pendingSnapshotFile) await uploadFile(pendingSnapshotFile, 'snapshot', 'payment', savedPaymentId);
-      }
       setMessage({ type: 'success', text: paymentModal.payment ? 'Payment updated' : 'Payment added successfully' });
-      setPaymentModal(null); setPaymentForm(EMPTY_PAYMENT); setPendingReceiptFile(null); setPendingSnapshotFile(null); fetchInvoices();
+      setPaymentModal(null); setPaymentForm(EMPTY_PAYMENT); fetchInvoices();
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to save payment' });
     } finally { setSaving(false); }
@@ -1029,11 +1023,11 @@ export default function Invoicing() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          <button onClick={() => handleViewDoc(doc.id, 'invoice')} disabled={downloadingDoc === doc.id}
+                          <button onClick={() => handleViewDoc(doc, 'invoice')} disabled={downloadingDoc === doc.id}
                             className="flex items-center gap-1 px-2 py-1 text-xs text-[#8c76f0] hover:bg-purple-50 rounded transition-colors disabled:opacity-50">
                             {downloadingDoc === doc.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />} View
                           </button>
-                          <button onClick={() => handleDownloadDoc(doc.id, 'invoice')} disabled={downloadingDoc === `${doc.id}_dl`}
+                          <button onClick={() => handleDownloadDoc(doc, 'invoice')} disabled={downloadingDoc === `${doc.id}_dl`}
                             className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50">
                             {downloadingDoc === `${doc.id}_dl` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} Download
                           </button>
@@ -1105,34 +1099,19 @@ export default function Invoicing() {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-1">
-                                    <button onClick={() => handleViewDoc(doc.id, 'payment')} disabled={downloadingDoc === doc.id}
+                                    <button onClick={() => handleViewDoc(doc, 'payment')} disabled={downloadingDoc === doc.id}
                                       className="flex items-center gap-1 px-2 py-1 text-xs text-[#8c76f0] hover:bg-purple-50 rounded transition-colors disabled:opacity-50">
                                       {downloadingDoc === doc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ExternalLink className="w-3 h-3" />} View
                                     </button>
-                                    <button onClick={() => handleDownloadDoc(doc.id, 'payment')} disabled={downloadingDoc === `${doc.id}_dl`}
+                                    <button onClick={() => handleDownloadDoc(doc, 'payment')} disabled={downloadingDoc === `${doc.id}_dl`}
                                       className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50">
                                       {downloadingDoc === `${doc.id}_dl` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} Download
                                     </button>
                                   </div>
                                 </div>
                               ))}
-                              {canEdit && pay.payment_status !== 'cancelled' && (
-                                <div className="flex gap-2 mt-1">
-                                  <FileUploadButton
-                                    label="Receipt (PDF/Image)"
-                                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                                    uploading={uploadingDoc === `payment_${pay.id}_receipt`}
-                                    onFile={(file) => uploadFile(file, 'receipt', 'payment', pay.id!)}
-                                    compact
-                                  />
-                                  <FileUploadButton
-                                    label="Snapshot (PDF/Image)"
-                                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                                    uploading={uploadingDoc === `payment_${pay.id}_snapshot`}
-                                    onFile={(file) => uploadFile(file, 'snapshot', 'payment', pay.id!)}
-                                    compact
-                                  />
-                                </div>
+                              {((pay as any).documents || paymentDocs[pay.id] || []).length === 0 && (
+                                <p className="text-xs text-gray-400 py-1 text-center">No documents attached</p>
                               )}
                             </div>
                           )}
@@ -1211,66 +1190,12 @@ export default function Invoicing() {
                   </div>
                 </div>
 
-                {/* Payment File Uploads */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Payment Documents</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* Receipt */}
-                    <div className="p-3 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-                      {pendingReceiptFile ? (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {pendingReceiptFile.type.startsWith('image/') ? <FileImage className="w-4 h-4 text-[#8c76f0]" /> : <FileText className="w-4 h-4 text-[#8c76f0]" />}
-                            <div>
-                              <p className="text-xs font-medium text-gray-900">{pendingReceiptFile.name}</p>
-                              <p className="text-xs text-gray-500">{(pendingReceiptFile.size / 1024).toFixed(0)} KB</p>
-                            </div>
-                          </div>
-                          <button type="button" onClick={() => setPendingReceiptFile(null)}
-                            className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><X className="w-3.5 h-3.5" /></button>
-                        </div>
-                      ) : (
-                        <label className="flex flex-col items-center justify-center gap-1 cursor-pointer py-3">
-                          <Paperclip className="w-6 h-6 text-gray-400" />
-                          <p className="text-xs text-gray-600">Attach Receipt (PDF/Image)</p>
-                          <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
-                            onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (f.size > 5 * 1024 * 1024) { setMessage({ type: 'error', text: 'File exceeds 5 MB limit' }); return; } setPendingReceiptFile(f); } e.target.value = ''; }} />
-                        </label>
-                      )}
-                    </div>
-                    {/* Snapshot */}
-                    <div className="p-3 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-                      {pendingSnapshotFile ? (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {pendingSnapshotFile.type.startsWith('image/') ? <FileImage className="w-4 h-4 text-[#8c76f0]" /> : <FileText className="w-4 h-4 text-[#8c76f0]" />}
-                            <div>
-                              <p className="text-xs font-medium text-gray-900">{pendingSnapshotFile.name}</p>
-                              <p className="text-xs text-gray-500">{(pendingSnapshotFile.size / 1024).toFixed(0)} KB</p>
-                            </div>
-                          </div>
-                          <button type="button" onClick={() => setPendingSnapshotFile(null)}
-                            className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><X className="w-3.5 h-3.5" /></button>
-                        </div>
-                      ) : (
-                        <label className="flex flex-col items-center justify-center gap-1 cursor-pointer py-3">
-                          <FileImage className="w-6 h-6 text-gray-400" />
-                          <p className="text-xs text-gray-600">Attach Snapshot (PDF/Image)</p>
-                          <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
-                            onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (f.size > 5 * 1024 * 1024) { setMessage({ type: 'error', text: 'File exceeds 5 MB limit' }); return; } setPendingSnapshotFile(f); } e.target.value = ''; }} />
-                        </label>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-400">Files will be uploaded automatically after saving the payment.</p>
-                </div>
-
                 <div className="flex gap-3 pt-4 border-t border-gray-200">
                   <button onClick={handleSavePayment} disabled={saving || !paymentForm.amount_paid}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
                     {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Save Payment
                   </button>
-                  <button onClick={() => { setPaymentModal(null); setPendingReceiptFile(null); setPendingSnapshotFile(null); }} className="px-4 py-2.5 text-gray-700 bg-gray-100 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                  <button onClick={() => setPaymentModal(null)} className="px-4 py-2.5 text-gray-700 bg-gray-100 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
                 </div>
               </div>
             </div>

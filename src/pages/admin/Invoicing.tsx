@@ -104,8 +104,42 @@ export default function Invoicing() {
   const [pendingSnapshotFile, setPendingSnapshotFile] = useState<File | null>(null);
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const adminSessionToken = sessionStorage.getItem('pbc_admin_session') || '';
+
+  const handleGenerateInvoicePdf = async (invoiceId: string, action: 'view' | 'download') => {
+    setGeneratingPdf(true);
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-generate-finance-invoice-pdf`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'x-pbc-admin-session': adminSessionToken },
+        body: JSON.stringify({ invoiceId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to generate PDF');
+      const binary = atob(data.pdf_base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      if (action === 'view') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `invoice-${invoiceId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to generate PDF' });
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
 
   const getSignedUrl = async (documentId: string, entityType: 'invoice' | 'payment'): Promise<string | null> => {
     try {
@@ -913,6 +947,17 @@ export default function Invoicing() {
                 <button onClick={() => setViewInvoice(null)} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-6 space-y-6">
+                {/* PDF Actions */}
+                <div className="flex items-center gap-2">
+                  <button onClick={() => handleGenerateInvoicePdf(viewInvoice.id, 'view')} disabled={generatingPdf}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#8c76f0] bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50">
+                    {generatingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />} View Invoice PDF
+                  </button>
+                  <button onClick={() => handleGenerateInvoicePdf(viewInvoice.id, 'download')} disabled={generatingPdf}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50">
+                    {generatingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Download PDF
+                  </button>
+                </div>
                 {/* Invoice Details */}
                 <div className="grid grid-cols-2 gap-4">
                   <DetailRow label="Invoice Date" value={viewInvoice.invoice_date} />

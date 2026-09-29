@@ -289,3 +289,6 @@ verify_jwt = false
 
 [functions.admin-download-finance-document]
 verify_jwt = false
+
+[functions.admin-generate-finance-invoice-pdf]
+verify_jwt = false

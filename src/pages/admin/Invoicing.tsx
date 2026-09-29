@@ -8,6 +8,7 @@ import {
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
 import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
 
 interface Vendor {
   id: string; vendor_code: string; legal_name: string; trade_name: string | null;
@@ -492,26 +493,40 @@ export default function Invoicing() {
 
       // Sheet 5: Documents
       const docRows: Record<string, any>[] = [];
+      const docFiles: { folder: string; filename: string; url: string }[] = [];
+
       for (const inv of data) {
+        const invFolder = `${inv.invoice_id_code} - ${inv.invoice_number}`.replace(/[\/\\:*?"<>|]/g, '_');
         for (const doc of (inv.documents || [])) {
+          const ext = doc.file_url.split('.').pop()?.split('?')[0] || 'pdf';
+          const docLabel = doc.document_type.replace(/[^a-zA-Z0-9]/g, '_');
+          const filename = `${invFolder}/${docLabel}_${doc.id.substring(0, 8)}.${ext}`;
           docRows.push({
             'Invoice ID': inv.invoice_id_code,
             'Invoice Number': inv.invoice_number,
             'Document Type': doc.document_type,
-            'File Path': doc.file_url,
+            'File Name': filename,
             'Uploaded At': new Date(doc.uploaded_at).toLocaleString('en-IN'),
           });
+          const url = (doc as any).signed_url || doc.file_url;
+          if (url) docFiles.push({ folder: invFolder, filename, url });
         }
         for (const pay of (inv.payments || [])) {
           for (const doc of ((pay as any).documents || [])) {
+            const ext = doc.file_url.split('.').pop()?.split('?')[0] || 'pdf';
+            const docLabel = doc.document_type.replace(/[^a-zA-Z0-9]/g, '_');
+            const payCode = (pay as any).payment_id_code || pay.id || 'payment';
+            const filename = `${invFolder}/${payCode}/${docLabel}_${doc.id.substring(0, 8)}.${ext}`;
             docRows.push({
               'Invoice ID': inv.invoice_id_code,
               'Invoice Number': inv.invoice_number,
               'Payment ID': (pay as any).payment_id_code || '',
               'Document Type': doc.document_type,
-              'File Path': doc.file_url,
+              'File Name': filename,
               'Uploaded At': new Date(doc.uploaded_at).toLocaleString('en-IN'),
             });
+            const url = (doc as any).signed_url || doc.file_url;
+            if (url) docFiles.push({ folder: invFolder, filename, url });
           }
         }
       }
@@ -522,9 +537,33 @@ export default function Invoicing() {
         XLSX.utils.book_append_sheet(wb, wsDocs, 'Documents');
       }
 
-      const fileName = `invoices_export_${new Date().toISOString().split('T')[0]}.xlsx`;
-      XLSX.writeFile(wb, fileName);
-      setMessage({ type: 'success', text: `Exported ${data.length} invoice(s) to Excel` });
+      // Build a ZIP archive with the Excel file + all document files
+      const zip = new JSZip();
+      const excelBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+      zip.file('invoices_export.xlsx', excelBuffer);
+
+      let downloadedCount = 0;
+      for (const df of docFiles) {
+        try {
+          const resp = await fetch(df.url);
+          if (resp.ok) {
+            const blob = await resp.blob();
+            zip.file(df.filename, blob);
+            downloadedCount++;
+          }
+        } catch { /* skip inaccessible */ }
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipUrl = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = zipUrl;
+      a.download = `invoices_export_${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(zipUrl), 60000);
+      setMessage({ type: 'success', text: `Exported ${data.length} invoice(s) with ${downloadedCount} document(s) to ZIP` });
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to export' });
     } finally {

@@ -111,7 +111,7 @@ export default function Invoicing() {
     try {
       const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-download-finance-document`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'x-pbc-admin-session': adminSessionToken },
         body: JSON.stringify({ adminId, documentId, entityType }),
       });
       const data = await response.json();

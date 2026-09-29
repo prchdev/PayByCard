@@ -152,7 +152,7 @@ serveAdmin(async (req: Request) => {
       });
     } else {
       // CREATE — generate vendor code
-      const { data: seqData } = await supabase.rpc("nextval", { sequence_name: "finance_vendor_code_seq" }).maybeSingle();
+      const { data: seqData } = await supabase.rpc("next_vendor_code").maybeSingle();
       const seqNum = seqData || 1;
       const vendorCode = `VND-${String(seqNum).padStart(6, "0")}`;
       vendorData.vendor_code = vendorCode;

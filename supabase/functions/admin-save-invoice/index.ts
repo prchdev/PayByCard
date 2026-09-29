@@ -135,7 +135,7 @@ serveAdmin(async (req: Request) => {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       } else {
-        const { data: seqData } = await supabase.rpc("nextval", { sequence_name: "finance_payment_code_seq" }).maybeSingle();
+        const { data: seqData } = await supabase.rpc("next_payment_code").maybeSingle();
         const seqNum = seqData || 1;
         paymentData.payment_id_code = `PAY-${String(seqNum).padStart(6, "0")}`;
         paymentData.created_by = adminId;
@@ -282,7 +282,7 @@ serveAdmin(async (req: Request) => {
       });
     } else {
       // CREATE
-      const { data: seqData } = await supabase.rpc("nextval", { sequence_name: "finance_invoice_code_seq" }).maybeSingle();
+      const { data: seqData } = await supabase.rpc("next_invoice_code").maybeSingle();
       const seqNum = seqData || 1;
       invoiceData.invoice_id_code = `INV-${String(seqNum).padStart(6, "0")}`;
       invoiceData.created_by = adminId;

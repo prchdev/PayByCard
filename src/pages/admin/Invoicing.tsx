@@ -105,7 +105,8 @@ export default function Invoicing() {
   const [paymentDocs, setPaymentDocs] = useState<Record<string, FinanceDocument[]>>({});
   const [pendingInvoiceFile, setPendingInvoiceFile] = useState<File | null>(null);
   const [existingInvoiceDocs, setExistingInvoiceDocs] = useState<FinanceDocument[]>([]);
-  const [pendingPaymentFiles, setPendingPaymentFiles] = useState<{ file: File; docType: 'receipt' | 'snapshot' }[]>([]);
+  const [pendingReceiptFiles, setPendingReceiptFiles] = useState<File[]>([]);
+  const [pendingSnapshotFiles, setPendingSnapshotFiles] = useState<File[]>([]);
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [vendorSearch, setVendorSearch] = useState('');
@@ -375,13 +376,16 @@ export default function Invoicing() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to save payment');
       const savedPaymentId = data.payment?.id || paymentModal.payment?.id;
-      if (savedPaymentId && pendingPaymentFiles.length > 0) {
-        for (const item of pendingPaymentFiles) {
-          await uploadFile(item.file, item.docType, 'payment', savedPaymentId);
+      if (savedPaymentId) {
+        for (const file of pendingReceiptFiles) {
+          await uploadFile(file, 'receipt', 'payment', savedPaymentId);
+        }
+        for (const file of pendingSnapshotFiles) {
+          await uploadFile(file, 'snapshot', 'payment', savedPaymentId);
         }
       }
       setMessage({ type: 'success', text: paymentModal.payment ? 'Payment updated' : 'Payment added successfully' });
-      setPaymentModal(null); setPaymentForm(EMPTY_PAYMENT); setPendingPaymentFiles([]); fetchInvoices();
+      setPaymentModal(null); setPaymentForm(EMPTY_PAYMENT); setPendingReceiptFiles([]); setPendingSnapshotFiles([]); fetchInvoices();
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to save payment' });
     } finally { setSaving(false); }
@@ -1273,39 +1277,81 @@ export default function Invoicing() {
                   </div>
                 )}
 
-                {/* Payment document upload */}
+                {/* Payment document upload: Receipt & Snapshot side by side */}
                 <div>
-                  <p className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">Payment Documents</p>
-                  <div className="space-y-2">
-                    {pendingPaymentFiles.map((item, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="flex items-center gap-2">
-                          {item.file.type.startsWith('image/') ? <FileImage className="w-4 h-4 text-[#8c76f0]" /> : <FileText className="w-4 h-4 text-[#8c76f0]" />}
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{item.file.name}</p>
-                            <p className="text-xs text-gray-500">{(item.file.size / 1024).toFixed(0)} KB \u2022 Will upload after saving</p>
+                  <p className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">Payment Documents (Optional)</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Receipt uploader */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-1.5 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-[#8c76f0]" /> Payment Receipt</p>
+                      <div className="p-3 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 min-h-[80px]">
+                        {pendingReceiptFiles.length > 0 ? (
+                          <div className="space-y-2">
+                            {pendingReceiptFiles.map((file, i) => (
+                              <div key={i} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {file.type.startsWith('image/') ? <FileImage className="w-4 h-4 text-[#8c76f0]" /> : <FileText className="w-4 h-4 text-[#8c76f0]" />}
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                                    <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(0)} KB</p>
+                                  </div>
+                                </div>
+                                <button type="button" onClick={() => setPendingReceiptFiles(prev => prev.filter((_, idx) => idx !== i))}
+                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+                              </div>
+                            ))}
+                            <label className="flex items-center justify-center gap-1.5 cursor-pointer py-1.5 text-xs text-[#8c76f0] hover:text-purple-700">
+                              <Plus className="w-3.5 h-3.5" /> Add another
+                              <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
+                                onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (f.size > 5 * 1024 * 1024) { setMessage({ type: 'error', text: 'File exceeds 5 MB limit' }); return; } setPendingReceiptFiles(prev => [...prev, f]); } e.target.value = ''; }} />
+                            </label>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <select value={item.docType} onChange={(e) => setPendingPaymentFiles(prev => prev.map((p, idx) => idx === i ? { ...p, docType: e.target.value as 'receipt' | 'snapshot' } : p))}
-                            className="px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8c76f0]">
-                            <option value="receipt">Receipt</option>
-                            <option value="snapshot">Snapshot</option>
-                          </select>
-                          <button type="button" onClick={() => setPendingPaymentFiles(prev => prev.filter((_, idx) => idx !== i))}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
-                        </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center gap-1.5 cursor-pointer py-3">
+                            <Upload className="w-6 h-6 text-gray-400" />
+                            <p className="text-xs text-gray-500">Attach receipt (PDF/image)</p>
+                            <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (f.size > 5 * 1024 * 1024) { setMessage({ type: 'error', text: 'File exceeds 5 MB limit' }); return; } setPendingReceiptFiles([f]); } e.target.value = ''; }} />
+                          </label>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                  <div className="mt-2 p-3 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-                    <label className="flex flex-col items-center justify-center gap-2 cursor-pointer py-4">
-                      <Upload className="w-8 h-8 text-gray-400" />
-                      <p className="text-sm text-gray-600">Click to attach payment receipt or snapshot (PDF or image)</p>
-                      <p className="text-xs text-gray-400">Max 5 MB per file</p>
-                      <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (f.size > 5 * 1024 * 1024) { setMessage({ type: 'error', text: 'File exceeds 5 MB limit' }); return; } setPendingPaymentFiles(prev => [...prev, { file: f, docType: 'receipt' }]); } e.target.value = ''; }} />
-                    </label>
+                    </div>
+
+                    {/* Snapshot uploader */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-1.5 flex items-center gap-1.5"><FileImage className="w-3.5 h-3.5 text-[#8c76f0]" /> Payment Snapshot</p>
+                      <div className="p-3 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 min-h-[80px]">
+                        {pendingSnapshotFiles.length > 0 ? (
+                          <div className="space-y-2">
+                            {pendingSnapshotFiles.map((file, i) => (
+                              <div key={i} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {file.type.startsWith('image/') ? <FileImage className="w-4 h-4 text-[#8c76f0]" /> : <FileText className="w-4 h-4 text-[#8c76f0]" />}
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                                    <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(0)} KB</p>
+                                  </div>
+                                </div>
+                                <button type="button" onClick={() => setPendingSnapshotFiles(prev => prev.filter((_, idx) => idx !== i))}
+                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+                              </div>
+                            ))}
+                            <label className="flex items-center justify-center gap-1.5 cursor-pointer py-1.5 text-xs text-[#8c76f0] hover:text-purple-700">
+                              <Plus className="w-3.5 h-3.5" /> Add another
+                              <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
+                                onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (f.size > 5 * 1024 * 1024) { setMessage({ type: 'error', text: 'File exceeds 5 MB limit' }); return; } setPendingSnapshotFiles(prev => [...prev, f]); } e.target.value = ''; }} />
+                            </label>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center gap-1.5 cursor-pointer py-3">
+                            <Upload className="w-6 h-6 text-gray-400" />
+                            <p className="text-xs text-gray-500">Attach snapshot (PDF/image)</p>
+                            <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (f.size > 5 * 1024 * 1024) { setMessage({ type: 'error', text: 'File exceeds 5 MB limit' }); return; } setPendingSnapshotFiles([f]); } e.target.value = ''; }} />
+                          </label>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1314,7 +1360,7 @@ export default function Invoicing() {
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
                     {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Save Payment
                   </button>
-                  <button onClick={() => { setPaymentModal(null); setPendingPaymentFiles([]); }} className="px-4 py-2.5 text-gray-700 bg-gray-100 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                  <button onClick={() => { setPaymentModal(null); setPendingReceiptFiles([]); setPendingSnapshotFiles([]); }} className="px-4 py-2.5 text-gray-700 bg-gray-100 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
                 </div>
               </div>
             </div>

@@ -104,6 +104,9 @@ export default function Invoicing() {
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [paymentDocs, setPaymentDocs] = useState<Record<string, FinanceDocument[]>>({});
   const [pendingInvoiceFile, setPendingInvoiceFile] = useState<File | null>(null);
+  const [existingInvoiceDocs, setExistingInvoiceDocs] = useState<FinanceDocument[]>([]);
+  const [pendingPaymentFiles, setPendingPaymentFiles] = useState<File[]>([]);
+  const [paymentDocType, setPaymentDocType] = useState<'receipt' | 'snapshot'>('receipt');
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [vendorSearch, setVendorSearch] = useState('');
@@ -166,17 +169,45 @@ export default function Invoicing() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to upload file');
       setMessage({ type: 'success', text: 'File uploaded successfully' });
-      await fetchInvoices();
-      if (entityType === 'payment') await fetchPaymentDocs(entityId);
-      if (viewInvoice) {
-        const updated = invoices.find(i => i.id === viewInvoice.id);
-        if (updated) setViewInvoice(updated);
-      }
+      await refreshInvoiceData(entityId, entityType);
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to upload file' });
     } finally {
       setUploadingDoc(null);
     }
+  };
+
+  const refreshInvoiceData = async (entityId: string, entityType: 'invoice' | 'payment') => {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-get-invoices`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId }),
+      });
+      const data = await response.json();
+      if (response.ok && data.invoices) {
+        setInvoices(data.invoices);
+        if (viewInvoice) {
+          const updated = data.invoices.find((i: Invoice) => i.id === viewInvoice.id);
+          if (updated) setViewInvoice(updated);
+        }
+        if (entityType === 'payment') {
+          for (const inv of data.invoices) {
+            if (inv.payments) {
+              for (const pay of inv.payments) {
+                if (pay.id === entityId) {
+                  setPaymentDocs(prev => ({ ...prev, [entityId]: (pay as any).documents || [] }));
+                }
+              }
+            }
+          }
+        }
+        if (entityType === 'invoice' && showForm && formData.id === entityId) {
+          const updated = data.invoices.find((i: Invoice) => i.id === entityId);
+          if (updated) setExistingInvoiceDocs(updated.documents || []);
+        }
+      }
+    } catch { /* ignore */ }
   };
 
   const fetchPaymentDocs = async (paymentId: string) => {
@@ -282,7 +313,7 @@ export default function Invoicing() {
         await uploadFile(pendingInvoiceFile, 'invoice_pdf', 'invoice', savedInvoiceId);
       }
       setMessage({ type: 'success', text: formData.id ? 'Invoice updated successfully' : 'Invoice created successfully' });
-      setShowForm(false); setFormData(EMPTY_FORM); setPendingInvoiceFile(null); fetchInvoices();
+      setShowForm(false); setFormData(EMPTY_FORM); setPendingInvoiceFile(null); setExistingInvoiceDocs([]); fetchInvoices();
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to save invoice' });
     } finally { setSaving(false); }
@@ -300,6 +331,8 @@ export default function Invoicing() {
         igst_amount: li.igst_amount, other_tax_amount: li.other_tax_amount,
       })) : [{ description: '', hsn_sac: '', quantity: 1, amount_per_unit: 0, sgst_amount: 0, cgst_amount: 0, igst_amount: 0, other_tax_amount: 0 }],
     });
+    setExistingInvoiceDocs(inv.documents || []);
+    setPendingInvoiceFile(null);
     setShowForm(true); setMessage(null); setDupWarning(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -342,8 +375,14 @@ export default function Invoicing() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to save payment');
+      const savedPaymentId = data.payment?.id || paymentModal.payment?.id;
+      if (savedPaymentId && pendingPaymentFiles.length > 0) {
+        for (const file of pendingPaymentFiles) {
+          await uploadFile(file, paymentDocType, 'payment', savedPaymentId);
+        }
+      }
       setMessage({ type: 'success', text: paymentModal.payment ? 'Payment updated' : 'Payment added successfully' });
-      setPaymentModal(null); setPaymentForm(EMPTY_PAYMENT); fetchInvoices();
+      setPaymentModal(null); setPaymentForm(EMPTY_PAYMENT); setPendingPaymentFiles([]); fetchInvoices();
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to save payment' });
     } finally { setSaving(false); }
@@ -791,9 +830,39 @@ export default function Invoicing() {
               </div>
             </div>
 
+            {/* Existing Invoice Documents (edit mode) */}
+            {existingInvoiceDocs.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">Attached Documents</h3>
+                <div className="space-y-2 mb-3">
+                  {existingInvoiceDocs.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        {doc.document_type.includes('image') ? <FileImage className="w-4 h-4 text-[#8c76f0]" /> : <FileText className="w-4 h-4 text-[#8c76f0]" />}
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 capitalize">{doc.document_type.replace('_', ' ')}</p>
+                          <p className="text-xs text-gray-400">Uploaded {new Date(doc.uploaded_at).toLocaleString('en-IN')}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button type="button" onClick={() => handleViewDoc(doc, 'invoice')} disabled={downloadingDoc === doc.id}
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-[#8c76f0] hover:bg-purple-50 rounded transition-colors disabled:opacity-50">
+                          {downloadingDoc === doc.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />} View
+                        </button>
+                        <button type="button" onClick={() => handleDownloadDoc(doc, 'invoice')} disabled={downloadingDoc === `${doc.id}_dl`}
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50">
+                          {downloadingDoc === `${doc.id}_dl` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} Download
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Invoice File Upload */}
             <div>
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">Invoice Document</h3>
+              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">{existingInvoiceDocs.length > 0 ? 'Attach Additional Document' : 'Invoice Document'}</h3>
               <div className="p-4 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                 {pendingInvoiceFile ? (
                   <div className="flex items-center justify-between">
@@ -825,7 +894,7 @@ export default function Invoicing() {
                 {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                 {formData.id ? 'Update Invoice' : 'Create Invoice'}
               </button>
-              <button type="button" onClick={() => { setShowForm(false); setFormData(EMPTY_FORM); setPendingInvoiceFile(null); }}
+              <button type="button" onClick={() => { setShowForm(false); setFormData(EMPTY_FORM); setPendingInvoiceFile(null); setExistingInvoiceDocs([]); }}
                 className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
             </div>
           </form>
@@ -1175,12 +1244,86 @@ export default function Invoicing() {
                   </div>
                 </div>
 
+                {/* Existing payment documents (edit mode) */}
+                {paymentModal.payment?.id && ((paymentModal.payment as any).documents || paymentDocs[paymentModal.payment.id] || []).length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Attached Payment Documents</p>
+                    <div className="space-y-1.5">
+                      {((paymentModal.payment as any).documents || paymentDocs[paymentModal.payment.id] || []).map((doc: FinanceDocument) => (
+                        <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-100">
+                          <div className="flex items-center gap-2">
+                            {doc.document_type.includes('snapshot') ? <FileImage className="w-3.5 h-3.5 text-[#8c76f0]" /> : <FileText className="w-3.5 h-3.5 text-[#8c76f0]" />}
+                            <div>
+                              <p className="text-xs font-medium text-gray-700 capitalize">{doc.document_type === 'receipt' ? 'Payment Receipt' : doc.document_type === 'snapshot' ? 'Payment Snapshot' : doc.document_type}</p>
+                              <p className="text-xs text-gray-400">{new Date(doc.uploaded_at).toLocaleDateString('en-IN')}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button type="button" onClick={() => handleViewDoc(doc, 'payment')} disabled={downloadingDoc === doc.id}
+                              className="flex items-center gap-1 px-2 py-1 text-xs text-[#8c76f0] hover:bg-purple-50 rounded transition-colors disabled:opacity-50">
+                              {downloadingDoc === doc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ExternalLink className="w-3 h-3" />} View
+                            </button>
+                            <button type="button" onClick={() => handleDownloadDoc(doc, 'payment')} disabled={downloadingDoc === `${doc.id}_dl`}
+                              className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50">
+                              {downloadingDoc === `${doc.id}_dl` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} Download
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment document upload */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <label className="text-sm font-medium text-gray-700">Document Type:</label>
+                    <select value={paymentDocType} onChange={(e) => setPaymentDocType(e.target.value as 'receipt' | 'snapshot')}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8c76f0]">
+                      <option value="receipt">Payment Receipt</option>
+                      <option value="snapshot">Payment Snapshot</option>
+                    </select>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                    {pendingPaymentFiles.length > 0 ? (
+                      <div className="space-y-2">
+                        {pendingPaymentFiles.map((file, i) => (
+                          <div key={i} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {file.type.startsWith('image/') ? <FileImage className="w-4 h-4 text-[#8c76f0]" /> : <FileText className="w-4 h-4 text-[#8c76f0]" />}
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                                <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(0)} KB \u2022 {paymentDocType === 'receipt' ? 'Receipt' : 'Snapshot'} \u2022 Will upload after saving</p>
+                              </div>
+                            </div>
+                            <button type="button" onClick={() => setPendingPaymentFiles(prev => prev.filter((_, idx) => idx !== i))}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+                          </div>
+                        ))}
+                        <label className="flex items-center justify-center gap-2 cursor-pointer py-2 text-sm text-[#8c76f0] hover:text-purple-700">
+                          <Plus className="w-4 h-4" /> Add another file
+                          <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
+                            onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (f.size > 5 * 1024 * 1024) { setMessage({ type: 'error', text: 'File exceeds 5 MB limit' }); return; } setPendingPaymentFiles(prev => [...prev, f]); } e.target.value = ''; }} />
+                        </label>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center gap-2 cursor-pointer py-4">
+                        <Upload className="w-8 h-8 text-gray-400" />
+                        <p className="text-sm text-gray-600">Click to attach payment {paymentDocType === 'receipt' ? 'receipt' : 'snapshot'} (PDF or image)</p>
+                        <p className="text-xs text-gray-400">Max 5 MB</p>
+                        <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (f.size > 5 * 1024 * 1024) { setMessage({ type: 'error', text: 'File exceeds 5 MB limit' }); return; } setPendingPaymentFiles([f]); } e.target.value = ''; }} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex gap-3 pt-4 border-t border-gray-200">
                   <button onClick={handleSavePayment} disabled={saving || !paymentForm.amount_paid}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
                     {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Save Payment
                   </button>
-                  <button onClick={() => setPaymentModal(null)} className="px-4 py-2.5 text-gray-700 bg-gray-100 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                  <button onClick={() => { setPaymentModal(null); setPendingPaymentFiles([]); }} className="px-4 py-2.5 text-gray-700 bg-gray-100 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancel</button>
                 </div>
               </div>
             </div>

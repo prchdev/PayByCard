@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ReceiptText, Plus, Save, X, AlertCircle, CheckCircle, Loader2, Pencil,
@@ -106,6 +106,9 @@ export default function Invoicing() {
   const [pendingInvoiceFile, setPendingInvoiceFile] = useState<File | null>(null);
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [vendorSearch, setVendorSearch] = useState('');
+  const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
+  const vendorComboRef = useRef<HTMLDivElement>(null);
 
   const adminSessionToken = sessionStorage.getItem('pbc_admin_session') || '';
 
@@ -201,6 +204,13 @@ export default function Invoicing() {
 
   useEffect(() => { if (!adminId) navigate('/admin/login'); }, [adminId, navigate]);
   useEffect(() => { fetchInvoices(); fetchVendors(); }, []);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (vendorComboRef.current && !vendorComboRef.current.contains(e.target as Node)) setVendorDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const fetchInvoices = async () => {
     setLoading(true);
@@ -624,13 +634,47 @@ export default function Invoicing() {
             <div>
               <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4">Invoice Header</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
+                <div className="relative" ref={vendorComboRef}>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Vendor <span className="text-red-600">*</span></label>
-                  <select value={formData.vendor_id} onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value })}
-                    className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8c76f0]">
-                    <option value="">Select Vendor...</option>
-                    {vendors.filter(v => v.id).map(v => <option key={v.id} value={v.id}>{v.legal_name}{v.trade_name ? ` / ${v.trade_name}` : ''} ({v.vendor_code})</option>)}
-                  </select>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={vendorDropdownOpen ? vendorSearch : (selectedVendor ? `${selectedVendor.legal_name}${selectedVendor.trade_name ? ` / ${selectedVendor.trade_name}` : ''} (${selectedVendor.vendor_code})` : '')}
+                      onChange={(e) => { setVendorSearch(e.target.value); setVendorDropdownOpen(true); }}
+                      onFocus={() => { setVendorDropdownOpen(true); setVendorSearch(''); }}
+                      placeholder="Search vendor by name or code..."
+                      className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8c76f0] focus:border-transparent"
+                    />
+                    {formData.vendor_id && !vendorDropdownOpen && (
+                      <button type="button" onClick={() => { setFormData({ ...formData, vendor_id: '' }); setVendorSearch(''); }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded"><X className="w-4 h-4" /></button>
+                    )}
+                  </div>
+                  {vendorDropdownOpen && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {vendors.filter(v => v.id)
+                        .filter(v => {
+                          if (!vendorSearch) return true;
+                          const q = vendorSearch.toLowerCase();
+                          return v.legal_name.toLowerCase().includes(q) || (v.trade_name || '').toLowerCase().includes(q) || v.vendor_code.toLowerCase().includes(q);
+                        })
+                        .map(v => (
+                          <button type="button" key={v.id} value={v.id}
+                            onClick={() => { setFormData({ ...formData, vendor_id: v.id }); setVendorDropdownOpen(false); setVendorSearch(''); }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-purple-50 transition-colors ${formData.vendor_id === v.id ? 'bg-purple-50 text-[#8c76f0] font-medium' : 'text-gray-700'}`}>
+                            {v.legal_name}{v.trade_name ? ` / ${v.trade_name}` : ''} ({v.vendor_code})
+                          </button>
+                        ))}
+                      {vendors.filter(v => v.id).filter(v => {
+                        if (!vendorSearch) return true;
+                        const q = vendorSearch.toLowerCase();
+                        return v.legal_name.toLowerCase().includes(q) || (v.trade_name || '').toLowerCase().includes(q) || v.vendor_code.toLowerCase().includes(q);
+                      }).length === 0 && (
+                        <p className="px-4 py-3 text-sm text-gray-400 text-center">No vendors found</p>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {selectedVendor && (
                   <div className="md:col-span-2 bg-gray-50 rounded-lg p-3 text-xs text-gray-600">

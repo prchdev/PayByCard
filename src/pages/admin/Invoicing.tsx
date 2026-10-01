@@ -75,6 +75,8 @@ const EMPTY_PAYMENT = {
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+const currencySymbol = (currency: string) => currency === 'USD' ? '$' : '\u20B9';
+
 export default function Invoicing() {
   const navigate = useNavigate();
   const adminId = sessionStorage.getItem('adminId');
@@ -376,7 +378,6 @@ export default function Invoicing() {
     try {
       const wb = XLSX.utils.book_new();
 
-      // Sheet 1: Invoices
       const invoiceRows = data.map(inv => ({
         'Invoice ID': inv.invoice_id_code,
         'Invoice Number': inv.invoice_number,
@@ -404,7 +405,6 @@ export default function Invoicing() {
       wsInvoices['!cols'] = Object.keys(invoiceRows[0]).map(() => ({ wch: 18 }));
       XLSX.utils.book_append_sheet(wb, wsInvoices, 'Invoices');
 
-      // Sheet 2: Vendors
       const vendorRows = data.map(inv => {
         const v = inv.vendor;
         return {
@@ -438,7 +438,6 @@ export default function Invoicing() {
       wsVendors['!cols'] = Object.keys(vendorRows[0]).map(() => ({ wch: 20 }));
       XLSX.utils.book_append_sheet(wb, wsVendors, 'Vendors');
 
-      // Sheet 3: Line Items
       const lineItemRows: Record<string, any>[] = [];
       for (const inv of data) {
         for (const li of (inv.line_items || [])) {
@@ -465,7 +464,6 @@ export default function Invoicing() {
         XLSX.utils.book_append_sheet(wb, wsLineItems, 'Line Items');
       }
 
-      // Sheet 4: Payments
       const paymentRows: Record<string, any>[] = [];
       for (const inv of data) {
         for (const pay of (inv.payments || [])) {
@@ -491,7 +489,6 @@ export default function Invoicing() {
         XLSX.utils.book_append_sheet(wb, wsPayments, 'Payments');
       }
 
-      // Sheet 5: Documents
       const docRows: Record<string, any>[] = [];
       const docFiles: { folder: string; filename: string; url: string }[] = [];
 
@@ -537,7 +534,6 @@ export default function Invoicing() {
         XLSX.utils.book_append_sheet(wb, wsDocs, 'Documents');
       }
 
-      // Build a ZIP archive with the Excel file + all document files
       const zip = new JSZip();
       const excelBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
       zip.file('invoices_export.xlsx', excelBuffer);
@@ -639,10 +635,10 @@ export default function Invoicing() {
                 {selectedVendor && (
                   <div className="md:col-span-2 bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
                     <div className="grid grid-cols-2 gap-2">
-                      <span><strong>GST:</strong> {selectedVendor.gst_number || '—'}</span>
-                      <span><strong>PAN:</strong> {selectedVendor.pan_number || '—'}</span>
-                      <span><strong>Email:</strong> {selectedVendor.email || '—'}</span>
-                      <span><strong>Payment Terms:</strong> {selectedVendor.payment_terms || '—'}</span>
+                      <span><strong>GST:</strong> {selectedVendor.gst_number || '\u2014'}</span>
+                      <span><strong>PAN:</strong> {selectedVendor.pan_number || '\u2014'}</span>
+                      <span><strong>Email:</strong> {selectedVendor.email || '\u2014'}</span>
+                      <span><strong>Payment Terms:</strong> {selectedVendor.payment_terms || '\u2014'}</span>
                     </div>
                   </div>
                 )}
@@ -650,7 +646,14 @@ export default function Invoicing() {
                 <Field label="Invoice Date" required type="date" value={formData.invoice_date} onChange={(v) => setFormData({ ...formData, invoice_date: v })} />
                 <Field label="Due Date" type="date" value={formData.due_date} onChange={(v) => setFormData({ ...formData, due_date: v })} />
                 <Field label="PO Number" value={formData.po_number} onChange={(v) => setFormData({ ...formData, po_number: v })} />
-                <Field label="Currency" value={formData.currency} onChange={(v) => setFormData({ ...formData, currency: v })} />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+                  <select value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                    className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8c76f0]">
+                    <option value="INR">INR ({'\u20B9'})</option>
+                    <option value="USD">USD ($)</option>
+                  </select>
+                </div>
                 <Field label="Place of Supply" value={formData.place_of_supply} onChange={(v) => setFormData({ ...formData, place_of_supply: v })} />
                 <Field label="Expense Category" value={formData.expense_category} onChange={(v) => setFormData({ ...formData, expense_category: v })} />
                 <Field label="Additional Remark" value={formData.additional_remark} onChange={(v) => setFormData({ ...formData, additional_remark: v })} />
@@ -695,7 +698,7 @@ export default function Invoicing() {
                           className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-[#8c76f0]" />
                       </div>
                       <div className="col-span-3 md:col-span-1">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Unit ₹</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Unit {currencySymbol(formData.currency)}</label>
                         <input type="number" step="0.01" value={item.amount_per_unit} onChange={(e) => { const li = [...formData.line_items]; li[idx] = { ...li[idx], amount_per_unit: Number(e.target.value) }; setFormData({ ...formData, line_items: li }); }}
                           className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-[#8c76f0]" />
                       </div>
@@ -721,7 +724,7 @@ export default function Invoicing() {
                       </div>
                       <div className="col-span-6 md:col-span-1">
                         <label className="block text-xs font-medium text-gray-600 mb-1">Total</label>
-                        <p className="text-sm font-medium text-gray-900 py-1.5">₹{lineTotal.toFixed(2)}</p>
+                        <p className="text-sm font-medium text-gray-900 py-1.5">{currencySymbol(formData.currency)}{lineTotal.toFixed(2)}</p>
                       </div>
                       <div className="col-span-6 md:col-span-1">
                         {formData.line_items.length > 1 && (
@@ -735,12 +738,12 @@ export default function Invoicing() {
               </div>
               {/* Totals Summary */}
               <div className="mt-4 grid grid-cols-2 md:grid-cols-6 gap-3 p-4 bg-purple-50 rounded-xl">
-                <TotalBox label="Subtotal" value={totals.subtotal} />
-                <TotalBox label="SGST" value={totals.totalSgst} />
-                <TotalBox label="CGST" value={totals.totalCgst} />
-                <TotalBox label="IGST" value={totals.totalIgst} />
-                <TotalBox label="Total Tax" value={totals.totalTax} />
-                <TotalBox label="Grand Total" value={totals.grandTotal} highlight />
+                <TotalBox label="Subtotal" value={totals.subtotal} currency={formData.currency} />
+                <TotalBox label="SGST" value={totals.totalSgst} currency={formData.currency} />
+                <TotalBox label="CGST" value={totals.totalCgst} currency={formData.currency} />
+                <TotalBox label="IGST" value={totals.totalIgst} currency={formData.currency} />
+                <TotalBox label="Total Tax" value={totals.totalTax} currency={formData.currency} />
+                <TotalBox label="Grand Total" value={totals.grandTotal} highlight currency={formData.currency} />
               </div>
             </div>
 
@@ -754,7 +757,7 @@ export default function Invoicing() {
                       {pendingInvoiceFile.type.startsWith('image/') ? <FileImage className="w-5 h-5 text-[#8c76f0]" /> : <FileText className="w-5 h-5 text-[#8c76f0]" />}
                       <div>
                         <p className="text-sm font-medium text-gray-900">{pendingInvoiceFile.name}</p>
-                        <p className="text-xs text-gray-500">{(pendingInvoiceFile.size / 1024).toFixed(0)} KB • Will upload after saving</p>
+                        <p className="text-xs text-gray-500">{(pendingInvoiceFile.size / 1024).toFixed(0)} KB \u2022 Will upload after saving</p>
                       </div>
                     </div>
                     <button type="button" onClick={() => setPendingInvoiceFile(null)}
@@ -847,16 +850,17 @@ export default function Invoicing() {
                       <tr><td colSpan={11} className="px-4 py-12 text-center text-gray-400 text-sm">No invoices found</td></tr>
                     ) : invoices.map(inv => {
                       const pending = Number(inv.grand_total) - Number(inv.total_paid);
+                      const sym = currencySymbol(inv.currency);
                       return (
                         <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-3 text-sm font-mono text-gray-700 whitespace-nowrap">{inv.invoice_id_code}</td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{inv.vendor?.legal_name || '—'}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{inv.vendor?.legal_name || '\u2014'}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{inv.invoice_number}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{inv.invoice_date}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{inv.due_date || '—'}</td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">₹{Number(inv.grand_total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                          <td className="px-4 py-3 text-sm text-green-600 font-medium">₹{Number(inv.total_paid).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                          <td className="px-4 py-3 text-sm text-orange-600 font-medium">₹{pending.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{inv.due_date || '\u2014'}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{sym}{Number(inv.grand_total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          <td className="px-4 py-3 text-sm text-green-600 font-medium">{sym}{Number(inv.total_paid).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          <td className="px-4 py-3 text-sm text-orange-600 font-medium">{sym}{pending.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                           <td className="px-4 py-3"><StatusBadge status={inv.invoice_status} /></td>
                           <td className="px-4 py-3"><PayStatusBadge status={inv.payment_status} /></td>
                           <td className="px-4 py-3">
@@ -886,7 +890,7 @@ export default function Invoicing() {
                   <div className="w-10 h-10 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl flex items-center justify-center"><ReceiptText className="w-5 h-5 text-[#8c76f0]" /></div>
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">{viewInvoice.invoice_id_code}</h2>
-                    <p className="text-xs text-gray-500">{viewInvoice.invoice_number} • {viewInvoice.vendor?.legal_name}</p>
+                    <p className="text-xs text-gray-500">{viewInvoice.invoice_number} \u2022 {viewInvoice.vendor?.legal_name}</p>
                   </div>
                 </div>
                 <button onClick={() => setViewInvoice(null)} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
@@ -916,17 +920,18 @@ export default function Invoicing() {
                       <tbody className="divide-y divide-gray-100">
                         {(viewInvoice.line_items || []).map((li, i) => {
                           const taxable = (Number(li.quantity) || 0) * (Number(li.amount_per_unit) || 0);
+                          const sym = currencySymbol(viewInvoice.currency);
                           return (
                             <tr key={i}>
                               <td className="px-2 py-2 text-sm text-gray-700">{li.description}</td>
-                              <td className="px-2 py-2 text-sm text-gray-600">{li.hsn_sac || '—'}</td>
+                              <td className="px-2 py-2 text-sm text-gray-600">{li.hsn_sac || '\u2014'}</td>
                               <td className="px-2 py-2 text-sm text-gray-600">{li.quantity}</td>
-                              <td className="px-2 py-2 text-sm text-gray-600">₹{Number(li.amount_per_unit).toFixed(2)}</td>
-                              <td className="px-2 py-2 text-sm text-gray-600">₹{taxable.toFixed(2)}</td>
-                              <td className="px-2 py-2 text-sm text-gray-600">₹{Number(li.sgst_amount).toFixed(2)}</td>
-                              <td className="px-2 py-2 text-sm text-gray-600">₹{Number(li.cgst_amount).toFixed(2)}</td>
-                              <td className="px-2 py-2 text-sm text-gray-600">₹{Number(li.igst_amount).toFixed(2)}</td>
-                              <td className="px-2 py-2 text-sm font-medium text-gray-900">₹{Number(li.total_amount).toFixed(2)}</td>
+                              <td className="px-2 py-2 text-sm text-gray-600">{sym}{Number(li.amount_per_unit).toFixed(2)}</td>
+                              <td className="px-2 py-2 text-sm text-gray-600">{sym}{taxable.toFixed(2)}</td>
+                              <td className="px-2 py-2 text-sm text-gray-600">{sym}{Number(li.sgst_amount).toFixed(2)}</td>
+                              <td className="px-2 py-2 text-sm text-gray-600">{sym}{Number(li.cgst_amount).toFixed(2)}</td>
+                              <td className="px-2 py-2 text-sm text-gray-600">{sym}{Number(li.igst_amount).toFixed(2)}</td>
+                              <td className="px-2 py-2 text-sm font-medium text-gray-900">{sym}{Number(li.total_amount).toFixed(2)}</td>
                             </tr>
                           );
                         })}
@@ -937,15 +942,15 @@ export default function Invoicing() {
 
                 {/* Totals */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-purple-50 rounded-xl">
-                  <TotalBox label="Subtotal" value={Number(viewInvoice.subtotal)} />
-                  <TotalBox label="Total Tax" value={Number(viewInvoice.total_tax)} />
-                  <TotalBox label="Grand Total" value={Number(viewInvoice.grand_total)} highlight />
-                  <TotalBox label="Total Paid" value={Number(viewInvoice.total_paid)} />
+                  <TotalBox label="Subtotal" value={Number(viewInvoice.subtotal)} currency={viewInvoice.currency} />
+                  <TotalBox label="Total Tax" value={Number(viewInvoice.total_tax)} currency={viewInvoice.currency} />
+                  <TotalBox label="Grand Total" value={Number(viewInvoice.grand_total)} highlight currency={viewInvoice.currency} />
+                  <TotalBox label="Total Paid" value={Number(viewInvoice.total_paid)} currency={viewInvoice.currency} />
                 </div>
                 <div className="flex justify-end">
                   <div className="text-right">
                     <p className="text-sm text-gray-500">Pending Amount</p>
-                    <p className="text-2xl font-bold text-orange-600">₹{(Number(viewInvoice.grand_total) - Number(viewInvoice.total_paid)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                    <p className="text-2xl font-bold text-orange-600">{currencySymbol(viewInvoice.currency)}{(Number(viewInvoice.grand_total) - Number(viewInvoice.total_paid)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                   </div>
                 </div>
 
@@ -999,13 +1004,13 @@ export default function Invoicing() {
                             <div className="flex items-center gap-3">
                               <div>
                                 <p className="text-sm font-medium text-gray-900">{pay.payment_id_code}</p>
-                                <p className="text-xs text-gray-500">{pay.payment_date} • {pay.payment_mode.replace('_', ' ')} • {pay.paid_from.replace('_', ' ')}</p>
+                                <p className="text-xs text-gray-500">{pay.payment_date} \u2022 {pay.payment_mode.replace('_', ' ')} \u2022 {pay.paid_from.replace('_', ' ')}</p>
                                 {pay.transaction_id && <p className="text-xs text-gray-400">Txn: {pay.transaction_id}</p>}
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
                               <div className="text-right">
-                                <p className="text-sm font-bold text-gray-900">₹{Number(pay.amount_paid).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                <p className="text-sm font-bold text-gray-900">{currencySymbol(viewInvoice.currency)}{Number(pay.amount_paid).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                                 <PayStatusBadge status={pay.payment_status} />
                               </div>
                               {canEdit && pay.payment_status !== 'cancelled' && (
@@ -1108,7 +1113,11 @@ export default function Invoicing() {
                   </div>
                   <Field label="Payment Source" value={paymentForm.payment_source} onChange={(v) => setPaymentForm({ ...paymentForm, payment_source: v })} />
                   <Field label="Transaction ID / UTR" value={paymentForm.transaction_id} onChange={(v) => setPaymentForm({ ...paymentForm, transaction_id: v })} />
-                  <Field label="Amount Paid" required type="number" value={String(paymentForm.amount_paid)} onChange={(v) => setPaymentForm({ ...paymentForm, amount_paid: Number(v) || 0 })} />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Amount Paid ({currencySymbol(paymentModal.invoice.currency)}) <span className="text-red-600">*</span></label>
+                    <input type="number" value={String(paymentForm.amount_paid)} onChange={(e) => setPaymentForm({ ...paymentForm, amount_paid: Number(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8c76f0] focus:border-transparent" />
+                  </div>
                   <Field label="Receipt Number" value={paymentForm.receipt_number} onChange={(v) => setPaymentForm({ ...paymentForm, receipt_number: v })} />
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
@@ -1165,11 +1174,11 @@ function Field({ label, value, onChange, required, type = 'text' }: { label: str
   );
 }
 
-function TotalBox({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+function TotalBox({ label, value, highlight, currency = 'INR' }: { label: string; value: number; highlight?: boolean; currency?: string }) {
   return (
     <div className={`p-2 rounded-lg ${highlight ? 'bg-[#8c76f0] text-white' : 'bg-white'}`}>
       <p className={`text-xs font-medium ${highlight ? 'text-purple-100' : 'text-gray-500'}`}>{label}</p>
-      <p className={`text-sm font-bold ${highlight ? 'text-white' : 'text-gray-900'}`}>₹{value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+      <p className={`text-sm font-bold ${highlight ? 'text-white' : 'text-gray-900'}`}>{currencySymbol(currency)}{value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
     </div>
   );
 }
@@ -1178,9 +1187,7 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
   return (
     <div>
       <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</p>
-      <p className="text-sm text-gray-700 mt-0.5 capitalize">{value || '—'}</p>
+      <p className="text-sm text-gray-700 mt-0.5 capitalize">{value || '\u2014'}</p>
     </div>
   );
 }
-
-

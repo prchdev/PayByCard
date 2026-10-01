@@ -629,7 +629,7 @@ export default function Invoicing() {
                   <select value={formData.vendor_id} onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value })}
                     className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8c76f0]">
                     <option value="">Select Vendor...</option>
-                    {vendors.filter(v => v.id).map(v => <option key={v.id} value={v.id}>{v.legal_name} ({v.vendor_code})</option>)}
+                    {vendors.filter(v => v.id).map(v => <option key={v.id} value={v.id}>{v.legal_name}{v.trade_name ? ` / ${v.trade_name}` : ''} ({v.vendor_code})</option>)}
                   </select>
                 </div>
                 {selectedVendor && (

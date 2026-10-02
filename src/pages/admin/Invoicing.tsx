@@ -74,6 +74,7 @@ const EMPTY_PAYMENT = {
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const PAGE_SIZE = 10;
 
 const currencySymbol = (currency: string) => currency === 'USD' ? '$' : '\u20B9';
 
@@ -112,6 +113,7 @@ export default function Invoicing() {
   const [vendorSearch, setVendorSearch] = useState('');
   const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
   const vendorComboRef = useRef<HTMLDivElement>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const adminSessionToken = sessionStorage.getItem('pbc_admin_session') || '';
 
@@ -621,6 +623,10 @@ export default function Invoicing() {
 
   const selectedVendor = vendors.find(v => v.id === formData.vendor_id);
 
+  const totalPages = Math.ceil(invoices.length / PAGE_SIZE);
+  const paginatedInvoices = invoices.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  useEffect(() => { setCurrentPage(1); }, [invoices]);
+
   if (permLoading) return null;
   if (loading) {
     return <AdminLayout><div className="flex items-center justify-center min-h-[400px]"><Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" /></div></AdminLayout>;
@@ -964,7 +970,7 @@ export default function Invoicing() {
                   <tbody className="divide-y divide-gray-100">
                     {invoices.length === 0 ? (
                       <tr><td colSpan={11} className="px-4 py-12 text-center text-gray-400 text-sm">No invoices found</td></tr>
-                    ) : invoices.map(inv => {
+                    ) : paginatedInvoices.map(inv => {
                       const pending = Number(inv.grand_total) - Number(inv.total_paid);
                       const sym = currencySymbol(inv.currency);
                       return (
@@ -993,6 +999,18 @@ export default function Invoicing() {
                   </tbody>
                 </table>
               </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+                  <p className="text-sm text-gray-600">Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, invoices.length)} of {invoices.length}</p>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Previous</button>
+                    <span className="text-sm text-gray-600 font-medium">Page {currentPage} of {totalPages}</span>
+                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Next</button>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}

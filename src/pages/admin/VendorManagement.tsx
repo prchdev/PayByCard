@@ -84,6 +84,7 @@ const ACCOUNT_TYPES = [
   { v: 'current_account', l: 'Current Account' },
   { v: 'savings_account', l: 'Savings Account' },
 ];
+const PAGE_SIZE = 10;
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -106,6 +107,7 @@ export default function VendorManagement() {
   const [viewVendor, setViewVendor] = useState<Vendor | null>(null);
   const [statusModal, setStatusModal] = useState<{ vendor: Vendor; action: string } | null>(null);
   const [statusReason, setStatusReason] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     if (!adminId) navigate('/admin/login');
@@ -210,6 +212,10 @@ export default function VendorManagement() {
     setSearchTerm(''); setStatusFilter(''); setRegFilter(''); setDomesticFilter('');
     fetchVendors();
   };
+
+  const totalPages = Math.ceil(vendors.length / PAGE_SIZE);
+  const paginatedVendors = vendors.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  useEffect(() => { setCurrentPage(1); }, [vendors]);
 
   const exportVendors = (all: boolean) => {
     const data = all ? vendors : vendors.filter(v =>
@@ -411,7 +417,7 @@ export default function VendorManagement() {
                   <tbody className="divide-y divide-gray-100">
                     {vendors.length === 0 ? (
                       <tr><td colSpan={11} className="px-4 py-12 text-center text-gray-400 text-sm">No vendors found</td></tr>
-                    ) : vendors.map(v => (
+                    ) : paginatedVendors.map(v => (
                       <tr key={v.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 text-sm font-mono text-gray-700 whitespace-nowrap">{v.vendor_code}</td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{v.legal_name}</td>
@@ -448,6 +454,18 @@ export default function VendorManagement() {
                   </tbody>
                 </table>
               </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+                  <p className="text-sm text-gray-600">Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, vendors.length)} of {vendors.length}</p>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Previous</button>
+                    <span className="text-sm text-gray-600 font-medium">Page {currentPage} of {totalPages}</span>
+                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Next</button>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}

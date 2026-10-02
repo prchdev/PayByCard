@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ReceiptText, Plus, Save, X, AlertCircle, CheckCircle, Loader2, Pencil,
   Search, Download, Eye, Ban, RotateCcw, CreditCard, FileText, IndianRupee,
-  Upload, FileImage, ExternalLink,
+  Upload, FileImage, ExternalLink, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -74,8 +74,6 @@ const EMPTY_PAYMENT = {
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const PAGE_SIZE = 10;
-
 const currencySymbol = (currency: string) => currency === 'USD' ? '$' : '\u20B9';
 
 export default function Invoicing() {
@@ -114,6 +112,7 @@ export default function Invoicing() {
   const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
   const vendorComboRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
 
   const adminSessionToken = sessionStorage.getItem('pbc_admin_session') || '';
 
@@ -623,9 +622,11 @@ export default function Invoicing() {
 
   const selectedVendor = vendors.find(v => v.id === formData.vendor_id);
 
-  const totalPages = Math.ceil(invoices.length / PAGE_SIZE);
-  const paginatedInvoices = invoices.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  useEffect(() => { setCurrentPage(1); }, [invoices]);
+  const totalPages = Math.ceil(invoices.length / recordsPerPage);
+  const startIndex = (currentPage - 1) * recordsPerPage;
+  const endIndex = startIndex + recordsPerPage;
+  const paginatedInvoices = invoices.slice(startIndex, endIndex);
+  useEffect(() => { setCurrentPage(1); }, [invoices, recordsPerPage]);
 
   if (permLoading) return null;
   if (loading) {
@@ -999,15 +1000,73 @@ export default function Invoicing() {
                   </tbody>
                 </table>
               </div>
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-                  <p className="text-sm text-gray-600">Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, invoices.length)} of {invoices.length}</p>
+              {invoices.length > 0 && (
+                <div className="p-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                    <span>Show</span>
+                    <select
+                      value={recordsPerPage}
+                      onChange={(e) => setRecordsPerPage(Number(e.target.value))}
+                      className="px-2 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8c76f0]"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                    <span>records per page</span>
+                  </div>
+
                   <div className="flex items-center gap-2">
-                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Previous</button>
-                    <span className="text-sm text-gray-600 font-medium">Page {currentPage} of {totalPages}</span>
-                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Next</button>
+                    <span className="text-sm text-gray-700 mr-2">
+                      Showing {startIndex + 1}-{Math.min(endIndex, invoices.length)} of {invoices.length}
+                    </span>
+                    {totalPages > 1 && (
+                      <>
+                        <button
+                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                          className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
+                                currentPage === pageNum
+                                  ? 'bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white border-[#8c76f0]'
+                                  : 'border-gray-300 hover:bg-gray-100'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+
+                        <button
+                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                          className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

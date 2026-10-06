@@ -20,9 +20,9 @@ export const seoConfig: Record<string, SeoMeta> = {
     canonical: 'https://paybycard.in/',
   },
   '/about': {
-    title: 'About Us | PayByCard India',
-    description: 'Learn about PayByCard India, a trusted platform for making secure credit card payments to vendors, businesses, and educational institutions.',
-    keywords: 'about paybycard, paybycard india, credit card payment platform india, secure online payments',
+    title: 'About PayByCard – Credit Card Payment Platform in India',
+    description: 'Learn about PayByCard, an Indian payment technology platform helping users make eligible rent, education, vendor and business payments using credit cards.',
+    keywords: 'PayByCard, credit card payment platform India, payment technology company India',
     canonical: 'https://paybycard.in/about',
   },
   '/faq': {

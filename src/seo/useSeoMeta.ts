@@ -35,8 +35,8 @@ export function useSeoMeta() {
     setMetaTag('name', 'keywords', meta.keywords);
     setCanonical(meta.canonical ?? `https://paybycard.in${pathname}`);
 
-    setMetaTag('property', 'og:title', meta.title);
-    setMetaTag('property', 'og:description', meta.description);
+    setMetaTag('property', 'og:title', meta.ogTitle);
+    setMetaTag('property', 'og:description', meta.ogDescription);
     setMetaTag('property', 'og:url', meta.canonical ?? `https://paybycard.in${pathname}`);
     setMetaTag('property', 'og:image', OG_IMAGE);
 

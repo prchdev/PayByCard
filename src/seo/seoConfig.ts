@@ -14,9 +14,9 @@ const DEFAULT_META: SeoMeta = {
 
 export const seoConfig: Record<string, SeoMeta> = {
   '/': {
-    title: 'Pay eligible vendor, business, education and rent payments using your credit card | PayByCard India',
-    description: 'Pay any bill instantly using your Visa, MasterCard, RuPay, Amex, Diners Club credit card. Make secure online payments, pay bills, invoices and more with ease.',
-    keywords: 'pay any bill using credit card, credit card to bank transfer, credit card bill payment platform, credit card cash transfer service, instant credit card payments',
+    title: 'PayByCard – Pay Rent, Fees & Business Payments by Credit Card',
+    description: 'Pay rent, education fees, vendor invoices and eligible business payments using your visa, master card, rupay, american express(Amex), diners club credit card with PayByCard.',
+    keywords: 'pay rent by credit card, pay fees by credit card, credit card payments, vendor payment by credit card, business payment by credit card',
     canonical: 'https://paybycard.in/',
   },
   '/about': {

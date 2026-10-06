@@ -32,9 +32,9 @@ export const seoConfig: Record<string, SeoMeta> = {
     canonical: 'https://paybycard.in/faq',
   },
   '/terms-of-service': {
-    title: 'Terms of Service | PayByCard India',
-    description: 'Read the terms of service for PayByCard India, including user responsibilities, payment terms, and platform usage guidelines.',
-    keywords: 'paybycard terms of service, terms and conditions, payment platform terms, credit card payment terms',
+    title: 'Terms of Service | PayByCard',
+    description: 'Read the PayByCard Terms of Service governing the use of our platform, eligible payments, transactions, user responsibilities, refunds and prohibited activities.',
+    keywords: 'PayByCard terms of service, PayByCard terms and conditions, PayByCard user agreement, PayByCard payment terms',
     canonical: 'https://paybycard.in/terms-of-service',
   },
   '/privacy': {

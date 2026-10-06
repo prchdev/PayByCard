@@ -50,9 +50,9 @@ export const seoConfig: Record<string, SeoMeta> = {
     canonical: 'https://paybycard.in/refund-policy',
   },
   '/contact': {
-    title: 'Contact Us | PayByCard India',
-    description: 'Get in touch with PayByCard India for support, queries, or feedback regarding credit card payments and platform usage.',
-    keywords: 'contact paybycard, paybycard support, credit card payment help, paybycard contact',
+    title: 'Contact PayByCard – Customer Support & Assistance',
+    description: 'Contact PayByCard for customer support, payment assistance, transaction queries, refunds, account issues and other service-related enquiries.',
+    keywords: 'PayByCard contact, PayByCard customer support, PayByCard support, PayByCard contact number, PayByCard help, PayByCard payment support',
     canonical: 'https://paybycard.in/contact',
   },
   '/fraud-reporting': {

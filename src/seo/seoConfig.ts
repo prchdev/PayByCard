@@ -38,9 +38,9 @@ export const seoConfig: Record<string, SeoMeta> = {
     canonical: 'https://paybycard.in/terms-of-service',
   },
   '/privacy': {
-    title: 'Privacy Policy | PayByCard India',
-    description: 'Review the PayByCard India privacy policy to understand how we collect, use, and protect your personal and payment data.',
-    keywords: 'paybycard privacy policy, data protection, privacy, credit card data security',
+    title: 'Privacy Policy | PayByCard',
+    description: 'Read the PayByCard Privacy Policy to understand how we collect, use, protect and process personal information when you use our platform and services.',
+    keywords: 'PayByCard privacy policy, PayByCard data privacy, PayByCard personal information, PayByCard data protection',
     canonical: 'https://paybycard.in/privacy',
   },
   '/refund-policy': {

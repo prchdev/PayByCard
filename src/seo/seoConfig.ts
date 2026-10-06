@@ -26,9 +26,9 @@ export const seoConfig: Record<string, SeoMeta> = {
     canonical: 'https://paybycard.in/about',
   },
   '/faq': {
-    title: 'Frequently Asked Questions | PayByCard India',
-    description: 'Find answers to common questions about PayByCard India, credit card payments, KYC, refunds, and more.',
-    keywords: 'paybycard faq, credit card payment questions, paybycard help, bill payment faq',
+    title: 'PayByCard FAQ – Credit Card Payments, Fees & Refunds',
+    description: 'Find answers about PayByCard credit card payments, supported cards, transaction processing, settlement, refunds, cancellations, security and fraud prevention.',
+    keywords: 'PayByCard FAQ, credit card payment FAQ, credit card payment India, PayByCard refund',
     canonical: 'https://paybycard.in/faq',
   },
   '/terms-of-service': {

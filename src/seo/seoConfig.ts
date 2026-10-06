@@ -44,8 +44,8 @@ export const seoConfig: Record<string, SeoMeta> = {
     canonical: 'https://paybycard.in/privacy',
   },
   '/refund-policy': {
-    title: 'Refund Policy | PayByCard India',
-    description: 'Understand the PayByCard India refund policy, including eligibility, processing times, and conditions for credit card payment refunds.',
+    title: 'Refund & Cancellation Policy | PayByCard',
+    description: 'Learn about PayByCard''s refund and cancellation policy, including refund eligibility, applicable charges, processing timelines and transaction cancellation conditions.',
     keywords: 'paybycard refund policy, refund, credit card refund, payment refund terms',
     canonical: 'https://paybycard.in/refund-policy',
   },

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { useSeoMeta } from './seo/useSeoMeta';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -102,11 +103,17 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 }
 
 
+function SeoMetaUpdater() {
+  useSeoMeta();
+  return null;
+}
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <ScrollToTop />
+        <SeoMetaUpdater />
         <Routes>
           <Route path="/" element={<MainLayout><Home /></MainLayout>} />
           <Route path="/about" element={<MainLayout><About /></MainLayout>} />

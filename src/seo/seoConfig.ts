@@ -62,15 +62,15 @@ export const seoConfig: Record<string, SeoMeta> = {
     canonical: 'https://paybycard.in/fraud-reporting',
   },
   '/register': {
-    title: 'Register | PayByCard India',
-    description: 'Create your PayByCard India account to start making secure credit card payments to vendors, businesses, and institutions.',
-    keywords: 'register paybycard, create account, sign up, credit card payment account',
+    title: 'Create PayByCard Account – Pay by Credit Card',
+    description: 'Create your PayByCard account to make eligible rent, education, vendor and business payments using your credit card.',
+    keywords: 'PayByCard registration, PayByCard account, pay rent credit card India',
     canonical: 'https://paybycard.in/register',
   },
   '/login': {
-    title: 'Login | PayByCard India',
-    description: 'Login to your PayByCard India account to manage payments, beneficiaries, and transactions.',
-    keywords: 'paybycard login, sign in, credit card payment login, account login',
+    title: 'PayByCard Login – Access Your Account',
+    description: 'Sign in to your PayByCard account to manage payments, transactions and account information securely.',
+    keywords: 'PayByCard login, PayByCard sign in, PayByCard account',
     canonical: 'https://paybycard.in/login',
   },
   '/verify-otp': {

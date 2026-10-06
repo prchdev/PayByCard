@@ -56,9 +56,9 @@ export const seoConfig: Record<string, SeoMeta> = {
     canonical: 'https://paybycard.in/contact',
   },
   '/fraud-reporting': {
-    title: 'Fraud Reporting | PayByCard India',
-    description: 'Report fraud, suspicious activity, or unauthorized transactions on the PayByCard India platform.',
-    keywords: 'fraud reporting, report fraud, paybycard fraud, credit card fraud, suspicious activity',
+    title: 'Report Payment Fraud – PayByCard Fraud Reporting',
+    description: 'Report suspected unauthorized or fraudulent PayByCard transactions and learn how PayByCard handles fraud, disputes and payment security.',
+    keywords: 'report payment fraud, PayByCard fraud, credit card payment fraud, report unauthorized transaction',
     canonical: 'https://paybycard.in/fraud-reporting',
   },
   '/register': {

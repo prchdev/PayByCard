@@ -47,6 +47,8 @@ interface PaymentCategory {
   invoice_frequency_months: number;
   invoice_min_amount: number;
   max_payment_per_beneficiary: number;
+  available_to_retail?: boolean;
+  available_to_business?: boolean;
 }
 
 interface PaymentGateway {
@@ -610,11 +612,12 @@ export default function MakePayment() {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-payment-categories-list`,
         {
-          method: 'GET',
+          method: 'POST',
           headers: {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ userId }),
         }
       );
 

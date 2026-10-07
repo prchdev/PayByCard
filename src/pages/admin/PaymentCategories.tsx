@@ -34,6 +34,8 @@ interface PaymentCategory {
   invoice_frequency_months: number;
   invoice_min_amount: number;
   max_payment_per_beneficiary: number;
+  available_to_retail: boolean;
+  available_to_business: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +53,8 @@ interface CategoryFormData {
   invoice_frequency_months: number;
   invoice_min_amount: number;
   max_payment_per_beneficiary: number;
+  available_to_retail: boolean;
+  available_to_business: boolean;
 }
 
 const SETTLEMENT_TIME_OPTIONS = [
@@ -72,6 +76,8 @@ const EMPTY_FORM: CategoryFormData = {
   invoice_frequency_months: 0,
   invoice_min_amount: 0,
   max_payment_per_beneficiary: 0,
+  available_to_retail: true,
+  available_to_business: true,
 };
 
 export default function PaymentCategories() {
@@ -181,6 +187,8 @@ export default function PaymentCategories() {
       invoice_frequency_months: cat.invoice_frequency_months ?? 0,
       invoice_min_amount: cat.invoice_min_amount ?? 0,
       max_payment_per_beneficiary: cat.max_payment_per_beneficiary ?? 0,
+      available_to_retail: cat.available_to_retail ?? true,
+      available_to_business: cat.available_to_business ?? true,
     });
     setShowForm(true);
     setMessage(null);
@@ -465,6 +473,49 @@ export default function PaymentCategories() {
               </label>
             </div>
 
+            {/* Availability checkboxes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl hover:border-[#8c76f0] transition-colors cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.available_to_retail}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, available_to_retail: e.target.checked }))
+                  }
+                  className="w-5 h-5 text-[#8c76f0] border-gray-300 rounded focus:ring-[#8c76f0]"
+                />
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-[#8c76f0]" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Available to Retail</p>
+                    <p className="text-xs text-gray-500">
+                      Show this category to retail users (default account type)
+                    </p>
+                  </div>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-xl hover:border-[#8c76f0] transition-colors cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.available_to_business}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, available_to_business: e.target.checked }))
+                  }
+                  className="w-5 h-5 text-[#8c76f0] border-gray-300 rounded focus:ring-[#8c76f0]"
+                />
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-[#8c76f0]" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Available to Business</p>
+                    <p className="text-xs text-gray-500">
+                      Show this category to users with verified business KYC
+                    </p>
+                  </div>
+                </div>
+              </label>
+            </div>
+
             {/* Refund After Hours - conditional on KYC Required */}
             {formData.receiver_kyc_required && (
               <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-5">
@@ -707,6 +758,12 @@ export default function PaymentCategories() {
                     Order
                   </th>
                   <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Retail
+                  </th>
+                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Business
+                  </th>
+                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -717,7 +774,7 @@ export default function PaymentCategories() {
               <tbody className="divide-y divide-gray-100">
                 {filteredCategories.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-6 py-12 text-center">
+                    <td colSpan={12} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center">
                         <Tag className="w-10 h-10 text-gray-300 mb-3" />
                         <p className="text-gray-500 font-medium">No categories found</p>
@@ -813,6 +870,24 @@ export default function PaymentCategories() {
                       </td>
                       <td className="px-4 py-4 text-center">
                         <span className="text-sm text-gray-600">{cat.display_order}</span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {cat.available_to_retail ? (
+                          <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full border border-emerald-200">
+                            Yes
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">No</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {cat.available_to_business ? (
+                          <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full border border-emerald-200">
+                            Yes
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">No</span>
+                        )}
                       </td>
                       <td className="px-4 py-4 text-center">
                         {cat.is_enabled ? (

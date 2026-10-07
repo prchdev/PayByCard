@@ -32,6 +32,8 @@ serveAdmin(async (req: Request) => {
       invoice_frequency_months,
       invoice_min_amount,
       max_payment_per_beneficiary,
+      available_to_retail,
+      available_to_business,
     } = await req.json();
 
     if (!adminId) {
@@ -96,6 +98,8 @@ serveAdmin(async (req: Request) => {
           invoice_frequency_months: invoice_required ? invoiceFreqMonths : 0,
           invoice_min_amount: invoice_required ? invoiceMinAmount : 0,
           max_payment_per_beneficiary: maxPerBeneficiary,
+          available_to_retail: available_to_retail !== false,
+          available_to_business: available_to_business !== false,
           updated_by_admin_id: adminId,
           updated_at: new Date().toISOString(),
         })
@@ -146,6 +150,8 @@ serveAdmin(async (req: Request) => {
         invoice_frequency_months: invoice_required ? invoiceFreqMonths : 0,
         invoice_min_amount: invoice_required ? invoiceMinAmount : 0,
         max_payment_per_beneficiary: maxPerBeneficiary,
+        available_to_retail: available_to_retail !== false,
+        available_to_business: available_to_business !== false,
         created_by_admin_id: adminId,
         updated_by_admin_id: adminId,
         updated_at: new Date().toISOString(),

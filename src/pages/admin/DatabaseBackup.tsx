@@ -168,20 +168,12 @@ export default function DatabaseBackup() {
 
       if (data.allSuccess) {
         setMessage({ type: 'success', text: data.message || 'Backup completed successfully' });
-      } else if (data.partialSuccess) {
-        setMessage({ type: 'error', text: data.message || 'Backup completed with some errors' });
       } else {
         setMessage({ type: 'error', text: data.message || 'Backup failed' });
       }
 
-      // Show download link if backup was successful
-      if (data.results && data.results.length > 0) {
-        const successful = data.results.filter((r: any) => r.success);
-        if (successful.length > 0) {
-          // Fetch updated history to get the backup IDs
-          await fetchBackups();
-        }
-      }
+      // Refresh history to show the new backup entry
+      await fetchBackups();
     } catch (error) {
       setMessage({
         type: 'error',
@@ -255,6 +247,7 @@ export default function DatabaseBackup() {
   };
 
   const getTypeIcon = (type: string) => {
+    if (type === 'full') return Archive;
     const option = BACKUP_OPTIONS.find((o) => o.key === type);
     return option?.icon || FileArchive;
   };
@@ -342,8 +335,9 @@ export default function DatabaseBackup() {
             </label>
           </div>
           <p className="text-xs text-gray-500">
-            When enabled, all backup types below will be included automatically. This creates a comprehensive
+            When enabled, all backup types will be combined into a single backup file. This creates a comprehensive
             backup containing schema, data, roles, storage manifests, edge functions, cron jobs, auth users, and project configuration.
+            It will appear as a single entry in the backup history.
           </p>
         </div>
 

@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { serveAdmin } from "../_shared/session.ts";
+import postgres from "npm:pg@8.13.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,33 +12,35 @@ const corsHeaders = {
 
 const BUCKET = "database-backups";
 
-interface BackupType {
-  key: string;
-  label: string;
-}
-
-const BACKUP_TYPES: Record<string, BackupType> = {
-  full: { key: "full", label: "Full Backup" },
-  schema_data: { key: "schema_data", label: "Database Schema & Data" },
-  data_only: { key: "data_only", label: "Data Only" },
-  schema_only: { key: "schema_only", label: "Schema Only" },
-  roles: { key: "roles", label: "Roles" },
-  linked: { key: "linked", label: "Linked Supabase Project" },
-  pg_dump: { key: "pg_dump", label: "Full PostgreSQL Control (pg_dump)" },
-  storage: { key: "storage", label: "Storage — Files/Images/PDFs" },
-  edge_functions: { key: "edge_functions", label: "Edge Functions" },
-  cron_jobs: { key: "cron_jobs", label: "Cron Jobs" },
-  auth_users: { key: "auth_users", label: "Auth Users" },
-  project_config: { key: "project_config", label: "Project Configuration & Secrets" },
+const BACKUP_LABELS: Record<string, string> = {
+  full: "Full Backup",
+  schema_data: "Database Schema & Data",
+  data_only: "Data Only",
+  schema_only: "Schema Only",
+  roles: "Roles",
+  linked: "Linked Supabase Project",
+  pg_dump: "Full PostgreSQL Control (pg_dump)",
+  storage: "Storage — Files/Images/PDFs",
+  edge_functions: "Edge Functions",
+  cron_jobs: "Cron Jobs",
+  auth_users: "Auth Users",
+  project_config: "Project Configuration & Secrets",
 };
 
-const ALL_BACKUP_TYPES = Object.keys(BACKUP_TYPES);
+async function getDbConnection(): Promise<any> {
+  const dbUrl = Deno.env.get("SUPABASE_DB_URL");
+  if (!dbUrl) throw new Error("SUPABASE_DB_URL not configured");
+  const client = new postgres.Client({ connectionString: dbUrl, ssl: "prefer" });
+  await client.connect();
+  return client;
+}
 
 serveAdmin(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  let dbClient: any = null;
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -52,7 +55,7 @@ serveAdmin(async (req: Request) => {
       );
     }
 
-    if (!backupType || !BACKUP_TYPES[backupType]) {
+    if (!backupType || !BACKUP_LABELS[backupType]) {
       return new Response(
         JSON.stringify({ error: "Invalid or missing backupType" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -72,301 +75,439 @@ serveAdmin(async (req: Request) => {
       );
     }
 
-    const typesToRun = backupType === "full" ? ALL_BACKUP_TYPES : [backupType];
+    dbClient = await getDbConnection();
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const results: Array<{ type: string; label: string; success: boolean; fileName?: string; fileSize?: number; error?: string }> = [];
 
-    for (const typeKey of typesToRun) {
-      const typeInfo = BACKUP_TYPES[typeKey];
-      const fileName = `backup_${typeKey}_${timestamp}.sql`;
+    if (backupType === "full") {
+      // Full backup: combine everything into one file, one history entry
+      const fileName = `backup_full_${timestamp}.sql`;
       const filePath = `${adminId}/${fileName}`;
 
       try {
-        let content = "";
-        let fileCount = 1;
-
-        switch (typeKey) {
-          case "schema_data":
-            content = await exportSchemaData(supabase, false);
-            break;
-          case "data_only":
-            content = await exportSchemaData(supabase, true);
-            break;
-          case "schema_only":
-            content = await exportSchemaOnly(supabase);
-            break;
-          case "roles":
-            content = await exportRoles(supabase);
-            break;
-          case "linked":
-            content = await exportLinkedProject(supabase);
-            break;
-          case "pg_dump":
-            content = await exportFullPgDump(supabase);
-            break;
-          case "storage":
-            content = await exportStorageList(supabase);
-            break;
-          case "edge_functions":
-            content = await exportEdgeFunctionsList(supabase);
-            break;
-          case "cron_jobs":
-            content = await exportCronJobs(supabase);
-            break;
-          case "auth_users":
-            content = await exportAuthUsers(supabase);
-            break;
-          case "project_config":
-            content = await exportProjectConfig(supabase);
-            break;
-          case "full":
-            content = await exportFullBackup(supabase);
-            fileCount = 1;
-            break;
-          default:
-            throw new Error(`Unknown backup type: ${typeKey}`);
-        }
-
+        const content = await exportFullBackup(dbClient, supabase);
         const { error: uploadError } = await supabase.storage
           .from(BUCKET)
-          .upload(filePath, content, {
-            contentType: "application/sql",
-            upsert: false,
-          });
+          .upload(filePath, content, { contentType: "application/sql", upsert: false });
 
         if (uploadError) throw uploadError;
 
         const fileSize = new Blob([content]).size;
 
-        const { error: dbError } = await supabase.from("backup_history").insert({
-          backup_type: typeKey,
-          backup_label: typeInfo.label,
+        await supabase.from("backup_history").insert({
+          backup_type: "full",
+          backup_label: BACKUP_LABELS["full"],
           status: "completed",
           file_path: filePath,
           file_name: fileName,
           file_size_bytes: fileSize,
-          file_count: fileCount,
+          file_count: 1,
           storage_bucket: BUCKET,
           created_by_admin_id: adminId,
           created_by_admin_name: admin.full_name || "Admin",
           completed_at: new Date().toISOString(),
         });
 
-        if (dbError) throw dbError;
-
-        results.push({ type: typeKey, label: typeInfo.label, success: true, fileName, fileSize });
+        return new Response(
+          JSON.stringify({
+            success: true,
+            backupType: "full",
+            allSuccess: true,
+            message: "Full backup completed successfully",
+            fileName,
+            fileSize,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "Unknown error";
-
         await supabase.from("backup_history").insert({
-          backup_type: typeKey,
-          backup_label: typeInfo.label,
+          backup_type: "full",
+          backup_label: BACKUP_LABELS["full"],
           status: "failed",
-          file_path: null,
-          file_name: null,
           created_by_admin_id: adminId,
           created_by_admin_name: admin.full_name || "Admin",
           error_message: errorMsg,
           completed_at: new Date().toISOString(),
         });
 
-        results.push({ type: typeKey, label: typeInfo.label, success: false, error: errorMsg });
+        return new Response(
+          JSON.stringify({
+            success: false,
+            backupType: "full",
+            allSuccess: false,
+            message: `Full backup failed: ${errorMsg}`,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
     }
 
-    const allSuccess = results.every((r) => r.success);
-    const partialSuccess = results.some((r) => r.success) && !allSuccess;
+    // Single backup type
+    const typeInfo = BACKUP_LABELS[backupType];
+    const fileName = `backup_${backupType}_${timestamp}.sql`;
+    const filePath = `${adminId}/${fileName}`;
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        backupType,
-        results,
-        allSuccess,
-        partialSuccess,
-        message: allSuccess
-          ? "Backup completed successfully"
-          : partialSuccess
-          ? "Backup completed with some errors"
-          : "Backup failed",
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    try {
+      const content = await exportByType(backupType, dbClient, supabase);
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(filePath, content, { contentType: "application/sql", upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const fileSize = new Blob([content]).size;
+
+      await supabase.from("backup_history").insert({
+        backup_type: backupType,
+        backup_label: typeInfo,
+        status: "completed",
+        file_path: filePath,
+        file_name: fileName,
+        file_size_bytes: fileSize,
+        file_count: 1,
+        storage_bucket: BUCKET,
+        created_by_admin_id: adminId,
+        created_by_admin_name: admin.full_name || "Admin",
+        completed_at: new Date().toISOString(),
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          backupType,
+          allSuccess: true,
+          message: `${typeInfo} completed successfully`,
+          fileName,
+          fileSize,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      await supabase.from("backup_history").insert({
+        backup_type: backupType,
+        backup_label: typeInfo,
+        status: "failed",
+        created_by_admin_id: adminId,
+        created_by_admin_name: admin.full_name || "Admin",
+        error_message: errorMsg,
+        completed_at: new Date().toISOString(),
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          backupType,
+          allSuccess: false,
+          message: `${typeInfo} failed: ${errorMsg}`,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
   } catch (error) {
     console.error("Error in admin-create-backup:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error: " + (error instanceof Error ? error.message : "unknown") }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+  } finally {
+    if (dbClient) {
+      try { await dbClient.end(); } catch { /* ignore */ }
+    }
   }
 });
 
-// --- Backup export functions ---
+// --- Dispatcher ---
 
-async function exportSchemaData(supabase: any, dataOnly: boolean): Promise<string> {
-  const { data: tables } = await supabase
-    .rpc("get_public_tables")
-    .catch(() => ({ data: null }));
-
-  let tableList: string[] = [];
-
-  if (tables && Array.isArray(tables)) {
-    tableList = tables.map((t: any) => t.table_name || t);
-  } else {
-    // Fallback: query information_schema directly
-    const { data: schemaTables } = await supabase
-      .from("information_schema.tables")
-      .select("table_name")
-      .eq("table_schema", "public")
-      .neq("table_type", "VIEW");
-    tableList = (schemaTables || []).map((t: any) => t.table_name);
+async function exportByType(type: string, db: any, supabase: any): Promise<string> {
+  switch (type) {
+    case "schema_data": return await exportSchemaData(db, false);
+    case "data_only": return await exportSchemaData(db, true);
+    case "schema_only": return await exportSchemaOnly(db);
+    case "roles": return await exportRoles(db, supabase);
+    case "linked": return await exportLinkedProject(db, supabase);
+    case "pg_dump": return await exportFullPgDump(db);
+    case "storage": return await exportStorageList(supabase);
+    case "edge_functions": return await exportEdgeFunctionsList(supabase, db);
+    case "cron_jobs": return await exportCronJobs(db);
+    case "auth_users": return await exportAuthUsers(supabase);
+    case "project_config": return await exportProjectConfig(db, supabase);
+    default: throw new Error(`Unknown backup type: ${type}`);
   }
+}
+
+// --- SQL query helpers ---
+
+async function sqlQuery(db: any, sql: string, params?: any[]): Promise<any[]> {
+  const res = await db.query(sql, params || []);
+  return res.rows || [];
+}
+
+function formatSqlValue(value: any): string {
+  if (value === null || value === undefined) return "NULL";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "object") return `'${JSON.stringify(value).replace(/'/g, "''")}'`;
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+// --- Export functions using direct Postgres connection ---
+
+async function exportSchemaData(db: any, dataOnly: boolean): Promise<string> {
+  const tables = await sqlQuery(db,
+    `SELECT table_name FROM information_schema.tables
+     WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+     ORDER BY table_name`
+  );
 
   let output = `-- PayByCard Database Backup\n-- Type: ${dataOnly ? "Data Only" : "Schema & Data"}\n-- Generated: ${new Date().toISOString()}\n\n`;
 
   if (!dataOnly) {
-    // Export schema (DDL) for each table
-    for (const tableName of tableList) {
-      const { data: ddl } = await supabase.rpc("get_table_ddl", { table_name_param: tableName }).catch(() => ({ data: null }));
-      if (ddl) {
-        output += `-- Table: ${tableName}\n`;
-        output += `${ddl}\n\n`;
-      } else {
-        output += `-- Table: ${tableName} (DDL export requires pg_get_tabledef extension)\n\n`;
+    for (const { table_name } of tables) {
+      const columns = await sqlQuery(db,
+        `SELECT column_name, data_type, is_nullable, column_default, character_maximum_length, numeric_precision, numeric_scale
+         FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = $1
+         ORDER BY ordinal_position`,
+        [table_name]
+      );
+
+      output += `-- Table: ${table_name}\n`;
+      output += `CREATE TABLE IF NOT EXISTS "${table_name}" (\n`;
+      output += columns.map((col: any) => {
+        let line = `  "${col.column_name}" ${col.data_type}`;
+        if (col.character_maximum_length) line += `(${col.character_maximum_length})`;
+        else if (col.numeric_precision && col.numeric_scale && col.data_type === "numeric")
+          line += `(${col.numeric_precision},${col.numeric_scale})`;
+        if (col.is_nullable === "NO") line += " NOT NULL";
+        if (col.column_default) line += ` DEFAULT ${col.column_default}`;
+        return line;
+      }).join(",\n");
+
+      // Add primary keys
+      const pks = await sqlQuery(db,
+        `SELECT kcu.column_name
+         FROM information_schema.table_constraints tc
+         JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+         WHERE tc.table_schema = 'public' AND tc.table_name = $1 AND tc.constraint_type = 'PRIMARY KEY'
+         ORDER BY kcu.ordinal_position`,
+        [table_name]
+      );
+      if (pks.length > 0) {
+        output += `,\n  PRIMARY KEY (${pks.map((p: any) => `"${p.column_name}"`).join(", ")})`;
       }
+
+      output += "\n);\n\n";
     }
 
     // Export indexes
-    const { data: indexes } = await supabase
-      .from("pg_indexes")
-      .select("indexname, indexdef")
-      .eq("schemaname", "public");
-    if (indexes && indexes.length > 0) {
-      output += "\n-- Indexes\n";
+    const indexes = await sqlQuery(db,
+      `SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' ORDER BY indexname`
+    );
+    if (indexes.length > 0) {
+      output += "-- Indexes\n";
       for (const idx of indexes) {
         output += `${idx.indexdef};\n`;
       }
+      output += "\n";
+    }
+
+    // Export RLS policies
+    const policies = await sqlQuery(db,
+      `SELECT tablename, policyname, cmd, qual, with_check, roles
+       FROM pg_policies WHERE schemaname = 'public' ORDER BY tablename, policyname`
+    );
+    if (policies.length > 0) {
+      output += "-- RLS Policies\n";
+      for (const pol of policies) {
+        output += `CREATE POLICY "${pol.policyname}" ON "${pol.tablename}" FOR ${pol.cmd}`;
+        if (pol.roles && pol.roles.length > 0) {
+          output += ` TO ${pol.roles.map((r: string) => `"${r}"`).join(", ")}`;
+        }
+        if (pol.qual) output += ` USING (${pol.qual})`;
+        if (pol.with_check) output += ` WITH CHECK (${pol.with_check})`;
+        output += ";\n";
+      }
+      output += "\n";
+    }
+
+    // RLS enabled status
+    const rlsTables = await sqlQuery(db,
+      `SELECT relname, relrowsecurity FROM pg_class
+       WHERE relnamespace = 'public'::regnamespace AND relkind = 'r' AND relrowsecurity = true`
+    );
+    if (rlsTables.length > 0) {
+      output += "-- RLS Enabled Tables\n";
+      for (const t of rlsTables) {
+        output += `ALTER TABLE "${t.relname}" ENABLE ROW LEVEL SECURITY;\n`;
+      }
+      output += "\n";
     }
   }
 
-  // Export data for each table
-  output += "\n-- Data\n";
-  for (const tableName of tableList) {
+  // Export data
+  output += "-- Data\n";
+  for (const { table_name } of tables) {
     try {
-      const { data, error } = await supabase.from(tableName).select("*").limit(10000);
-      if (error) {
-        output += `-- Could not export data from ${tableName}: ${error.message}\n`;
-        continue;
-      }
-      if (data && data.length > 0) {
-        output += `\n-- Data for table: ${tableName} (${data.length} rows)\n`;
-        for (const row of data) {
+      const rows = await sqlQuery(db, `SELECT * FROM public."${table_name}" LIMIT 50000`);
+      if (rows.length > 0) {
+        output += `\n-- Data for table: ${table_name} (${rows.length} rows)\n`;
+        for (const row of rows) {
           const columns = Object.keys(row);
           const values = columns.map((col) => formatSqlValue(row[col]));
-          output += `INSERT INTO "${tableName}" ("${columns.join('", "')}") VALUES (${values.join(", ")});\n`;
+          output += `INSERT INTO "${table_name}" ("${columns.join('", "')}") VALUES (${values.join(", ")});\n`;
         }
       } else {
-        output += `\n-- Table ${tableName}: no data or empty\n`;
+        output += `\n-- Table ${table_name}: empty\n`;
       }
     } catch (err) {
-      output += `-- Error exporting ${tableName}: ${err}\n`;
+      output += `\n-- Error exporting data from ${table_name}: ${err}\n`;
     }
   }
 
   return output;
 }
 
-async function exportSchemaOnly(supabase: any): Promise<string> {
-  const { data: tables } = await supabase
-    .from("information_schema.tables")
-    .select("table_name, table_type")
-    .eq("table_schema", "public");
+async function exportSchemaOnly(db: any): Promise<string> {
+  const tables = await sqlQuery(db,
+    `SELECT table_name, table_type FROM information_schema.tables
+     WHERE table_schema = 'public' ORDER BY table_name`
+  );
 
   let output = `-- PayByCard Schema-Only Backup\n-- Generated: ${new Date().toISOString()}\n\n`;
 
-  if (tables) {
-    for (const table of tables) {
-      const { data: columns } = await supabase
-        .from("information_schema.columns")
-        .select("column_name, data_type, is_nullable, column_default, character_maximum_length")
-        .eq("table_schema", "public")
-        .eq("table_name", table.table_name)
-        .order("ordinal_position");
+  for (const table of tables) {
+    const columns = await sqlQuery(db,
+      `SELECT column_name, data_type, is_nullable, column_default, character_maximum_length
+       FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = $1
+       ORDER BY ordinal_position`,
+      [table.table_name]
+    );
 
-      if (columns && columns.length > 0) {
-        output += `-- ${table.table_type}: ${table.table_name}\n`;
-        output += `CREATE TABLE IF NOT EXISTS "${table.table_name}" (\n`;
-        output += columns.map((col: any) => {
-          let line = `  "${col.column_name}" ${col.data_type}`;
-          if (col.character_maximum_length) line += `(${col.character_maximum_length})`;
-          if (col.is_nullable === "NO") line += " NOT NULL";
-          if (col.column_default) line += ` DEFAULT ${col.column_default}`;
-          return line;
-        }).join(",\n");
-        output += "\n);\n\n";
-      }
+    if (columns.length > 0) {
+      output += `-- ${table.table_type}: ${table.table_name}\n`;
+      output += `CREATE TABLE IF NOT EXISTS "${table.table_name}" (\n`;
+      output += columns.map((col: any) => {
+        let line = `  "${col.column_name}" ${col.data_type}`;
+        if (col.character_maximum_length) line += `(${col.character_maximum_length})`;
+        if (col.is_nullable === "NO") line += " NOT NULL";
+        if (col.column_default) line += ` DEFAULT ${col.column_default}`;
+        return line;
+      }).join(",\n");
+      output += "\n);\n\n";
     }
   }
 
-  // Export indexes
-  const { data: indexes } = await supabase
-    .from("pg_indexes")
-    .select("indexname, indexdef")
-    .eq("schemaname", "public");
-
-  if (indexes && indexes.length > 0) {
-    output += "\n-- Indexes\n";
-    for (const idx of indexes) {
-      output += `${idx.indexdef};\n`;
-    }
+  const indexes = await sqlQuery(db,
+    `SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' ORDER BY indexname`
+  );
+  if (indexes.length > 0) {
+    output += "-- Indexes\n";
+    for (const idx of indexes) output += `${idx.indexdef};\n`;
   }
 
-  // Export RLS policies
-  const { data: policies } = await supabase
-    .from("pg_policies")
-    .select("tablename, policyname, cmd, qual, with_check, roles")
-    .eq("schemaname", "public");
-
-  if (policies && policies.length > 0) {
+  const policies = await sqlQuery(db,
+    `SELECT tablename, policyname, cmd, qual, with_check, roles FROM pg_policies WHERE schemaname = 'public' ORDER BY tablename, policyname`
+  );
+  if (policies.length > 0) {
     output += "\n-- RLS Policies\n";
     for (const pol of policies) {
-      output += `-- Policy: ${pol.policyname} on ${pol.tablename}\n`;
       output += `CREATE POLICY "${pol.policyname}" ON "${pol.tablename}" FOR ${pol.cmd}`;
-      if (pol.roles && pol.roles.length > 0) {
+      if (pol.roles && pol.roles.length > 0)
         output += ` TO ${pol.roles.map((r: string) => `"${r}"`).join(", ")}`;
-      }
       if (pol.qual) output += ` USING (${pol.qual})`;
       if (pol.with_check) output += ` WITH CHECK (${pol.with_check})`;
       output += ";\n";
     }
   }
 
+  const triggers = await sqlQuery(db,
+    `SELECT event_object_table, trigger_name, action_timing, event_manipulation, action_statement
+     FROM information_schema.triggers WHERE trigger_schema = 'public'`
+  );
+  if (triggers.length > 0) {
+    output += "\n-- Triggers\n";
+    for (const trg of triggers) {
+      output += `-- Trigger: ${trg.trigger_name} on ${trg.event_object_table}\n`;
+      output += `${trg.action_timing} ${trg.event_manipulation} ON "${trg.event_object_table}" ${trg.action_statement}\n`;
+    }
+  }
+
+  const functions = await sqlQuery(db,
+    `SELECT routine_name, routine_type, data_type, routine_definition
+     FROM information_schema.routines WHERE routine_schema = 'public'`
+  );
+  if (functions.length > 0) {
+    output += "\n-- Functions\n";
+    for (const fn of functions) {
+      output += `-- Function: ${fn.routine_name} (returns ${fn.data_type || "void"})\n`;
+      if (fn.routine_definition) output += `${fn.routine_definition}\n`;
+      output += "\n";
+    }
+  }
+
+  const views = await sqlQuery(db,
+    `SELECT table_name, view_definition FROM information_schema.views WHERE table_schema = 'public'`
+  );
+  if (views.length > 0) {
+    output += "\n-- Views\n";
+    for (const view of views) {
+      output += `-- View: ${view.table_name}\n`;
+      if (view.view_definition) output += `${view.view_definition};\n`;
+      output += "\n";
+    }
+  }
+
   return output;
 }
 
-async function exportRoles(supabase: any): Promise<string> {
-  const { data: roles } = await supabase.rpc("get_roles").catch(() => ({ data: null }));
-
+async function exportRoles(db: any, supabase: any): Promise<string> {
   let output = `-- PayByCard Roles Backup\n-- Generated: ${new Date().toISOString()}\n\n`;
 
-  if (roles && Array.isArray(roles)) {
-    for (const role of roles) {
-      output += `-- Role: ${role.rolname}\n`;
-      if (role.rolsuper) output += `-- (superuser)\n`;
-      output += `\n`;
-    }
-  } else {
-    // Fallback: list known roles
-    output += "-- Roles (static list - requires pg_roles access for full export):\n";
-    const knownRoles = ["anon", "authenticated", "service_role", "postgres", "supabase_admin", "supabase_read_only"];
-    for (const role of knownRoles) {
-      output += `-- Role: ${role}\n`;
-    }
-    output += "\n-- Note: Full role export requires superuser access to pg_roles and pg_authid.\n";
-    output += "-- This backup contains the role names that are used in RLS policies.\n\n";
+  // Get roles from pg_roles
+  const roles = await sqlQuery(db,
+    `SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolconnlimit, rolvaliduntil
+     FROM pg_roles WHERE rolname NOT IN ('pg_signal_backend','pg_read_server_files','pg_write_server_files','pg_execute_server_program')
+     ORDER BY rolname`
+  );
+
+  output += "-- Database Roles\n";
+  for (const role of roles) {
+    output += `-- Role: ${role.rolname}\n`;
+    output += `--   Superuser: ${role.rolsuper}, Login: ${role.rolcanlogin}, CreateDB: ${role.rolcreatedb}, CreateRole: ${role.rolcreaterole}\n`;
   }
 
-  // Export role permissions from admin_pages
+  // Get role grants
+  const grants = await sqlQuery(db,
+    `SELECT r.rolname AS role_name, m.rolname AS member_name
+     FROM pg_auth_members am
+     JOIN pg_roles r ON am.roleid = r.oid
+     JOIN pg_roles m ON am.member = m.oid
+     ORDER BY r.rolname, m.rolname`
+  );
+  if (grants.length > 0) {
+    output += "\n-- Role Memberships\n";
+    for (const g of grants) {
+      output += `-- ${g.member_name} is member of ${g.role_name}\n`;
+    }
+  }
+
+  // Table privileges
+  const tablePrivs = await sqlQuery(db,
+    `SELECT grantee, table_name, privilege_type
+     FROM information_schema.role_table_grants
+     WHERE table_schema = 'public'
+     ORDER BY grantee, table_name, privilege_type`
+  );
+  if (tablePrivs.length > 0) {
+    output += "\n-- Table Privileges\n";
+    for (const tp of tablePrivs) {
+      output += `-- GRANT ${tp.privilege_type} ON "${tp.table_name}" TO "${tp.grantee}";\n`;
+    }
+  }
+
+  // Application role permissions
   const { data: rolePerms } = await supabase
     .from("role_permissions")
     .select("role, page_id, can_view, can_edit, admin_pages(page_key, page_name)");
@@ -382,82 +523,54 @@ async function exportRoles(supabase: any): Promise<string> {
   return output;
 }
 
-async function exportLinkedProject(supabase: any): Promise<string> {
+async function exportLinkedProject(db: any, supabase: any): Promise<string> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-
   let output = `-- PayByCard Linked Project Backup\n-- Generated: ${new Date().toISOString()}\n\n`;
   output += `-- Project URL: ${supabaseUrl}\n`;
-  output += `-- Project Reference: ${supabaseUrl.replace("https://", "").replace(".supabase.co", "")}\n\n`;
+  const projectRef = supabaseUrl.replace("https://", "").replace(".supabase.co", "");
+  output += `-- Project Reference: ${projectRef}\n\n`;
 
-  // List all extensions
-  const { data: exts } = await supabase
-    .from("pg_extension")
-    .select("extname, extversion")
-    .eq("extnamespace::regnamespace::text" as any, "public");
+  const exts = await sqlQuery(db, `SELECT extname, extversion FROM pg_extension ORDER BY extname`);
+  output += "-- Installed Extensions\n";
+  for (const ext of exts) output += `-- ${ext.extname} (v${ext.extversion})\n`;
 
-  if (exts && exts.length > 0) {
-    output += "-- Installed Extensions\n";
-    for (const ext of exts) {
-      output += `-- ${ext.extname} (v${ext.extversion})\n`;
-    }
-  }
+  const schemas = await sqlQuery(db,
+    `SELECT schema_name FROM information_schema.schemata
+     WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+     ORDER BY schema_name`
+  );
+  output += "\n-- Schemas\n";
+  for (const s of schemas) output += `-- ${s.schema_name}\n`;
 
-  // List all schemas
-  const { data: schemas } = await supabase
-    .from("information_schema.schemata")
-    .select("schema_name")
-    .neq("schema_name", "pg_catalog")
-    .neq("schema_name", "information_schema");
+  const allTables = await sqlQuery(db,
+    `SELECT table_schema, table_name, table_type FROM information_schema.tables
+     WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+     ORDER BY table_schema, table_name`
+  );
+  output += "\n-- All Tables\n";
+  for (const t of allTables) output += `-- [${t.table_schema}] ${t.table_name} (${t.table_type})\n`;
 
-  if (schemas && schemas.length > 0) {
-    output += "\n-- Schemas\n";
-    for (const schema of schemas) {
-      output += `-- ${schema.schema_name}\n`;
-    }
-  }
-
-  // List all tables across schemas
-  const { data: allTables } = await supabase
-    .from("information_schema.tables")
-    .select("table_schema, table_name, table_type")
-    .neq("table_schema", "pg_catalog")
-    .neq("table_schema", "information_schema");
-
-  if (allTables && allTables.length > 0) {
-    output += "\n-- All Tables\n";
-    for (const t of allTables) {
-      output += `-- [${t.table_schema}] ${t.table_name} (${t.table_type})\n`;
-    }
-  }
-
-  // List storage buckets
   const { data: buckets } = await supabase.storage.listBuckets();
   if (buckets && buckets.length > 0) {
     output += "\n-- Storage Buckets\n";
-    for (const bucket of buckets) {
-      output += `-- ${bucket.name} (public: ${bucket.public})\n`;
-    }
+    for (const bucket of buckets) output += `-- ${bucket.name} (public: ${bucket.public})\n`;
   }
 
   return output;
 }
 
-async function exportFullPgDump(supabase: any): Promise<string> {
-  let output = `-- PayByCard Full PostgreSQL Dump (via SQL queries)\n-- Generated: ${new Date().toISOString()}\n\n`;
-  output += "-- This is a comprehensive export via SQL queries (not pg_dump binary).\n";
-  output += "-- It includes schema, data, indexes, policies, triggers, and functions.\n\n";
+async function exportFullPgDump(db: any): Promise<string> {
+  let output = `-- PayByCard Full PostgreSQL Dump\n-- Generated: ${new Date().toISOString()}\n\n`;
+  output += "-- Includes schema, data, indexes, policies, triggers, functions, and views.\n\n";
 
-  // Combine schema + data
-  const schemaData = await exportSchemaData(supabase, false);
-  output += schemaData;
+  output += await exportSchemaData(db, false);
 
-  // Export triggers
-  const { data: triggers } = await supabase
-    .from("information_schema.triggers")
-    .select("event_object_table, trigger_name, action_timing, event_manipulation, action_statement")
-    .eq("trigger_schema", "public");
-
-  if (triggers && triggers.length > 0) {
+  // Triggers
+  const triggers = await sqlQuery(db,
+    `SELECT event_object_table, trigger_name, action_timing, event_manipulation, action_statement
+     FROM information_schema.triggers WHERE trigger_schema = 'public'`
+  );
+  if (triggers.length > 0) {
     output += "\n-- Triggers\n";
     for (const trg of triggers) {
       output += `-- Trigger: ${trg.trigger_name} on ${trg.event_object_table}\n`;
@@ -465,37 +578,46 @@ async function exportFullPgDump(supabase: any): Promise<string> {
     }
   }
 
-  // Export functions
-  const { data: functions } = await supabase
-    .from("information_schema.routines")
-    .select("routine_name, routine_type, routine_definition, data_type")
-    .eq("routine_schema", "public");
-
-  if (functions && functions.length > 0) {
+  // Functions
+  const functions = await sqlQuery(db,
+    `SELECT routine_name, routine_type, data_type, routine_definition
+     FROM information_schema.routines WHERE routine_schema = 'public'`
+  );
+  if (functions.length > 0) {
     output += "\n-- Functions\n";
     for (const fn of functions) {
       output += `-- Function: ${fn.routine_name} (returns ${fn.data_type || "void"})\n`;
-      if (fn.routine_definition) {
-        output += `${fn.routine_definition}\n`;
-      }
+      if (fn.routine_definition) output += `${fn.routine_definition}\n`;
       output += "\n";
     }
   }
 
-  // Export views
-  const { data: views } = await supabase
-    .from("information_schema.views")
-    .select("table_name, view_definition")
-    .eq("table_schema", "public");
-
-  if (views && views.length > 0) {
+  // Views
+  const views = await sqlQuery(db,
+    `SELECT table_name, view_definition FROM information_schema.views WHERE table_schema = 'public'`
+  );
+  if (views.length > 0) {
     output += "\n-- Views\n";
     for (const view of views) {
       output += `-- View: ${view.table_name}\n`;
-      if (view.view_definition) {
-        output += `${view.view_definition};\n`;
-      }
+      if (view.view_definition) output += `${view.view_definition};\n`;
       output += "\n";
+    }
+  }
+
+  // Foreign keys
+  const fks = await sqlQuery(db,
+    `SELECT tc.table_name, kcu.column_name, ccu.table_name AS foreign_table, ccu.column_name AS foreign_column
+     FROM information_schema.table_constraints tc
+     JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+     JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name
+     WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public'
+     ORDER BY tc.table_name`
+  );
+  if (fks.length > 0) {
+    output += "\n-- Foreign Keys\n";
+    for (const fk of fks) {
+      output += `-- FK: ${fk.table_name}.${fk.column_name} -> ${fk.foreign_table}.${fk.foreign_column}\n`;
     }
   }
 
@@ -504,141 +626,112 @@ async function exportFullPgDump(supabase: any): Promise<string> {
 
 async function exportStorageList(supabase: any): Promise<string> {
   let output = `-- PayByCard Storage Backup (File Manifest)\n-- Generated: ${new Date().toISOString()}\n\n`;
-  output += "-- This is a manifest of all files in storage buckets.\n";
-  output += "-- Actual file contents would need to be downloaded separately.\n\n";
+  output += "-- Manifest of all files in storage buckets.\n\n";
 
   const { data: buckets } = await supabase.storage.listBuckets();
+  if (!buckets) return output + "-- No buckets found\n";
 
-  if (buckets && buckets.length > 0) {
-    for (const bucket of buckets) {
-      output += `\n-- Bucket: ${bucket.name} (public: ${bucket.public})\n`;
-
-      try {
-        const files = await listAllFilesInBucket(supabase, bucket.name);
-        if (files.length > 0) {
-          output += `-- Total files: ${files.length}\n`;
-          for (const file of files) {
+  for (const bucket of buckets) {
+    output += `\n-- Bucket: ${bucket.name} (public: ${bucket.public})\n`;
+    try {
+      const { data: files } = await supabase.storage.from(bucket.name).list("", { limit: 1000 });
+      if (files && files.length > 0) {
+        let count = 0;
+        for (const file of files) {
+          if (file.id) {
+            count++;
             output += `-- ${file.name} (${file.metadata?.size || "unknown"} bytes)\n`;
-          }
-        } else {
-          output += "-- (empty bucket)\n";
-        }
-      } catch (err) {
-        output += `-- Error listing files: ${err}\n`;
-      }
-    }
-  }
-
-  return output;
-}
-
-async function listAllFilesInBucket(supabase: any, bucketName: string): Promise<any[]> {
-  const allFiles: any[] = [];
-  const { data: files } = await supabase.storage.from(bucketName).list("", { limit: 1000 });
-  if (files) {
-    for (const file of files) {
-      if (file.id) {
-        allFiles.push({ ...file, path: file.name });
-        // Recurse into folders
-        const { data: subFiles } = await supabase.storage.from(bucketName).list(file.name, { limit: 1000 });
-        if (subFiles) {
-          for (const subFile of subFiles) {
-            if (subFile.id) {
-              allFiles.push({ ...subFile, path: `${file.name}/${subFile.name}` });
+            // Recurse into subfolders
+            const { data: subFiles } = await supabase.storage.from(bucket.name).list(file.name, { limit: 1000 });
+            if (subFiles) {
+              for (const sf of subFiles) {
+                if (sf.id) {
+                  count++;
+                  output += `-- ${file.name}/${sf.name} (${sf.metadata?.size || "unknown"} bytes)\n`;
+                }
+              }
             }
           }
         }
+        output += `-- Total files in ${bucket.name}: ${count}\n`;
+      } else {
+        output += "-- (empty bucket)\n";
       }
-    }
-  }
-  return allFiles;
-}
-
-async function exportEdgeFunctionsList(supabase: any): Promise<string> {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-
-  let output = `-- PayByCard Edge Functions Backup (Manifest)\n-- Generated: ${new Date().toISOString()}\n\n`;
-  output += "-- This is a manifest of deployed edge functions.\n";
-  output += "-- Function source code is stored in the project repository.\n\n";
-
-  // List functions via the Supabase API
-  try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/_internal/functions`, {
-      headers: { Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-    });
-    if (response.ok) {
-      const data = await response.json();
-      output += `-- Functions: ${JSON.stringify(data, null, 2)}\n`;
-    } else {
-      output += "-- Could not list functions via API. Listing from config.\n";
-    }
-  } catch {
-    output += "-- Function listing not available via API.\n";
-  }
-
-  // Also check pg_cron for any function-related jobs
-  const { data: cronJobs } = await supabase
-    .from("cron.job")
-    .select("jobid, jobname, schedule, command, active")
-    .eq("active", true);
-
-  if (cronJobs && cronJobs.length > 0) {
-    output += "\n-- Active cron jobs (may trigger edge functions):\n";
-    for (const job of cronJobs) {
-      output += `-- Job: ${job.jobname}, Schedule: ${job.schedule}, Command: ${job.command}\n`;
+    } catch (err) {
+      output += `-- Error listing files: ${err}\n`;
     }
   }
 
   return output;
 }
 
-async function exportCronJobs(supabase: any): Promise<string> {
+async function exportEdgeFunctionsList(supabase: any, db: any): Promise<string> {
+  let output = `-- PayByCard Edge Functions Backup (Manifest)\n-- Generated: ${new Date().toISOString()}\n\n`;
+
+  // List cron jobs that call edge functions
+  const cronJobs = await sqlQuery(db,
+    `SELECT jobname, schedule, command, active FROM cron.job ORDER BY jobname`
+  );
+  if (cronJobs.length > 0) {
+    output += "-- Cron Jobs (may trigger edge functions):\n";
+    for (const job of cronJobs) {
+      output += `-- Job: ${job.jobname}, Schedule: ${job.schedule}, Active: ${job.active}\n`;
+      output += `-- Command: ${job.command}\n\n`;
+    }
+  }
+
+  // List all function names from the database config
+  const { data: configRows } = await supabase.from("app_config").select("key, value").ilike("key", "%function%");
+  if (configRows && configRows.length > 0) {
+    output += "\n-- Function-related config:\n";
+    for (const row of configRows) {
+      output += `-- ${row.key}: ${row.value}\n`;
+    }
+  }
+
+  output += "\n-- Note: Edge function source code is stored in the project repository under supabase/functions/.\n";
+  output += "-- This manifest lists cron jobs that invoke them.\n";
+
+  return output;
+}
+
+async function exportCronJobs(db: any): Promise<string> {
   let output = `-- PayByCard Cron Jobs Backup\n-- Generated: ${new Date().toISOString()}\n\n`;
 
-  const { data: jobs, error } = await supabase
-    .from("cron.job")
-    .select("jobid, jobname, schedule, command, nodename, nodeport, database, username, active");
+  const jobs = await sqlQuery(db,
+    `SELECT jobid, jobname, schedule, command, nodename, nodeport, database, username, active
+     FROM cron.job ORDER BY jobid`
+  );
 
-  if (error) {
-    output += `-- Error fetching cron jobs: ${error.message}\n`;
+  if (jobs.length === 0) {
+    output += "-- No cron jobs found.\n";
     return output;
   }
 
-  if (jobs && jobs.length > 0) {
-    output += `-- Total cron jobs: ${jobs.length}\n\n`;
-    for (const job of jobs) {
-      output += `-- Job ID: ${job.jobid}\n`;
-      output += `-- Name: ${job.jobname}\n`;
-      output += `-- Schedule: ${job.schedule}\n`;
-      output += `-- Command: ${job.command}\n`;
-      output += `-- Database: ${job.database}\n`;
-      output += `-- Username: ${job.username}\n`;
-      output += `-- Active: ${job.active}\n\n`;
-
-      // Generate SQL to recreate the job
-      if (job.jobname && job.schedule && job.command) {
-        output += `-- Recreate command:\n`;
-        output += `-- SELECT cron.schedule(\n`;
-        output += `--   '${job.jobname}',\n`;
-        output += `--   '${job.schedule}',\n`;
-        output += `--   '${job.command.replace(/'/g, "''")}'\n`;
-        output += `-- );\n\n`;
-      }
+  output += `-- Total cron jobs: ${jobs.length}\n\n`;
+  for (const job of jobs) {
+    output += `-- Job ID: ${job.jobid}\n`;
+    output += `-- Name: ${job.jobname}\n`;
+    output += `-- Schedule: ${job.schedule}\n`;
+    output += `-- Command: ${job.command}\n`;
+    output += `-- Database: ${job.database}\n`;
+    output += `-- Username: ${job.username}\n`;
+    output += `-- Active: ${job.active}\n`;
+    if (job.jobname && job.schedule && job.command) {
+      output += `-- Recreate:\n`;
+      output += `-- SELECT cron.schedule('${job.jobname}', '${job.schedule}', '${job.command.replace(/'/g, "''")}');\n`;
     }
-  } else {
-    output += "-- No cron jobs found.\n";
+    output += "\n";
   }
 
-  // Also export job run details (recent)
-  const { data: runDetails } = await supabase
-    .from("cron.job_run_details")
-    .select("jobid, runid, job_pid, database, username, start_time, end_time, return_status, output")
-    .order("start_time", { ascending: false })
-    .limit(100);
-
-  if (runDetails && runDetails.length > 0) {
-    output += `\n-- Recent job run details (last ${runDetails.length} runs):\n`;
-    for (const run of runDetails) {
+  // Recent run details
+  const runs = await sqlQuery(db,
+    `SELECT jobid, runid, job_pid, database, username, start_time, end_time, return_status, output
+     FROM cron.job_run_details ORDER BY start_time DESC LIMIT 100`
+  );
+  if (runs.length > 0) {
+    output += `-- Recent job run details (last ${runs.length} runs):\n`;
+    for (const run of runs) {
       output += `-- Run ${run.runid}: Job ${run.jobid}, Status: ${run.return_status}, Started: ${run.start_time}, Ended: ${run.end_time || "running"}\n`;
     }
   }
@@ -649,104 +742,83 @@ async function exportCronJobs(supabase: any): Promise<string> {
 async function exportAuthUsers(supabase: any): Promise<string> {
   let output = `-- PayByCard Auth Users Backup\n-- Generated: ${new Date().toISOString()}\n\n`;
 
-  // Export auth.users (accessible via service role)
-  const { data: authUsers, error } = await supabase.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  });
+  const { data: authUsers, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
 
   if (error) {
     output += `-- Error fetching auth users: ${error.message}\n`;
     return output;
   }
 
-  if (authUsers && authUsers.users && authUsers.users.length > 0) {
-    output += `-- Total auth users: ${authUsers.users.length}\n\n`;
-    for (const user of authUsers.users) {
-      output += `-- User: ${user.id}\n`;
-      output += `-- Email: ${user.email}\n`;
-      output += `-- Created: ${user.created_at}\n`;
-      output += `-- Last Sign In: ${user.last_sign_in_at || "never"}\n`;
-      output += `-- Email Confirmed: ${user.email_confirmed_at ? "yes" : "no"}\n`;
-      output += `-- Provider: ${user.app_metadata?.provider || "email"}\n`;
-      if (user.user_metadata && Object.keys(user.user_metadata).length > 0) {
-        output += `-- User Metadata: ${JSON.stringify(user.user_metadata)}\n`;
-      }
-      if (user.app_metadata && Object.keys(user.app_metadata).length > 0) {
-        const safeMeta = { ...user.app_metadata };
-        delete safeMeta.password_hash;
-        delete safeMeta.password;
+  if (!authUsers || !authUsers.users || authUsers.users.length === 0) {
+    output += "-- No auth users found.\n";
+    return output;
+  }
+
+  output += `-- Total auth users: ${authUsers.users.length}\n\n`;
+  for (const user of authUsers.users) {
+    output += `-- User: ${user.id}\n`;
+    output += `-- Email: ${user.email}\n`;
+    output += `-- Created: ${user.created_at}\n`;
+    output += `-- Last Sign In: ${user.last_sign_in_at || "never"}\n`;
+    output += `-- Email Confirmed: ${user.email_confirmed_at ? "yes" : "no"}\n`;
+    output += `-- Provider: ${user.app_metadata?.provider || "email"}\n`;
+    if (user.user_metadata && Object.keys(user.user_metadata).length > 0) {
+      output += `-- User Metadata: ${JSON.stringify(user.user_metadata)}\n`;
+    }
+    if (user.app_metadata) {
+      const safeMeta = { ...user.app_metadata };
+      delete safeMeta.password_hash;
+      delete safeMeta.password;
+      if (Object.keys(safeMeta).length > 0) {
         output += `-- App Metadata: ${JSON.stringify(safeMeta)}\n`;
       }
-      output += `\n`;
     }
-  } else {
-    output += "-- No auth users found.\n";
+    output += "\n";
   }
 
   return output;
 }
 
-async function exportProjectConfig(supabase: any): Promise<string> {
+async function exportProjectConfig(db: any, supabase: any): Promise<string> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-
   let output = `-- PayByCard Project Configuration Backup\n-- Generated: ${new Date().toISOString()}\n\n`;
   output += `-- Project URL: ${supabaseUrl}\n`;
-  output += `-- Project Reference: ${supabaseUrl.replace("https://", "").replace(".supabase.co", "")}\n\n`;
+  const projectRef = supabaseUrl.replace("https://", "").replace(".supabase.co", "");
+  output += `-- Project Reference: ${projectRef}\n\n`;
 
-  // List storage buckets with their settings
+  // Storage buckets
   const { data: buckets } = await supabase.storage.listBuckets();
   if (buckets && buckets.length > 0) {
     output += "-- Storage Buckets Configuration\n";
     for (const bucket of buckets) {
       output += `-- Bucket: ${bucket.name}\n`;
       output += `--   Public: ${bucket.public}\n`;
-      output += `--   File Size Limit: ${bucket.file_size_limit || "default"}\n`;
-      output += `--   Allowed Mime Types: ${bucket.allowed_mime_types ? JSON.stringify(bucket.allowed_mime_types) : "all"}\n\n`;
+      if (bucket.file_size_limit) output += `--   File Size Limit: ${bucket.file_size_limit}\n`;
+      if (bucket.allowed_mime_types) output += `--   Allowed Mime Types: ${JSON.stringify(bucket.allowed_mime_types)}\n`;
+      output += "\n";
     }
   }
 
-  // List extensions
-  const { data: exts } = await supabase
-    .from("pg_extension")
-    .select("extname, extversion");
+  // Extensions
+  const exts = await sqlQuery(db, `SELECT extname, extversion FROM pg_extension ORDER BY extname`);
+  output += "-- Database Extensions\n";
+  for (const ext of exts) output += `-- ${ext.extname} (v${ext.extversion})\n`;
 
-  if (exts && exts.length > 0) {
-    output += "\n-- Database Extensions\n";
-    for (const ext of exts) {
-      output += `-- ${ext.extname} (v${ext.extversion})\n`;
-    }
-  }
+  // Schemas
+  const schemas = await sqlQuery(db,
+    `SELECT schema_name FROM information_schema.schemata
+     WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast') ORDER BY schema_name`
+  );
+  output += "\n-- Database Schemas\n";
+  for (const s of schemas) output += `-- ${s.schema_name}\n`;
 
-  // List all schemas
-  const { data: schemas } = await supabase
-    .from("information_schema.schemata")
-    .select("schema_name")
-    .neq("schema_name", "pg_catalog")
-    .neq("schema_name", "information_schema")
-    .neq("schema_name", "pg_toast");
-
-  if (schemas && schemas.length > 0) {
-    output += "\n-- Database Schemas\n";
-    for (const schema of schemas) {
-      output += `-- ${schema.schema_name}\n`;
-    }
-  }
-
-  // Settings table
-  const { data: settings } = await supabase
-    .from("master_settings")
-    .select("*")
-    .limit(1)
-    .maybeSingle();
-
+  // Master settings (safe fields only)
+  const { data: settings } = await supabase.from("master_settings").select("*").limit(1).maybeSingle();
   if (settings) {
-    output += "\n-- Master Settings (safe fields only)\n";
     const safeSettings = { ...settings };
-    // Remove any sensitive fields
     delete safeSettings.api_keys;
     delete safeSettings.secrets;
-    output += `-- ${JSON.stringify(safeSettings, null, 2)}\n`;
+    output += `\n-- Master Settings (safe fields only):\n-- ${JSON.stringify(safeSettings, null, 2)}\n`;
   }
 
   output += "\n-- Note: Secrets and API keys are NOT included in this backup for security.\n";
@@ -755,62 +827,39 @@ async function exportProjectConfig(supabase: any): Promise<string> {
   return output;
 }
 
-async function exportFullBackup(supabase: any): Promise<string> {
+// --- Full Backup: single file combining everything ---
+
+async function exportFullBackup(db: any, supabase: any): Promise<string> {
   let output = `-- PayByCard FULL BACKUP\n-- Generated: ${new Date().toISOString()}\n\n`;
   output += "-- This is a comprehensive backup combining all backup types.\n";
   output += "-- ============================================================\n\n";
 
-  output += "========================================\n";
-  output += "SECTION 1: SCHEMA & DATA\n";
-  output += "========================================\n\n";
-  output += await exportSchemaData(supabase, false);
+  const sections: Array<[string, () => Promise<string>]> = [
+    ["SCHEMA & DATA", () => exportSchemaData(db, false)],
+    ["ROLES", () => exportRoles(db, supabase)],
+    ["LINKED PROJECT", () => exportLinkedProject(db, supabase)],
+    ["FULL POSTGRESQL DUMP", () => exportFullPgDump(db)],
+    ["STORAGE MANIFEST", () => exportStorageList(supabase)],
+    ["EDGE FUNCTIONS MANIFEST", () => exportEdgeFunctionsList(supabase, db)],
+    ["CRON JOBS", () => exportCronJobs(db)],
+    ["AUTH USERS", () => exportAuthUsers(supabase)],
+    ["PROJECT CONFIG", () => exportProjectConfig(db, supabase)],
+  ];
 
-  output += "\n\n========================================\n";
-  output += "SECTION 2: ROLES\n";
-  output += "========================================\n\n";
-  output += await exportRoles(supabase);
-
-  output += "\n\n========================================\n";
-  output += "SECTION 3: LINKED PROJECT\n";
-  output += "========================================\n\n";
-  output += await exportLinkedProject(supabase);
-
-  output += "\n\n========================================\n";
-  output += "SECTION 4: STORAGE MANIFEST\n";
-  output += "========================================\n\n";
-  output += await exportStorageList(supabase);
-
-  output += "\n\n========================================\n";
-  output += "SECTION 5: CRON JOBS\n";
-  output += "========================================\n\n";
-  output += await exportCronJobs(supabase);
-
-  output += "\n\n========================================\n";
-  output += "SECTION 6: AUTH USERS\n";
-  output += "========================================\n\n";
-  output += await exportAuthUsers(supabase);
-
-  output += "\n\n========================================\n";
-  output += "SECTION 7: PROJECT CONFIG\n";
-  output += "========================================\n\n";
-  output += await exportProjectConfig(supabase);
-
-  output += "\n\n========================================\n";
-  output += "SECTION 8: EDGE FUNCTIONS MANIFEST\n";
-  output += "========================================\n\n";
-  output += await exportEdgeFunctionsList(supabase);
+  for (let i = 0; i < sections.length; i++) {
+    const [name, fn] = sections[i];
+    output += `\n\n========================================\n`;
+    output += `SECTION ${i + 1}: ${name}\n`;
+    output += `========================================\n\n`;
+    try {
+      output += await fn();
+    } catch (err) {
+      output += `-- Error exporting ${name}: ${err}\n`;
+    }
+  }
 
   output += "\n\n-- END OF FULL BACKUP\n";
-
   return output;
-}
-
-function formatSqlValue(value: any): string {
-  if (value === null || value === undefined) return "NULL";
-  if (typeof value === "number") return String(value);
-  if (typeof value === "boolean") return value ? "true" : "false";
-  if (typeof value === "object") return `'${JSON.stringify(value).replace(/'/g, "''")}'`;
-  return `'${String(value).replace(/'/g, "''")}'`;
 }
 
 // redeploy

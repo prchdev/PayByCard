@@ -864,71 +864,87 @@ async function exportFullBackup(db: any, supabase: any): Promise<string> {
 
 // --- Storage Bucket Files: download actual files as ZIP ---
 
+const DOWNLOAD_CONCURRENCY = 10;
+
 async function exportStorageBucketFiles(supabase: any): Promise<{ buffer: ArrayBuffer; fileCount: number }> {
   const zip = new JSZip();
   const bucketsToBackup = ["kyc-documents", "support-tickets"];
   let totalFiles = 0;
 
+  // First pass: collect all file paths across all buckets (folders listed in parallel)
+  const allFilePaths: Array<{ bucket: string; path: string; zipPath: string }> = [];
   for (const bucketName of bucketsToBackup) {
-    const bucketFolder = zip.folder(bucketName);
-    if (!bucketFolder) continue;
-
-    try {
-      const count = await downloadBucketFilesRecursive(supabase, bucketName, bucketFolder, "");
-      totalFiles += count;
-      bucketFolder.file("_file_count.txt", `Files in this bucket: ${count}\n`);
-    } catch (err) {
-      bucketFolder.file("_backup_error.txt", `Error backing up bucket ${bucketName}: ${err}\n`);
+    const paths = await listAllFilePaths(supabase, bucketName, "");
+    for (const p of paths) {
+      allFilePaths.push({ bucket: bucketName, path: p.path, zipPath: `${bucketName}/${p.path}` });
     }
+  }
+
+  // Second pass: download files in parallel batches
+  for (let i = 0; i < allFilePaths.length; i += DOWNLOAD_CONCURRENCY) {
+    const batch = allFilePaths.slice(i, i + DOWNLOAD_CONCURRENCY);
+    await Promise.all(batch.map(async (entry) => {
+      try {
+        const { data: fileData, error: dlError } = await supabase.storage.from(entry.bucket).download(entry.path);
+        if (!dlError && fileData) {
+          const buf = await fileData.arrayBuffer();
+          zip.file(entry.zipPath, buf);
+          totalFiles++;
+        }
+      } catch {
+        // Skip individual file download errors
+      }
+    }));
+  }
+
+  // Add file counts per bucket
+  for (const bucketName of bucketsToBackup) {
+    const bucketCount = allFilePaths.filter((f) => f.bucket === bucketName).length;
+    zip.file(`${bucketName}/_file_count.txt`, `Files in this bucket: ${bucketCount}\n`);
   }
 
   const manifest = `Storage Bucket Files Backup\nGenerated: ${new Date().toISOString()}\nBuckets: ${bucketsToBackup.join(", ")}\nTotal files: ${totalFiles}\n`;
   zip.file("_manifest.txt", manifest);
 
-  const buffer = await zip.generateAsync({ type: "arraybuffer" });
+  const buffer = await zip.generateAsync({ type: "arraybuffer", compressionOptions: { level: 6 } });
   return { buffer, fileCount: totalFiles };
 }
 
-async function downloadBucketFilesRecursive(supabase: any, bucketName: string, zipFolder: any, prefix: string): Promise<number> {
-  let count = 0;
+// List all file paths (not folders) recursively, with folder listing parallelized
+async function listAllFilePaths(supabase: any, bucketName: string, prefix: string): Promise<Array<{ path: string }>> {
+  const results: Array<{ path: string }> = [];
   let offset = 0;
   const pageSize = 1000;
 
-  // Paginate through all items at this level
   while (true) {
     const { data: items, error } = await supabase.storage.from(bucketName).list(prefix, { limit: pageSize, offset });
     if (error || !items || items.length === 0) break;
 
+    const files: Array<{ path: string }> = [];
+    const folders: Array<{ name: string; path: string }> = [];
+
     for (const item of items) {
       const itemPath = prefix ? `${prefix}/${item.name}` : item.name;
-
-      // In Supabase storage, items with a non-null `id` are files; items without `id` are folders
       if (item.id) {
-        try {
-          const { data: fileData, error: dlError } = await supabase.storage.from(bucketName).download(itemPath);
-          if (!dlError && fileData) {
-            const buf = await fileData.arrayBuffer();
-            zipFolder.file(item.name, buf);
-            count++;
-          }
-        } catch (dlErr) {
-          // Skip individual file download errors, continue with rest
-          zipFolder.file(`_error_${item.name}.txt`, `Failed to download: ${dlErr}\n`);
-        }
+        files.push({ path: itemPath });
       } else {
-        // It's a folder — recurse
-        const subFolder = zipFolder.folder(item.name);
-        if (subFolder) {
-          count += await downloadBucketFilesRecursive(supabase, bucketName, subFolder, itemPath);
-        }
+        folders.push({ name: item.name, path: itemPath });
       }
     }
+
+    results.push(...files);
+
+    // Recurse into folders in parallel
+    const subResults = await Promise.all(
+      folders.map((f) => listAllFilePaths(supabase, bucketName, f.path))
+    );
+    for (const sub of subResults) results.push(...sub);
 
     if (items.length < pageSize) break;
     offset += pageSize;
   }
 
-  return count;
+  return results;
 }
 
 // Helper: list all file paths in a bucket (used by storage manifest)

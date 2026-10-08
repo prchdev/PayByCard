@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { serveAdmin } from "../_shared/session.ts";
 import postgres from "npm:pg@8.13.1";
+import JSZip from "npm:jszip@3.10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,7 @@ const BACKUP_LABELS: Record<string, string> = {
   cron_jobs: "Cron Jobs",
   auth_users: "Auth Users",
   project_config: "Project Configuration & Secrets",
+  storage_bucket_files: "Storage Bucket Files (KYC + Tickets)",
 };
 
 async function getDbConnection(): Promise<any> {
@@ -136,6 +138,70 @@ serveAdmin(async (req: Request) => {
             backupType: "full",
             allSuccess: false,
             message: `Full backup failed: ${errorMsg}`,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Storage Bucket Files backup: produces a ZIP, not SQL text
+    if (backupType === "storage_bucket_files") {
+      const fileName = `backup_storage_bucket_files_${timestamp}.zip`;
+      const filePath = `${adminId}/${fileName}`;
+
+      try {
+        const { buffer: zipBuffer, fileCount } = await exportStorageBucketFiles(supabase);
+        const { error: uploadError } = await supabase.storage
+          .from(BUCKET)
+          .upload(filePath, zipBuffer, { contentType: "application/zip", upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const fileSize = zipBuffer.byteLength;
+
+        await supabase.from("backup_history").insert({
+          backup_type: "storage_bucket_files",
+          backup_label: BACKUP_LABELS["storage_bucket_files"],
+          status: "completed",
+          file_path: filePath,
+          file_name: fileName,
+          file_size_bytes: fileSize,
+          file_count: fileCount,
+          storage_bucket: BUCKET,
+          created_by_admin_id: adminId,
+          created_by_admin_name: admin.full_name || "Admin",
+          completed_at: new Date().toISOString(),
+        });
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            backupType: "storage_bucket_files",
+            allSuccess: true,
+            message: `Storage Bucket Files backup completed successfully (${fileCount} files)`,
+            fileName,
+            fileSize,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "Unknown error";
+        await supabase.from("backup_history").insert({
+          backup_type: "storage_bucket_files",
+          backup_label: BACKUP_LABELS["storage_bucket_files"],
+          status: "failed",
+          created_by_admin_id: adminId,
+          created_by_admin_name: admin.full_name || "Admin",
+          error_message: errorMsg,
+          completed_at: new Date().toISOString(),
+        });
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            backupType: "storage_bucket_files",
+            allSuccess: false,
+            message: `Storage Bucket Files backup failed: ${errorMsg}`,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -860,6 +926,59 @@ async function exportFullBackup(db: any, supabase: any): Promise<string> {
 
   output += "\n\n-- END OF FULL BACKUP\n";
   return output;
+}
+
+// --- Storage Bucket Files: download actual files as ZIP ---
+
+async function exportStorageBucketFiles(supabase: any): Promise<{ buffer: ArrayBuffer; fileCount: number }> {
+  const zip = new JSZip();
+  const bucketsToBackup = ["kyc-documents", "support-tickets"];
+  let totalFiles = 0;
+
+  for (const bucketName of bucketsToBackup) {
+    const bucketFolder = zip.folder(bucketName);
+    if (!bucketFolder) continue;
+
+    try {
+      const count = await downloadBucketFilesRecursive(supabase, bucketName, bucketFolder, "");
+      totalFiles += count;
+      bucketFolder.file("_file_count.txt", `Files in this bucket: ${count}\n`);
+    } catch (err) {
+      bucketFolder.file("_backup_error.txt", `Error backing up bucket ${bucketName}: ${err}\n`);
+    }
+  }
+
+  const manifest = `Storage Bucket Files Backup\nGenerated: ${new Date().toISOString()}\nBuckets: ${bucketsToBackup.join(", ")}\nTotal files: ${totalFiles}\n`;
+  zip.file("_manifest.txt", manifest);
+
+  const buffer = await zip.generateAsync({ type: "arraybuffer" });
+  return { buffer, fileCount: totalFiles };
+}
+
+async function downloadBucketFilesRecursive(supabase: any, bucketName: string, zipFolder: any, prefix: string): Promise<number> {
+  let count = 0;
+  const { data: items, error } = await supabase.storage.from(bucketName).list(prefix, { limit: 1000, offset: 0 });
+  if (error || !items) return 0;
+
+  for (const item of items) {
+    const itemPath = prefix ? `${prefix}/${item.name}` : item.name;
+
+    if (item.id) {
+      const { data: fileData, error: dlError } = await supabase.storage.from(bucketName).download(itemPath);
+      if (!dlError && fileData) {
+        const buf = await fileData.arrayBuffer();
+        zipFolder.file(item.name, buf);
+        count++;
+      }
+    } else {
+      const subFolder = zipFolder.folder(item.name);
+      if (subFolder) {
+        count += await downloadBucketFilesRecursive(supabase, bucketName, subFolder, itemPath);
+      }
+    }
+  }
+
+  return count;
 }
 
 // redeploy

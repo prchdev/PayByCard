@@ -48,6 +48,7 @@ const BACKUP_OPTIONS = [
   { key: 'linked', label: 'Linked Supabase Project', desc: 'Project metadata, extensions, schemas, and storage buckets (supabase db dump --linked)', icon: Server },
   { key: 'pg_dump', label: 'Full PostgreSQL Control', desc: 'Complete pg_dump including triggers, functions, and views', icon: Archive },
   { key: 'storage', label: 'Storage — Files/Images/PDFs', desc: 'Backup manifest of all files in storage buckets', icon: HardDrive },
+  { key: 'storage_bucket_files', label: 'Storage Bucket Files (KYC + Tickets)', desc: 'Download all KYC documents and support ticket attachments as a ZIP file', icon: FileArchive },
   { key: 'edge_functions', label: 'Edge Functions', desc: 'Backup manifest of all deployed edge functions', icon: Code2 },
   { key: 'cron_jobs', label: 'Cron Jobs', desc: 'Backup all scheduled cron jobs and their run history', icon: Clock },
   { key: 'auth_users', label: 'Auth Users', desc: 'Backup all authenticated users from auth.users', icon: Users },

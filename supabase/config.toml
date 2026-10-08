@@ -289,3 +289,15 @@ verify_jwt = false
 
 [functions.admin-download-finance-document]
 verify_jwt = false
+
+[functions.admin-create-backup]
+verify_jwt = false
+
+[functions.admin-get-backup-history]
+verify_jwt = false
+
+[functions.admin-delete-backup]
+verify_jwt = false
+
+[functions.admin-download-backup]
+verify_jwt = false

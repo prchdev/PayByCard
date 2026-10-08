@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X, Lock, Shield, Home, FileCheck, Users, Mail, MessageSquare, CreditCard, IndianRupee, LayoutDashboard, DollarSign, Tag, Settings, Wallet, AlertTriangle, Undo2, BarChart2, UserSearch, ScanFace, ShieldCheck, Bell, Send, Smartphone, Building2, ReceiptText } from 'lucide-react';
+import { LogOut, Menu, X, Lock, Shield, Home, FileCheck, Users, Mail, MessageSquare, CreditCard, IndianRupee, LayoutDashboard, DollarSign, Tag, Settings, Wallet, AlertTriangle, Undo2, BarChart2, UserSearch, ScanFace, ShieldCheck, Bell, Send, Smartphone, Building2, ReceiptText, Database } from 'lucide-react';
 import Footer from '../../components/Footer';
 import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import SessionTimeoutModal from '../../components/SessionTimeoutModal';
@@ -44,6 +44,7 @@ const ICON_MAP: Record<string, any> = {
   Smartphone,
   Building2,
   ReceiptText,
+  Database,
 };
 
 interface MenuSection {
@@ -87,6 +88,7 @@ const MENU_SECTIONS: MenuSection[] = [
       { key: 'payment-categories', name: 'Payment Categories', path: '/admin/payment-categories', icon: 'Tag' },
       { key: 'kyc-method', name: 'KYC Method', path: '/admin/kyc-method', icon: 'ShieldCheck' },
       { key: 'dashboard-notification', name: 'Dashboard Notification', path: '/admin/dashboard-notification', icon: 'Bell' },
+      { key: 'database-backup', name: 'Database Backup', path: '/admin/database-backup', icon: 'Database' },
     ],
   },
   {

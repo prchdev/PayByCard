@@ -61,6 +61,7 @@ import DashboardNotification from './pages/admin/DashboardNotification';
 import AdminMerchantKyc from './pages/admin/AdminMerchantKyc';
 import VendorManagement from './pages/admin/VendorManagement';
 import Invoicing from './pages/admin/Invoicing';
+import DatabaseBackup from './pages/admin/DatabaseBackup';
 function MainLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -164,6 +165,7 @@ function App() {
           <Route path="/admin/bulk-sms" element={<BulkSMS />} />
           <Route path="/admin/vendor-management" element={<VendorManagement />} />
           <Route path="/admin/invoicing" element={<Invoicing />} />
+          <Route path="/admin/database-backup" element={<DatabaseBackup />} />
           <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

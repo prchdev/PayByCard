@@ -346,8 +346,11 @@ async function exportSchemaData(db: any, dataOnly: boolean): Promise<string> {
       output += "-- RLS Policies\n";
       for (const pol of policies) {
         output += `CREATE POLICY "${pol.policyname}" ON "${pol.tablename}" FOR ${pol.cmd}`;
-        if (pol.roles && pol.roles.length > 0) {
-          output += ` TO ${pol.roles.map((r: string) => `"${r}"`).join(", ")}`;
+        if (pol.roles) {
+          const roleArr = Array.isArray(pol.roles) ? pol.roles : String(pol.roles).replace(/[{}]/g, "").split(",").map((s: string) => s.trim()).filter(Boolean);
+          if (roleArr.length > 0) {
+            output += ` TO ${roleArr.map((r: string) => `"${r}"`).join(", ")}`;
+          }
         }
         if (pol.qual) output += ` USING (${pol.qual})`;
         if (pol.with_check) output += ` WITH CHECK (${pol.with_check})`;
@@ -437,8 +440,12 @@ async function exportSchemaOnly(db: any): Promise<string> {
     output += "\n-- RLS Policies\n";
     for (const pol of policies) {
       output += `CREATE POLICY "${pol.policyname}" ON "${pol.tablename}" FOR ${pol.cmd}`;
-      if (pol.roles && pol.roles.length > 0)
-        output += ` TO ${pol.roles.map((r: string) => `"${r}"`).join(", ")}`;
+      if (pol.roles) {
+        const roleArr = Array.isArray(pol.roles) ? pol.roles : String(pol.roles).replace(/[{}]/g, "").split(",").map((s: string) => s.trim()).filter(Boolean);
+        if (roleArr.length > 0) {
+          output += ` TO ${roleArr.map((r: string) => `"${r}"`).join(", ")}`;
+        }
+      }
       if (pol.qual) output += ` USING (${pol.qual})`;
       if (pol.with_check) output += ` WITH CHECK (${pol.with_check})`;
       output += ";\n";
@@ -722,13 +729,14 @@ async function exportCronJobs(db: any): Promise<string> {
   }
 
   const runs = await sqlQuery(db,
-    `SELECT jobid, runid, job_pid, database, username, start_time, end_time, return_status, output
+    `SELECT jobid, runid, job_pid, database, username, start_time, end_time, status, return_message
      FROM cron.job_run_details ORDER BY start_time DESC LIMIT 100`
   );
   if (runs.length > 0) {
     output += `-- Recent job run details (last ${runs.length} runs):\n`;
     for (const run of runs) {
-      output += `-- Run ${run.runid}: Job ${run.jobid}, Status: ${run.return_status}, Started: ${run.start_time}, Ended: ${run.end_time || "running"}\n`;
+      output += `-- Run ${run.runid}: Job ${run.jobid}, Status: ${run.status}, Started: ${run.start_time}, Ended: ${run.end_time || "running"}\n`;
+      if (run.return_message) output += `--   Message: ${run.return_message}\n`;
     }
   }
 

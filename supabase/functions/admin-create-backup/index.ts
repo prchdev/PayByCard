@@ -42,7 +42,6 @@ serveAdmin(async (req: Request) => {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
-  let dbClient: any = null;
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -77,211 +76,174 @@ serveAdmin(async (req: Request) => {
       );
     }
 
-    dbClient = await getDbConnection();
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-
-    if (backupType === "full") {
-      // Full backup: combine everything into one file, one history entry
-      const fileName = `backup_full_${timestamp}.sql`;
-      const filePath = `${adminId}/${fileName}`;
-
-      try {
-        const content = await exportFullBackup(dbClient, supabase);
-        const { error: uploadError } = await supabase.storage
-          .from(BUCKET)
-          .upload(filePath, content, { contentType: "application/sql", upsert: false });
-
-        if (uploadError) throw uploadError;
-
-        const fileSize = new Blob([content]).size;
-
-        await supabase.from("backup_history").insert({
-          backup_type: "full",
-          backup_label: BACKUP_LABELS["full"],
-          status: "completed",
-          file_path: filePath,
-          file_name: fileName,
-          file_size_bytes: fileSize,
-          file_count: 1,
-          storage_bucket: BUCKET,
-          created_by_admin_id: adminId,
-          created_by_admin_name: admin.full_name || "Admin",
-          completed_at: new Date().toISOString(),
-        });
-
-        return new Response(
-          JSON.stringify({
-            success: true,
-            backupType: "full",
-            allSuccess: true,
-            message: "Full backup completed successfully",
-            fileName,
-            fileSize,
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : "Unknown error";
-        await supabase.from("backup_history").insert({
-          backup_type: "full",
-          backup_label: BACKUP_LABELS["full"],
-          status: "failed",
-          created_by_admin_id: adminId,
-          created_by_admin_name: admin.full_name || "Admin",
-          error_message: errorMsg,
-          completed_at: new Date().toISOString(),
-        });
-
-        return new Response(
-          JSON.stringify({
-            success: false,
-            backupType: "full",
-            allSuccess: false,
-            message: `Full backup failed: ${errorMsg}`,
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
-
-    // Storage Bucket Files backup: produces a ZIP, not SQL text
-    if (backupType === "storage_bucket_files") {
-      const fileName = `backup_storage_bucket_files_${timestamp}.zip`;
-      const filePath = `${adminId}/${fileName}`;
-
-      try {
-        const { buffer: zipBuffer, fileCount } = await exportStorageBucketFiles(supabase);
-        const { error: uploadError } = await supabase.storage
-          .from(BUCKET)
-          .upload(filePath, zipBuffer, { contentType: "application/zip", upsert: false });
-
-        if (uploadError) throw uploadError;
-
-        const fileSize = zipBuffer.byteLength;
-
-        await supabase.from("backup_history").insert({
-          backup_type: "storage_bucket_files",
-          backup_label: BACKUP_LABELS["storage_bucket_files"],
-          status: "completed",
-          file_path: filePath,
-          file_name: fileName,
-          file_size_bytes: fileSize,
-          file_count: fileCount,
-          storage_bucket: BUCKET,
-          created_by_admin_id: adminId,
-          created_by_admin_name: admin.full_name || "Admin",
-          completed_at: new Date().toISOString(),
-        });
-
-        return new Response(
-          JSON.stringify({
-            success: true,
-            backupType: "storage_bucket_files",
-            allSuccess: true,
-            message: `Storage Bucket Files backup completed successfully (${fileCount} files)`,
-            fileName,
-            fileSize,
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : "Unknown error";
-        await supabase.from("backup_history").insert({
-          backup_type: "storage_bucket_files",
-          backup_label: BACKUP_LABELS["storage_bucket_files"],
-          status: "failed",
-          created_by_admin_id: adminId,
-          created_by_admin_name: admin.full_name || "Admin",
-          error_message: errorMsg,
-          completed_at: new Date().toISOString(),
-        });
-
-        return new Response(
-          JSON.stringify({
-            success: false,
-            backupType: "storage_bucket_files",
-            allSuccess: false,
-            message: `Storage Bucket Files backup failed: ${errorMsg}`,
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
-
-    // Single backup type
-    const typeInfo = BACKUP_LABELS[backupType];
-    const fileName = `backup_${backupType}_${timestamp}.sql`;
-    const filePath = `${adminId}/${fileName}`;
-
-    try {
-      const content = await exportByType(backupType, dbClient, supabase);
-      const { error: uploadError } = await supabase.storage
-        .from(BUCKET)
-        .upload(filePath, content, { contentType: "application/sql", upsert: false });
-
-      if (uploadError) throw uploadError;
-
-      const fileSize = new Blob([content]).size;
-
-      await supabase.from("backup_history").insert({
+    // Insert in_progress record immediately
+    const { data: historyRecord, error: insertError } = await supabase
+      .from("backup_history")
+      .insert({
         backup_type: backupType,
-        backup_label: typeInfo,
-        status: "completed",
-        file_path: filePath,
-        file_name: fileName,
-        file_size_bytes: fileSize,
-        file_count: 1,
+        backup_label: BACKUP_LABELS[backupType],
+        status: "in_progress",
+        file_count: 0,
         storage_bucket: BUCKET,
         created_by_admin_id: adminId,
         created_by_admin_name: admin.full_name || "Admin",
-        completed_at: new Date().toISOString(),
-      });
+      })
+      .select("id")
+      .single();
 
+    if (insertError || !historyRecord) {
       return new Response(
-        JSON.stringify({
-          success: true,
-          backupType,
-          allSuccess: true,
-          message: `${typeInfo} completed successfully`,
-          fileName,
-          fileSize,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Unknown error";
-      await supabase.from("backup_history").insert({
-        backup_type: backupType,
-        backup_label: typeInfo,
-        status: "failed",
-        created_by_admin_id: adminId,
-        created_by_admin_name: admin.full_name || "Admin",
-        error_message: errorMsg,
-        completed_at: new Date().toISOString(),
-      });
-
-      return new Response(
-        JSON.stringify({
-          success: false,
-          backupType,
-          allSuccess: false,
-          message: `${typeInfo} failed: ${errorMsg}`,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Failed to create backup record" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const backupId = historyRecord.id;
+
+    // Launch the actual work in the background (non-blocking)
+    const workPromise = backupType === "full"
+      ? runFullBackup(supabase, adminId, admin.full_name || "Admin", backupId)
+      : backupType === "storage_bucket_files"
+      ? runStorageBucketFilesBackup(supabase, adminId, admin.full_name || "Admin", backupId)
+      : runSingleBackup(supabase, adminId, admin.full_name || "Admin", backupId, backupType);
+
+    // Don't await — let it run in background
+    workPromise.catch((err) => {
+      console.error(`Background backup ${backupId} failed:`, err);
+    });
+
+    // Respond immediately so the client can navigate away
+    return new Response(
+      JSON.stringify({
+        success: true,
+        backupId,
+        backupType,
+        message: `${BACKUP_LABELS[backupType]} started in background. You can check the backup history for progress.`,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error) {
     console.error("Error in admin-create-backup:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error: " + (error instanceof Error ? error.message : "unknown") }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } finally {
-    if (dbClient) {
-      try { await dbClient.end(); } catch { /* ignore */ }
-    }
   }
 });
+
+// --- Background worker: single backup type ---
+
+async function runSingleBackup(supabase: any, adminId: string, adminName: string, backupId: string, backupType: string): Promise<void> {
+  let dbClient: any = null;
+  try {
+    dbClient = await getDbConnection();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const typeInfo = BACKUP_LABELS[backupType];
+    const fileName = `backup_${backupType}_${timestamp}.sql`;
+    const filePath = `${adminId}/${fileName}`;
+
+    const content = await exportByType(backupType, dbClient, supabase);
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(filePath, new Blob([content]), { contentType: "application/sql", upsert: false });
+
+    if (uploadError) throw uploadError;
+
+    const fileSize = new Blob([content]).size;
+
+    await supabase.from("backup_history").update({
+      status: "completed",
+      file_path: filePath,
+      file_name: fileName,
+      file_size_bytes: fileSize,
+      file_count: 1,
+      completed_at: new Date().toISOString(),
+    }).eq("id", backupId);
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : "Unknown error";
+    await supabase.from("backup_history").update({
+      status: "failed",
+      error_message: errorMsg,
+      completed_at: new Date().toISOString(),
+    }).eq("id", backupId);
+  } finally {
+    if (dbClient) { try { await dbClient.end(); } catch { /* ignore */ } }
+  }
+}
+
+// --- Background worker: full backup ---
+
+async function runFullBackup(supabase: any, adminId: string, adminName: string, backupId: string): Promise<void> {
+  let dbClient: any = null;
+  try {
+    dbClient = await getDbConnection();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const fileName = `backup_full_${timestamp}.sql`;
+    const filePath = `${adminId}/${fileName}`;
+
+    const content = await exportFullBackup(dbClient, supabase);
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(filePath, new Blob([content]), { contentType: "application/sql", upsert: false });
+
+    if (uploadError) throw uploadError;
+
+    const fileSize = new Blob([content]).size;
+
+    await supabase.from("backup_history").update({
+      status: "completed",
+      file_path: filePath,
+      file_name: fileName,
+      file_size_bytes: fileSize,
+      file_count: 1,
+      completed_at: new Date().toISOString(),
+    }).eq("id", backupId);
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : "Unknown error";
+    await supabase.from("backup_history").update({
+      status: "failed",
+      error_message: errorMsg,
+      completed_at: new Date().toISOString(),
+    }).eq("id", backupId);
+  } finally {
+    if (dbClient) { try { await dbClient.end(); } catch { /* ignore */ } }
+  }
+}
+
+// --- Background worker: storage bucket files (ZIP) ---
+
+async function runStorageBucketFilesBackup(supabase: any, adminId: string, adminName: string, backupId: string): Promise<void> {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const fileName = `backup_storage_bucket_files_${timestamp}.zip`;
+    const filePath = `${adminId}/${fileName}`;
+
+    const { buffer: zipBuffer, fileCount } = await exportStorageBucketFiles(supabase);
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(filePath, new Blob([zipBuffer]), { contentType: "application/zip", upsert: false });
+
+    if (uploadError) throw uploadError;
+
+    const fileSize = zipBuffer.byteLength;
+
+    await supabase.from("backup_history").update({
+      status: "completed",
+      file_path: filePath,
+      file_name: fileName,
+      file_size_bytes: fileSize,
+      file_count: fileCount,
+      completed_at: new Date().toISOString(),
+    }).eq("id", backupId);
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : "Unknown error";
+    await supabase.from("backup_history").update({
+      status: "failed",
+      error_message: errorMsg,
+      completed_at: new Date().toISOString(),
+    }).eq("id", backupId);
+  }
+}
 
 // --- Dispatcher ---
 
@@ -350,7 +312,6 @@ async function exportSchemaData(db: any, dataOnly: boolean): Promise<string> {
         return line;
       }).join(",\n");
 
-      // Add primary keys
       const pks = await sqlQuery(db,
         `SELECT kcu.column_name
          FROM information_schema.table_constraints tc
@@ -366,7 +327,6 @@ async function exportSchemaData(db: any, dataOnly: boolean): Promise<string> {
       output += "\n);\n\n";
     }
 
-    // Export indexes
     const indexes = await sqlQuery(db,
       `SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' ORDER BY indexname`
     );
@@ -378,7 +338,6 @@ async function exportSchemaData(db: any, dataOnly: boolean): Promise<string> {
       output += "\n";
     }
 
-    // Export RLS policies
     const policies = await sqlQuery(db,
       `SELECT tablename, policyname, cmd, qual, with_check, roles
        FROM pg_policies WHERE schemaname = 'public' ORDER BY tablename, policyname`
@@ -397,7 +356,6 @@ async function exportSchemaData(db: any, dataOnly: boolean): Promise<string> {
       output += "\n";
     }
 
-    // RLS enabled status
     const rlsTables = await sqlQuery(db,
       `SELECT relname, relrowsecurity FROM pg_class
        WHERE relnamespace = 'public'::regnamespace AND relkind = 'r' AND relrowsecurity = true`
@@ -411,7 +369,6 @@ async function exportSchemaData(db: any, dataOnly: boolean): Promise<string> {
     }
   }
 
-  // Export data
   output += "-- Data\n";
   for (const { table_name } of tables) {
     try {
@@ -531,7 +488,6 @@ async function exportSchemaOnly(db: any): Promise<string> {
 async function exportRoles(db: any, supabase: any): Promise<string> {
   let output = `-- PayByCard Roles Backup\n-- Generated: ${new Date().toISOString()}\n\n`;
 
-  // Get roles from pg_roles
   const roles = await sqlQuery(db,
     `SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolconnlimit, rolvaliduntil
      FROM pg_roles WHERE rolname NOT IN ('pg_signal_backend','pg_read_server_files','pg_write_server_files','pg_execute_server_program')
@@ -544,7 +500,6 @@ async function exportRoles(db: any, supabase: any): Promise<string> {
     output += `--   Superuser: ${role.rolsuper}, Login: ${role.rolcanlogin}, CreateDB: ${role.rolcreatedb}, CreateRole: ${role.rolcreaterole}\n`;
   }
 
-  // Get role grants
   const grants = await sqlQuery(db,
     `SELECT r.rolname AS role_name, m.rolname AS member_name
      FROM pg_auth_members am
@@ -559,7 +514,6 @@ async function exportRoles(db: any, supabase: any): Promise<string> {
     }
   }
 
-  // Table privileges
   const tablePrivs = await sqlQuery(db,
     `SELECT grantee, table_name, privilege_type
      FROM information_schema.role_table_grants
@@ -573,7 +527,6 @@ async function exportRoles(db: any, supabase: any): Promise<string> {
     }
   }
 
-  // Application role permissions
   const { data: rolePerms } = await supabase
     .from("role_permissions")
     .select("role, page_id, can_view, can_edit, admin_pages(page_key, page_name)");
@@ -631,7 +584,6 @@ async function exportFullPgDump(db: any): Promise<string> {
 
   output += await exportSchemaData(db, false);
 
-  // Triggers
   const triggers = await sqlQuery(db,
     `SELECT event_object_table, trigger_name, action_timing, event_manipulation, action_statement
      FROM information_schema.triggers WHERE trigger_schema = 'public'`
@@ -644,7 +596,6 @@ async function exportFullPgDump(db: any): Promise<string> {
     }
   }
 
-  // Functions
   const functions = await sqlQuery(db,
     `SELECT routine_name, routine_type, data_type, routine_definition
      FROM information_schema.routines WHERE routine_schema = 'public'`
@@ -658,7 +609,6 @@ async function exportFullPgDump(db: any): Promise<string> {
     }
   }
 
-  // Views
   const views = await sqlQuery(db,
     `SELECT table_name, view_definition FROM information_schema.views WHERE table_schema = 'public'`
   );
@@ -671,7 +621,6 @@ async function exportFullPgDump(db: any): Promise<string> {
     }
   }
 
-  // Foreign keys
   const fks = await sqlQuery(db,
     `SELECT tc.table_name, kcu.column_name, ccu.table_name AS foreign_table, ccu.column_name AS foreign_column
      FROM information_schema.table_constraints tc
@@ -700,29 +649,13 @@ async function exportStorageList(supabase: any): Promise<string> {
   for (const bucket of buckets) {
     output += `\n-- Bucket: ${bucket.name} (public: ${bucket.public})\n`;
     try {
-      const { data: files } = await supabase.storage.from(bucket.name).list("", { limit: 1000 });
-      if (files && files.length > 0) {
-        let count = 0;
-        for (const file of files) {
-          if (file.id) {
-            count++;
-            output += `-- ${file.name} (${file.metadata?.size || "unknown"} bytes)\n`;
-            // Recurse into subfolders
-            const { data: subFiles } = await supabase.storage.from(bucket.name).list(file.name, { limit: 1000 });
-            if (subFiles) {
-              for (const sf of subFiles) {
-                if (sf.id) {
-                  count++;
-                  output += `-- ${file.name}/${sf.name} (${sf.metadata?.size || "unknown"} bytes)\n`;
-                }
-              }
-            }
-          }
-        }
-        output += `-- Total files in ${bucket.name}: ${count}\n`;
-      } else {
-        output += "-- (empty bucket)\n";
+      let count = 0;
+      const allPaths = await listAllPaths(supabase, bucket.name, "");
+      for (const p of allPaths) {
+        count++;
+        output += `-- ${p.path} (${p.size || "unknown"} bytes)\n`;
       }
+      output += `-- Total files in ${bucket.name}: ${count}\n`;
     } catch (err) {
       output += `-- Error listing files: ${err}\n`;
     }
@@ -734,7 +667,6 @@ async function exportStorageList(supabase: any): Promise<string> {
 async function exportEdgeFunctionsList(supabase: any, db: any): Promise<string> {
   let output = `-- PayByCard Edge Functions Backup (Manifest)\n-- Generated: ${new Date().toISOString()}\n\n`;
 
-  // List cron jobs that call edge functions
   const cronJobs = await sqlQuery(db,
     `SELECT jobname, schedule, command, active FROM cron.job ORDER BY jobname`
   );
@@ -746,7 +678,6 @@ async function exportEdgeFunctionsList(supabase: any, db: any): Promise<string> 
     }
   }
 
-  // List all function names from the database config
   const { data: configRows } = await supabase.from("app_config").select("key, value").ilike("key", "%function%");
   if (configRows && configRows.length > 0) {
     output += "\n-- Function-related config:\n";
@@ -790,7 +721,6 @@ async function exportCronJobs(db: any): Promise<string> {
     output += "\n";
   }
 
-  // Recent run details
   const runs = await sqlQuery(db,
     `SELECT jobid, runid, job_pid, database, username, start_time, end_time, return_status, output
      FROM cron.job_run_details ORDER BY start_time DESC LIMIT 100`
@@ -852,7 +782,6 @@ async function exportProjectConfig(db: any, supabase: any): Promise<string> {
   const projectRef = supabaseUrl.replace("https://", "").replace(".supabase.co", "");
   output += `-- Project Reference: ${projectRef}\n\n`;
 
-  // Storage buckets
   const { data: buckets } = await supabase.storage.listBuckets();
   if (buckets && buckets.length > 0) {
     output += "-- Storage Buckets Configuration\n";
@@ -865,12 +794,10 @@ async function exportProjectConfig(db: any, supabase: any): Promise<string> {
     }
   }
 
-  // Extensions
   const exts = await sqlQuery(db, `SELECT extname, extversion FROM pg_extension ORDER BY extname`);
   output += "-- Database Extensions\n";
   for (const ext of exts) output += `-- ${ext.extname} (v${ext.extversion})\n`;
 
-  // Schemas
   const schemas = await sqlQuery(db,
     `SELECT schema_name FROM information_schema.schemata
      WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast') ORDER BY schema_name`
@@ -878,7 +805,6 @@ async function exportProjectConfig(db: any, supabase: any): Promise<string> {
   output += "\n-- Database Schemas\n";
   for (const s of schemas) output += `-- ${s.schema_name}\n`;
 
-  // Master settings (safe fields only)
   const { data: settings } = await supabase.from("master_settings").select("*").limit(1).maybeSingle();
   if (settings) {
     const safeSettings = { ...settings };
@@ -957,28 +883,71 @@ async function exportStorageBucketFiles(supabase: any): Promise<{ buffer: ArrayB
 
 async function downloadBucketFilesRecursive(supabase: any, bucketName: string, zipFolder: any, prefix: string): Promise<number> {
   let count = 0;
-  const { data: items, error } = await supabase.storage.from(bucketName).list(prefix, { limit: 1000, offset: 0 });
-  if (error || !items) return 0;
+  let offset = 0;
+  const pageSize = 1000;
 
-  for (const item of items) {
-    const itemPath = prefix ? `${prefix}/${item.name}` : item.name;
+  // Paginate through all items at this level
+  while (true) {
+    const { data: items, error } = await supabase.storage.from(bucketName).list(prefix, { limit: pageSize, offset });
+    if (error || !items || items.length === 0) break;
 
-    if (item.id) {
-      const { data: fileData, error: dlError } = await supabase.storage.from(bucketName).download(itemPath);
-      if (!dlError && fileData) {
-        const buf = await fileData.arrayBuffer();
-        zipFolder.file(item.name, buf);
-        count++;
-      }
-    } else {
-      const subFolder = zipFolder.folder(item.name);
-      if (subFolder) {
-        count += await downloadBucketFilesRecursive(supabase, bucketName, subFolder, itemPath);
+    for (const item of items) {
+      const itemPath = prefix ? `${prefix}/${item.name}` : item.name;
+
+      // In Supabase storage, items with a non-null `id` are files; items without `id` are folders
+      if (item.id) {
+        try {
+          const { data: fileData, error: dlError } = await supabase.storage.from(bucketName).download(itemPath);
+          if (!dlError && fileData) {
+            const buf = await fileData.arrayBuffer();
+            zipFolder.file(item.name, buf);
+            count++;
+          }
+        } catch (dlErr) {
+          // Skip individual file download errors, continue with rest
+          zipFolder.file(`_error_${item.name}.txt`, `Failed to download: ${dlErr}\n`);
+        }
+      } else {
+        // It's a folder — recurse
+        const subFolder = zipFolder.folder(item.name);
+        if (subFolder) {
+          count += await downloadBucketFilesRecursive(supabase, bucketName, subFolder, itemPath);
+        }
       }
     }
+
+    if (items.length < pageSize) break;
+    offset += pageSize;
   }
 
   return count;
+}
+
+// Helper: list all file paths in a bucket (used by storage manifest)
+async function listAllPaths(supabase: any, bucketName: string, prefix: string): Promise<Array<{ path: string; size?: number }>> {
+  const results: Array<{ path: string; size?: number }> = [];
+  let offset = 0;
+  const pageSize = 1000;
+
+  while (true) {
+    const { data: items, error } = await supabase.storage.from(bucketName).list(prefix, { limit: pageSize, offset });
+    if (error || !items || items.length === 0) break;
+
+    for (const item of items) {
+      const itemPath = prefix ? `${prefix}/${item.name}` : item.name;
+      if (item.id) {
+        results.push({ path: itemPath, size: item.metadata?.size });
+      } else {
+        const subResults = await listAllPaths(supabase, bucketName, itemPath);
+        results.push(...subResults);
+      }
+    }
+
+    if (items.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return results;
 }
 
 // redeploy

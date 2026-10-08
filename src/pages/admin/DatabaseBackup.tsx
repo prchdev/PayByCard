@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Database,
@@ -12,7 +12,6 @@ import {
   Clock,
   Server,
   Code2,
-  Calendar,
   Lock,
   Users,
   Settings,
@@ -20,6 +19,7 @@ import {
   Archive,
   X,
   FileArchive,
+  RefreshCw,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -41,11 +41,11 @@ interface BackupHistoryItem {
 }
 
 const BACKUP_OPTIONS = [
-  { key: 'schema_data', label: 'Database Schema & Data', desc: 'Full database dump with schema and data (supabase db dump)', icon: Database },
-  { key: 'data_only', label: 'Data Only', desc: 'Export only table data without schema (supabase db dump --data-only)', icon: HardDrive },
-  { key: 'schema_only', label: 'Schema Only', desc: 'Export only schema/DDL without data (supabase db dump --schema-only)', icon: FileText },
-  { key: 'roles', label: 'Roles', desc: 'Export database roles and application permissions (supabase db dump --role-only)', icon: Shield },
-  { key: 'linked', label: 'Linked Supabase Project', desc: 'Project metadata, extensions, schemas, and storage buckets (supabase db dump --linked)', icon: Server },
+  { key: 'schema_data', label: 'Database Schema & Data', desc: 'Full database dump with schema and data', icon: Database },
+  { key: 'data_only', label: 'Data Only', desc: 'Export only table data without schema', icon: HardDrive },
+  { key: 'schema_only', label: 'Schema Only', desc: 'Export only schema/DDL without data', icon: FileText },
+  { key: 'roles', label: 'Roles', desc: 'Export database roles and application permissions', icon: Shield },
+  { key: 'linked', label: 'Linked Supabase Project', desc: 'Project metadata, extensions, schemas, and storage buckets', icon: Server },
   { key: 'pg_dump', label: 'Full PostgreSQL Control', desc: 'Complete pg_dump including triggers, functions, and views', icon: Archive },
   { key: 'storage', label: 'Storage — Files/Images/PDFs', desc: 'Backup manifest of all files in storage buckets', icon: HardDrive },
   { key: 'storage_bucket_files', label: 'Storage Bucket Files (KYC + Tickets)', desc: 'Download all KYC documents and support ticket attachments as a ZIP file', icon: FileArchive },
@@ -74,6 +74,8 @@ function formatDate(dateStr: string): string {
   });
 }
 
+const POLL_INTERVAL = 5000;
+
 export default function DatabaseBackup() {
   const navigate = useNavigate();
   const adminId = sessionStorage.getItem('adminId');
@@ -95,13 +97,9 @@ export default function DatabaseBackup() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadFileName, setDownloadFileName] = useState<string | null>(null);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    fetchBackups();
-  }, []);
-
-  const fetchBackups = async () => {
-    setLoading(true);
+  const fetchBackups = useCallback(async () => {
     try {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-get-backup-history`,
@@ -119,14 +117,41 @@ export default function DatabaseBackup() {
       if (!response.ok) throw new Error(data.error || 'Failed to fetch backup history');
       setBackups(data.backups || []);
     } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error instanceof Error ? error.message : 'Failed to load backup history',
-      });
+      // Silently fail during polling to avoid spamming errors
+      if (!loading) {
+        setMessage({
+          type: 'error',
+          text: error instanceof Error ? error.message : 'Failed to load backup history',
+        });
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminId, loading]);
+
+  // Initial load
+  useEffect(() => {
+    fetchBackups();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Poll while any backup is in_progress
+  useEffect(() => {
+    const hasInProgress = backups.some((b) => b.status === 'in_progress' && !b.is_deleted);
+
+    if (hasInProgress && !pollRef.current) {
+      pollRef.current = setInterval(fetchBackups, POLL_INTERVAL);
+    } else if (!hasInProgress && pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [backups, fetchBackups]);
 
   const handleToggleType = (key: string) => {
     if (fullBackup) return;
@@ -136,53 +161,47 @@ export default function DatabaseBackup() {
   };
 
   const handleCreateBackup = async () => {
-    if (fullBackup) {
-      await createBackup('full');
-    } else if (selectedTypes.length === 0) {
+    const typesToRun = fullBackup ? ['full'] : selectedTypes;
+    if (typesToRun.length === 0) {
       setMessage({ type: 'error', text: 'Please select at least one backup type or choose Full Backup' });
       return;
-    } else {
-      for (const type of selectedTypes) {
-        await createBackup(type);
-      }
     }
-  };
 
-  const createBackup = async (type: string) => {
     setCreating(true);
     setMessage(null);
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-backup`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-            'x-pbc-admin-session': sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || '',
-          },
-          body: JSON.stringify({ adminId, backupType: type }),
-        }
-      );
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to create backup');
 
-      if (data.allSuccess) {
-        setMessage({ type: 'success', text: data.message || 'Backup completed successfully' });
-      } else {
-        setMessage({ type: 'error', text: data.message || 'Backup failed' });
+    for (const type of typesToRun) {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-backup`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'x-pbc-admin-session': sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || '',
+            },
+            body: JSON.stringify({ adminId, backupType: type }),
+          }
+        );
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to start backup');
+      } catch (error) {
+        setMessage({
+          type: 'error',
+          text: error instanceof Error ? error.message : 'Failed to start backup',
+        });
+        break;
       }
-
-      // Refresh history to show the new backup entry
-      await fetchBackups();
-    } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error instanceof Error ? error.message : 'Failed to create backup',
-      });
-    } finally {
-      setCreating(false);
     }
+
+    setCreating(false);
+    // Refresh immediately to show the in_progress entries; polling takes over
+    await fetchBackups();
+    setMessage({
+      type: 'success',
+      text: `${typesToRun.length} backup${typesToRun.length > 1 ? 's' : ''} started in the background. You can leave this page — the backup history will update automatically.`,
+    });
   };
 
   const handleDownload = async (backup: BackupHistoryItem) => {
@@ -214,7 +233,7 @@ export default function DatabaseBackup() {
   };
 
   const handleDelete = async (backup: BackupHistoryItem) => {
-    if (!confirm(`Are you sure you want to delete "${backup.backup_label}"? This will remove the backup file permanently. The download button will be disabled after deletion.`)) {
+    if (!confirm(`Are you sure you want to delete "${backup.backup_label}"? This will remove the backup file permanently.`)) {
       return;
     }
 
@@ -247,6 +266,59 @@ export default function DatabaseBackup() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    const activeBackups = backups.filter((b) => !b.is_deleted);
+    if (activeBackups.length === 0) {
+      setMessage({ type: 'error', text: 'No backup entries to delete' });
+      return;
+    }
+    if (!confirm(`Are you sure you want to delete ALL ${activeBackups.length} backup entries? This will permanently remove all backup files.`)) {
+      return;
+    }
+
+    setDeleting('all');
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const backup of activeBackups) {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-delete-backup`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'x-pbc-admin-session': sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || '',
+            },
+            body: JSON.stringify({ adminId, backupId: backup.id }),
+          }
+        );
+        if (response.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch {
+        failCount++;
+      }
+    }
+
+    setDeleting(null);
+    await fetchBackups();
+
+    if (failCount === 0) {
+      setMessage({ type: 'success', text: `All ${successCount} backup entries deleted successfully` });
+    } else {
+      setMessage({ type: 'error', text: `${successCount} deleted, ${failCount} failed` });
+    }
+  };
+
+  const handleManualRefresh = () => {
+    setLoading(true);
+    fetchBackups();
+  };
+
   const getTypeIcon = (type: string) => {
     if (type === 'full') return Archive;
     const option = BACKUP_OPTIONS.find((o) => o.key === type);
@@ -254,6 +326,8 @@ export default function DatabaseBackup() {
   };
 
   if (permLoading) return null;
+
+  const inProgressCount = backups.filter((b) => b.status === 'in_progress' && !b.is_deleted).length;
 
   return (
     <AdminLayout>
@@ -303,8 +377,8 @@ export default function DatabaseBackup() {
           <div>
             <p className="text-sm font-medium text-blue-900">Safe Backup Guarantee</p>
             <p className="text-xs text-blue-700 mt-1">
-              Backups are read-only operations. No files, database data, or tables will be deleted,
-              modified, or locked during the backup process. The database remains fully operational.
+              Backups run in the background — you can leave this page while they process.
+              No files, database data, or tables will be deleted, modified, or locked.
             </p>
           </div>
         </div>
@@ -381,7 +455,7 @@ export default function DatabaseBackup() {
         )}
 
         {/* Create backup button */}
-        <div className="mb-8">
+        <div className="mb-8 flex items-center gap-4">
           <button
             onClick={handleCreateBackup}
             disabled={creating || !canEdit || (!fullBackup && selectedTypes.length === 0)}
@@ -390,7 +464,7 @@ export default function DatabaseBackup() {
             {creating ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Creating Backup...
+                Starting...
               </>
             ) : (
               <>
@@ -399,6 +473,12 @@ export default function DatabaseBackup() {
               </>
             )}
           </button>
+          {inProgressCount > 0 && (
+            <span className="inline-flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {inProgressCount} backup{inProgressCount > 1 ? 's' : ''} in progress — auto-refreshing
+            </span>
+          )}
         </div>
 
         {/* Backup History */}
@@ -408,9 +488,35 @@ export default function DatabaseBackup() {
               <Clock className="w-5 h-5 text-gray-400" />
               <h2 className="text-lg font-semibold text-gray-900">Backup History</h2>
             </div>
-            <span className="text-xs text-gray-500">
-              {backups.filter((b) => b.status === 'completed' && !b.is_deleted).length} available
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500">
+                {backups.filter((b) => b.status === 'completed' && !b.is_deleted).length} available
+              </span>
+              <button
+                onClick={handleManualRefresh}
+                disabled={loading}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                title="Refresh history"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+              {canEdit && backups.some((b) => !b.is_deleted) && (
+                <button
+                  onClick={handleDeleteAll}
+                  disabled={deleting === 'all'}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                  title="Delete all backup entries"
+                >
+                  {deleting === 'all' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                  Delete All
+                </button>
+              )}
+            </div>
           </div>
 
           {loading ? (
@@ -467,6 +573,9 @@ export default function DatabaseBackup() {
                               </p>
                               {backup.file_name && (
                                 <p className="text-xs text-gray-400 mt-0.5">{backup.file_name}</p>
+                              )}
+                              {backup.file_count > 0 && (
+                                <p className="text-xs text-gray-400 mt-0.5">{backup.file_count} files</p>
                               )}
                             </div>
                           </div>

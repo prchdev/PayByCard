@@ -25,6 +25,8 @@ serveAdmin(async (req: Request) => {
       dateTo,
       search,
       include_kyc = false, // opt-in: skip KYC lookups for table view (much faster)
+      sortKey,
+      sortDir, // 'asc' | 'desc'
     } = await req.json();
 
     if (!adminId) {
@@ -55,11 +57,22 @@ serveAdmin(async (req: Request) => {
 
     const offset = (page - 1) * limit;
 
+    // Map frontend sort keys to DB column names for the payments table
+    const sortColumnMap: Record<string, string> = {
+      reference: "payment_reference",
+      date: "created_at",
+      amount: "amount",
+      total: "total_amount",
+      status: "status",
+    };
+    const sortColumn = sortKey ? sortColumnMap[sortKey] : null;
+    const sortAscending = sortDir === "asc";
+
     // Build query — all filtering at DB level
     let query = supabase
       .from("payments")
       .select("*", { count: "exact" })
-      .order("created_at", { ascending: false });
+      .order(sortColumn || "created_at", { ascending: sortColumn ? sortAscending : false });
 
     // Multi-status: statuses[] takes priority over single status
     const activeStatuses: string[] =

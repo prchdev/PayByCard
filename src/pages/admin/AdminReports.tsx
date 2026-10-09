@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
-import { useTableSort, SortableTh } from './TableSort';
+import { SortableTh, SortConfig } from './TableSort';
 
 interface TxRecord {
   id: string;
@@ -1126,26 +1126,14 @@ export default function AdminReports() {
   const [records, setRecords] = useState<TxRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const sortAccessor = useCallback((r: TxRecord, key: string): string | number | null | undefined => {
-    switch (key) {
-      case 'reference': return r.payment_reference;
-      case 'date': return new Date(r.created_at).getTime();
-      case 'sender': return r.sender?.full_name;
-      case 'beneficiary': return r.beneficiary_details?.full_name;
-      case 'bankIfsc': return r.beneficiary_details?.ifsc;
-      case 'optionGateway': return r.payment_option_name || r.card_type;
-      case 'amount': return Number(r.amount);
-      case 'total': return Number(r.total_amount);
-      case 'status': return r.display_status || r.status;
-      case 'gatewaySettlement': return r.gateway_settlement_status;
-      case 'payoutMode': return r.payout?.payout_type || r.payout_mode;
-      case 'settlement': return r.category_details?.settlement_time;
-      case 'payout': return r.payout?.status;
-      default: return undefined;
-    }
-  }, []);
-
-  const { sortedData, sortConfig, handleSort } = useTableSort(records, sortAccessor);
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const handleSort = (key: string) => {
+    setSortConfig(prev => {
+      if (prev?.key === key) return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      return { key, direction: 'asc' };
+    });
+    setPage(1);
+  };
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -1315,7 +1303,9 @@ export default function AdminReports() {
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
     search: search || undefined,
-  }), [adminId, statusFilters, dateFrom, dateTo, search]);
+    sortKey: sortConfig?.key,
+    sortDir: sortConfig?.direction,
+  }), [adminId, statusFilters, dateFrom, dateTo, search, sortConfig]);
 
   const fetchRecords = useCallback(async (pg = 1, ps = pageSize) => {
     if (!adminId) return;
@@ -1369,7 +1359,7 @@ export default function AdminReports() {
 
   useEffect(() => {
     fetchRecords(page, pageSize);
-  }, [page, pageSize]);
+  }, [page, pageSize, sortConfig, fetchRecords]);
 
   const handleSearch = () => {
     setSearch(searchInput);
@@ -1532,7 +1522,7 @@ export default function AdminReports() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {sortedData.map(r => {
+                  {records.map(r => {
                     const ds = r.display_status || r.status;
                     const bene = r.beneficiary_details || {};
                     return (

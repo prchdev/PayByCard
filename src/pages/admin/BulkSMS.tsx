@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
-import { useTableSort, SortableTh } from './TableSort';
+import type { SortConfig } from './TableSort';
+import { SortableTh } from './TableSort';
 
 interface BulkSMSCampaign {
   id: string;
@@ -105,6 +106,7 @@ export default function BulkSMS() {
   const [recipientPage, setRecipientPage] = useState(1);
   const [recipientLoading, setRecipientLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
   useEffect(() => {
     if (!adminId) navigate('/admin/login');
@@ -187,7 +189,7 @@ export default function BulkSMS() {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ admin_id: adminId, action: 'get_recipients', campaign_id: campaignId, page, per_page: PER_PAGE }),
+          body: JSON.stringify({ admin_id: adminId, action: 'get_recipients', campaign_id: campaignId, page, per_page: PER_PAGE, sortKey: sortConfig?.key, sortDir: sortConfig?.direction }),
         }
       );
       const data = await response.json();
@@ -200,7 +202,7 @@ export default function BulkSMS() {
     } finally {
       setRecipientLoading(false);
     }
-  }, [adminId]);
+  }, [adminId, sortConfig]);
 
   const openReport = (c: BulkSMSCampaign) => {
     setReportCampaign(c);
@@ -213,7 +215,7 @@ export default function BulkSMS() {
     if (reportCampaign) {
       fetchRecipients(reportCampaign.id, recipientPage);
     }
-  }, [recipientPage, reportCampaign, fetchRecipients]);
+  }, [recipientPage, reportCampaign, fetchRecipients, sortConfig]);
 
   const insertParameter = (param: string) => {
     setFormData((prev) => ({ ...prev, message: prev.message + param }));
@@ -324,23 +326,13 @@ export default function BulkSMS() {
     ? recipients
     : recipients.filter((r) => r.status === statusFilter);
 
-  const { sortedData, sortConfig, handleSort } = useTableSort<RecipientRecord>(
-    filteredRecipients,
-    (r, key) => {
-      switch (key) {
-        case 'phone':
-          return r.email_or_phone;
-        case 'status':
-          return r.status;
-        case 'sentAt':
-          return r.sent_at ? new Date(r.sent_at).getTime() : 0;
-        case 'error':
-          return r.error_message;
-        default:
-          return null;
-      }
-    },
-  );
+  const handleSort = (key: string) => {
+    setSortConfig(prev => {
+      if (prev?.key === key) return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      return { key, direction: 'asc' };
+    });
+    setRecipientPage(1);
+  };
 
   const totalPages = Math.ceil(recipientTotal / PER_PAGE);
 
@@ -446,7 +438,7 @@ export default function BulkSMS() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {sortedData.map((r) => (
+                      {filteredRecipients.map((r) => (
                         <tr key={r.id} className="hover:bg-gray-50">
                           <td className="py-2.5 pr-4 font-mono text-gray-700">{r.email_or_phone || '-'}</td>
                           <td className="py-2.5 pr-4">

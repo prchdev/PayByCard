@@ -55,9 +55,6 @@ serveAdmin(async (req: Request) => {
       `)
       .order("created_at", { ascending: false });
 
-    if (search) {
-      query = query.or(`invoice_id_code.ilike.%${search}%,invoice_number.ilike.%${search}%,po_number.ilike.%${search}%`);
-    }
     if (invoiceStatus) query = query.eq("invoice_status", invoiceStatus);
     if (paymentStatus) query = query.eq("payment_status", paymentStatus);
     if (vendorId) query = query.eq("vendor_id", vendorId);
@@ -81,11 +78,28 @@ serveAdmin(async (req: Request) => {
 
     const enriched = invoices || [];
 
-    if (enriched.length > 0) {
-      const allInvoiceDocs = enriched.flatMap((inv: any) =>
+    // Filter by search term client-side (includes vendor name fields not queryable via .or())
+    let filtered = enriched;
+    if (search) {
+      const q = search.toLowerCase();
+      filtered = enriched.filter((inv: any) => {
+        const v = inv.vendor;
+        return (
+          (inv.invoice_id_code || "").toLowerCase().includes(q) ||
+          (inv.invoice_number || "").toLowerCase().includes(q) ||
+          (inv.po_number || "").toLowerCase().includes(q) ||
+          (v?.legal_name || "").toLowerCase().includes(q) ||
+          (v?.trade_name || "").toLowerCase().includes(q) ||
+          (v?.vendor_code || "").toLowerCase().includes(q)
+        );
+      });
+    }
+
+    if (filtered.length > 0) {
+      const allInvoiceDocs = filtered.flatMap((inv: any) =>
         (inv.documents || []).map((d: any) => ({ id: d.id, file_url: d.file_url }))
       );
-      const allPaymentDocs = enriched.flatMap((inv: any) =>
+      const allPaymentDocs = filtered.flatMap((inv: any) =>
         (inv.payments || []).flatMap((p: any) =>
           (p.documents || []).map((d: any) => ({ id: d.id, file_url: d.file_url }))
         )
@@ -119,7 +133,7 @@ serveAdmin(async (req: Request) => {
         }
       }
 
-      for (const inv of enriched) {
+      for (const inv of filtered) {
         if (inv.documents) {
           for (const doc of inv.documents) {
             doc.signed_url = invoiceUrlMap[doc.id] || null;
@@ -137,7 +151,7 @@ serveAdmin(async (req: Request) => {
       }
     }
 
-    return new Response(JSON.stringify({ invoices: enriched }), {
+    return new Response(JSON.stringify({ invoices: filtered }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

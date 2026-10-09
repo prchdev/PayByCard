@@ -414,13 +414,24 @@ export default function Invoicing() {
   };
 
   const exportInvoices = async (all: boolean) => {
-    const data = all ? invoices : invoices.filter(inv =>
-      (!searchTerm || inv.invoice_id_code.toLowerCase().includes(searchTerm.toLowerCase()) || inv.invoice_number.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    const data = all ? invoices : invoices.filter(inv => {
+      const q = searchTerm.toLowerCase();
+      const vendorName = (inv.vendor?.legal_name || '').toLowerCase();
+      const tradeName = (inv.vendor?.trade_name || '').toLowerCase();
+      const vendorCode = (inv.vendor?.vendor_code || '').toLowerCase();
+      return (!searchTerm ||
+        inv.invoice_id_code.toLowerCase().includes(q) ||
+        inv.invoice_number.toLowerCase().includes(q) ||
+        (inv.po_number || '').toLowerCase().includes(q) ||
+        vendorName.includes(q) ||
+        tradeName.includes(q) ||
+        vendorCode.includes(q)
+      ) &&
       (!statusFilter || inv.invoice_status === statusFilter) &&
       (!payStatusFilter || inv.payment_status === payStatusFilter) &&
       (!dateFrom || inv.invoice_date >= dateFrom) &&
       (!dateTo || inv.invoice_date <= dateTo)
-    );
+    ;});
 
     if (data.length === 0) {
       setMessage({ type: 'error', text: 'No invoices to export' });
@@ -917,7 +928,7 @@ export default function Invoicing() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input type="text" placeholder="Search invoice ID, number, PO..." value={searchTerm}
+                  <input type="text" placeholder="Search invoice ID, number, PO, vendor..." value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8c76f0] focus:border-transparent" />
                 </div>

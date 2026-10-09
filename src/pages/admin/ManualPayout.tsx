@@ -26,6 +26,7 @@ import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
 import BulkPayoutModal from './BulkPayoutModal';
 import { downloadAxisBankPayoutTemplate } from '../../utils/axisBankExport';
+import { useTableSort, SortableTh } from './TableSort';
 
 interface PayoutRecord {
   id: string;
@@ -373,8 +374,26 @@ export default function ManualPayout() {
     return matchesSearch && matchesStatus;
   });
 
+  const { sortedData, sortConfig, handleSort } = useTableSort<PayoutRecord>(filtered, (p, key) => {
+    switch (key) {
+      case 'reference': return p.payment_reference || p.payout_reference;
+      case 'gateway': return p.gateway?.gateway_name;
+      case 'status': return p.payment_status || p.status;
+      case 'gatewaySettlement': return p.gateway_settlement_status;
+      case 'sender': return p.sender?.full_name;
+      case 'beneficiary': return p.beneficiary?.beneficiary_name;
+      case 'beneficiaryContact': return p.beneficiary?.mobile || p.beneficiary?.email;
+      case 'bankIfsc': return p.beneficiary?.ifsc_code;
+      case 'amount': return Number(p.net_amount || p.amount);
+      case 'payoutMode': return p.payout_mode;
+      case 'settlement': return formatSettlementTime(p.settlement_time);
+      case 'date': return new Date(p.created_at).getTime();
+      default: return null;
+    }
+  });
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const paginated = sortedData.slice((page - 1) * pageSize, page * pageSize);
 
   if (permLoading) return null;
 
@@ -508,9 +527,20 @@ export default function ManualPayout() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {['Reference', 'Gateway', 'Status', 'Gateway Sttlmt', 'Sender', 'Beneficiary', 'Beneficiary Contact', 'Bank / IFSC', 'Amount', 'Payout Mode', 'Settlement', 'Date', 'Remark', 'Actions'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                    ))}
+                    <SortableTh label="Reference" sortKey="reference" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <SortableTh label="Gateway" sortKey="gateway" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <SortableTh label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <SortableTh label="Gateway Sttlmt" sortKey="gatewaySettlement" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <SortableTh label="Sender" sortKey="sender" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <SortableTh label="Beneficiary" sortKey="beneficiary" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <SortableTh label="Beneficiary Contact" sortKey="beneficiaryContact" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <SortableTh label="Bank / IFSC" sortKey="bankIfsc" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <SortableTh label="Amount" sortKey="amount" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <SortableTh label="Payout Mode" sortKey="payoutMode" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <SortableTh label="Settlement" sortKey="settlement" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <SortableTh label="Date" sortKey="date" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">Remark</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">

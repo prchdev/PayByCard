@@ -5,6 +5,7 @@ import { useAdminKyc } from './useAdminKyc';
 import { KycUserEntry, KycStatus } from './types';
 import KycStatusBadge from './KycStatusBadge';
 import ReviewModal from './ReviewModal';
+import { useTableSort, SortableTh } from './TableSort';
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'All Users' },
@@ -101,10 +102,22 @@ export default function AdminDashboard() {
     );
   });
 
+  const { sortedData, sortConfig, handleSort } = useTableSort(filtered, (entry: KycUserEntry, key: string) => {
+    switch (key) {
+      case 'user': return `${entry.user.first_name} ${entry.user.last_name}`;
+      case 'contact': return entry.user.email;
+      case 'pan': return entry.pan?.status ?? '';
+      case 'address': return entry.address?.status ?? '';
+      case 'business': return entry.business?.status ?? '';
+      case 'overall': return getOverallStatus(entry);
+      default: return '';
+    }
+  });
+
   const totalPages = Math.ceil(filtered.length / recordsPerPage);
   const startIndex = (currentPage - 1) * recordsPerPage;
   const endIndex = startIndex + recordsPerPage;
-  const paginatedEntries = filtered.slice(startIndex, endIndex);
+  const paginatedEntries = sortedData.slice(startIndex, endIndex);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -262,12 +275,12 @@ export default function AdminDashboard() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">User</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Contact</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">PAN</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Address</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Business</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Overall</th>
+                      <SortableTh label="User" sortKey="user" sortConfig={sortConfig} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
+                      <SortableTh label="Contact" sortKey="contact" sortConfig={sortConfig} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
+                      <SortableTh label="PAN" sortKey="pan" sortConfig={sortConfig} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
+                      <SortableTh label="Address" sortKey="address" sortConfig={sortConfig} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
+                      <SortableTh label="Business" sortKey="business" sortConfig={sortConfig} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
+                      <SortableTh label="Overall" sortKey="overall" sortConfig={sortConfig} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
                       <th className="px-4 py-3"></th>
                     </tr>
                   </thead>

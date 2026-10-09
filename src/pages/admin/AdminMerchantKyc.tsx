@@ -9,6 +9,7 @@ import {
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
 import { downloadCsv } from '../../utils/csvExport';
+import { useTableSort, SortableTh } from './TableSort';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -1012,6 +1013,18 @@ export default function AdminMerchantKyc() {
     );
   });
 
+  const { sortedData, sortConfig, handleSort } = useTableSort<MerchantRecord>(filtered, (item, key) => {
+    switch (key) {
+      case 'beneficiary': return item.full_name;
+      case 'contact': return item.email;
+      case 'payment': return item.payment_reference;
+      case 'pan': return item.pan_number;
+      case 'submitted': return new Date(item.created_at).getTime();
+      case 'status': return item.status;
+      default: return null;
+    }
+  });
+
   const counts = {
     all: records.length,
     submitted: records.filter((r) => r.status === 'submitted').length,
@@ -1024,7 +1037,7 @@ export default function AdminMerchantKyc() {
 
   const totalPages = Math.ceil(filtered.length / recordsPerPage);
   const startIndex = (currentPage - 1) * recordsPerPage;
-  const paginated = filtered.slice(startIndex, startIndex + recordsPerPage);
+  const paginated = sortedData.slice(startIndex, startIndex + recordsPerPage);
 
   const handleDownloadCsv = () => {
     const headers = [
@@ -1185,12 +1198,12 @@ export default function AdminMerchantKyc() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gradient-to-r from-purple-50 to-violet-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">Beneficiary</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">Contact</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">Payment</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">PAN</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">Submitted</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">Status</th>
+                      <SortableTh label="Beneficiary" sortKey="beneficiary" sortConfig={sortConfig} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide" />
+                      <SortableTh label="Contact" sortKey="contact" sortConfig={sortConfig} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide" />
+                      <SortableTh label="Payment" sortKey="payment" sortConfig={sortConfig} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide" />
+                      <SortableTh label="PAN" sortKey="pan" sortConfig={sortConfig} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide" />
+                      <SortableTh label="Submitted" sortKey="submitted" sortConfig={sortConfig} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide" />
+                      <SortableTh label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide" />
                       <th className="px-4 py-3"></th>
                     </tr>
                   </thead>

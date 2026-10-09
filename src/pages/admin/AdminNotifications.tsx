@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
+import { useTableSort, SortableTh } from './TableSort';
 
 interface NotificationCampaign {
   id: string;
@@ -305,6 +306,28 @@ export default function AdminNotifications() {
       c.message.toLowerCase().includes(term)
     );
   });
+
+  const { sortedData, sortConfig, handleSort } = useTableSort<NotificationCampaign>(
+    filteredCampaigns,
+    (item, key) => {
+      switch (key) {
+        case 'campaign':
+          return item.campaign_name;
+        case 'schedule':
+          return new Date(item.start_date).getTime();
+        case 'pushTime':
+          return item.push_time_from;
+        case 'frequency':
+          return item.frequency;
+        case 'status':
+          return item.status;
+        case 'pushes':
+          return item.push_count ?? 0;
+        default:
+          return null;
+      }
+    },
+  );
 
   if (permLoading || loading) {
     return (
@@ -697,24 +720,54 @@ export default function AdminNotifications() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gradient-to-r from-purple-50 to-violet-50 border-b-2 border-gray-200">
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Campaign
-                    </th>
-                    <th className="text-left px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Schedule
-                    </th>
-                    <th className="text-left px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Push Time
-                    </th>
-                    <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Frequency
-                    </th>
-                    <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Pushes
-                    </th>
+                    <SortableTh
+                      label="Campaign"
+                      sortKey="campaign"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      className="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      align="left"
+                    />
+                    <SortableTh
+                      label="Schedule"
+                      sortKey="schedule"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      className="text-left px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      align="left"
+                    />
+                    <SortableTh
+                      label="Push Time"
+                      sortKey="pushTime"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      className="text-left px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      align="left"
+                    />
+                    <SortableTh
+                      label="Frequency"
+                      sortKey="frequency"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      align="center"
+                    />
+                    <SortableTh
+                      label="Status"
+                      sortKey="status"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      align="center"
+                    />
+                    <SortableTh
+                      label="Pushes"
+                      sortKey="pushes"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      align="center"
+                    />
                     <th className="text-right px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Actions
                     </th>
@@ -734,7 +787,7 @@ export default function AdminNotifications() {
                       </td>
                     </tr>
                   ) : (
-                    filteredCampaigns.map((c) => (
+                    sortedData.map((c) => (
                       <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-start gap-3">

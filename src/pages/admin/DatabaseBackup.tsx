@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
+import { useTableSort, SortableTh } from './TableSort';
 
 interface BackupHistoryItem {
   id: string;
@@ -98,6 +99,26 @@ export default function DatabaseBackup() {
   const [downloadFileName, setDownloadFileName] = useState<string | null>(null);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const { sortedData, sortConfig, handleSort } = useTableSort<BackupHistoryItem>(
+    backups,
+    (item, key) => {
+      switch (key) {
+        case 'backupType':
+          return item.backup_type;
+        case 'status':
+          return item.status;
+        case 'size':
+          return item.file_size_bytes;
+        case 'created':
+          return new Date(item.created_at).getTime();
+        case 'createdBy':
+          return item.created_by_admin_name;
+        default:
+          return null;
+      }
+    },
+  );
 
   const fetchBackups = useCallback(async () => {
     try {
@@ -536,28 +557,49 @@ export default function DatabaseBackup() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Backup Type
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Size
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Created
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Created By
-                    </th>
+                    <SortableTh
+                      label="Backup Type"
+                      sortKey="backupType"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                    />
+                    <SortableTh
+                      label="Status"
+                      sortKey="status"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                    />
+                    <SortableTh
+                      label="Size"
+                      sortKey="size"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      className="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      align="right"
+                    />
+                    <SortableTh
+                      label="Created"
+                      sortKey="created"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                    />
+                    <SortableTh
+                      label="Created By"
+                      sortKey="createdBy"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                    />
                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {backups.map((backup) => {
+                  {sortedData.map((backup) => {
                     const Icon = getTypeIcon(backup.backup_type);
                     const canDownload = backup.status === 'completed' && !backup.is_deleted && backup.file_path;
                     return (

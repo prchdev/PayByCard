@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Save, RefreshCw, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import AdminLayout from './AdminLayout';
+import { useTableSort, SortableTh } from './TableSort';
 
 interface AdminPage {
   id: string;
@@ -175,6 +176,13 @@ export default function RolePermissions() {
     }
   };
 
+  const { sortedData: sortedPages, sortConfig, handleSort } = useTableSort(pages, (page: AdminPage, key: string) => {
+    switch (key) {
+      case 'page': return page.page_name;
+      default: return '';
+    }
+  });
+
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto">
@@ -221,7 +229,7 @@ export default function RolePermissions() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b-2 border-gray-300">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Page</th>
+                    <SortableTh label="Page" sortKey="page" sortConfig={sortConfig} onSort={handleSort} className="px-6 py-4 text-left text-sm font-semibold text-gray-900" />
                     {(['super_admin', 'admin', 'moderator'] as const).map((role) => (
                       <th key={role} className="px-6 py-4 text-center">
                         <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold border ${getRoleBadgeColor(role)}`}>
@@ -232,7 +240,7 @@ export default function RolePermissions() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {pages.map((page) => (
+                  {sortedPages.map((page) => (
                     <tr key={page.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div>

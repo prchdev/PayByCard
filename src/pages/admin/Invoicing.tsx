@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ReceiptText, Plus, Save, X, AlertCircle, CheckCircle, Loader2, Pencil,
@@ -6,6 +6,7 @@ import {
   Upload, FileImage, ExternalLink, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
+import { useTableSort, SortableTh } from './TableSort';
 import { useAdminPermission } from './useAdminPermission';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
@@ -633,10 +634,26 @@ export default function Invoicing() {
 
   const selectedVendor = vendors.find(v => v.id === formData.vendor_id);
 
+  const sortAccessor = useCallback((inv: Invoice, key: string): string | number | null | undefined => {
+    switch (key) {
+      case 'invoiceId': return inv.invoice_id_code;
+      case 'vendor': return inv.vendor?.legal_name || inv.vendor?.trade_name || '';
+      case 'invoiceNo': return inv.invoice_number;
+      case 'date': return new Date(inv.invoice_date).getTime();
+      case 'dueDate': return inv.due_date ? new Date(inv.due_date).getTime() : null;
+      case 'grandTotal': return Number(inv.grand_total);
+      case 'totalPaid': return Number(inv.total_paid);
+      case 'pending': return Number(inv.grand_total) - Number(inv.total_paid);
+      case 'invStatus': return inv.invoice_status;
+      case 'payStatus': return inv.payment_status;
+      default: return undefined;
+    }
+  }, []);
+  const { sortedData, sortConfig, handleSort } = useTableSort(invoices, sortAccessor);
   const totalPages = Math.ceil(invoices.length / recordsPerPage);
   const startIndex = (currentPage - 1) * recordsPerPage;
   const endIndex = startIndex + recordsPerPage;
-  const paginatedInvoices = invoices.slice(startIndex, endIndex);
+  const paginatedInvoices = sortedData.slice(startIndex, endIndex);
   useEffect(() => { setCurrentPage(1); }, [invoices, recordsPerPage]);
 
   if (permLoading) return null;
@@ -974,9 +991,17 @@ export default function Invoicing() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      {['Invoice ID', 'Vendor', 'Invoice No.', 'Date', 'Due Date', 'Grand Total', 'Total Paid', 'Pending', 'Inv Status', 'Pay Status', 'Actions'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                      ))}
+                      <SortableTh label="Invoice ID" sortKey="invoiceId" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Vendor" sortKey="vendor" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Invoice No." sortKey="invoiceNo" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Date" sortKey="date" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Due Date" sortKey="dueDate" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Grand Total" sortKey="grandTotal" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Total Paid" sortKey="totalPaid" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Pending" sortKey="pending" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Inv Status" sortKey="invStatus" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Pay Status" sortKey="payStatus" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">

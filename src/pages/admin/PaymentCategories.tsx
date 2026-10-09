@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
+import { useTableSort, SortableTh } from './TableSort';
 
 interface PaymentCategory {
   id: string;
@@ -209,6 +210,23 @@ export default function PaymentCategories() {
   const filteredCategories = categories.filter((cat) =>
     cat.category_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const { sortedData: sortedCategories, sortConfig: catSortConfig, handleSort: handleCatSort } = useTableSort(filteredCategories, (cat: PaymentCategory, key: string) => {
+    switch (key) {
+      case 'name': return cat.category_name;
+      case 'kyc': return cat.receiver_kyc_required ? 'yes' : 'no';
+      case 'refund': return cat.refund_after_hours;
+      case 'settlement': return cat.settlement_time;
+      case 'invoice': return cat.invoice_required ? 'yes' : 'no';
+      case 'maxAmount': return cat.max_payment_per_beneficiary;
+      case 'cardDelay': return cat.new_card_payment_delay_hours;
+      case 'order': return cat.display_order;
+      case 'retail': return cat.available_to_retail ? 'yes' : 'no';
+      case 'business': return cat.available_to_business ? 'yes' : 'no';
+      case 'status': return cat.is_enabled ? 'enabled' : 'disabled';
+      default: return '';
+    }
+  });
 
   if (permLoading) return null;
 
@@ -733,42 +751,18 @@ export default function PaymentCategories() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-purple-50 to-violet-50 border-b-2 border-gray-200">
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Category Name
-                  </th>
-                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    KYC Required
-                  </th>
-                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Refund Hours
-                  </th>
-                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Settlement
-                  </th>
-                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Invoice
-                  </th>
-                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Max/Beneficiary
-                  </th>
-                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Card Delay
-                  </th>
-                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Order
-                  </th>
-                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Retail
-                  </th>
-                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Business
-                  </th>
-                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <SortableTh label="Category Name" sortKey="name" sortConfig={catSortConfig} onSort={handleCatSort} className="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" />
+                  <SortableTh label="KYC Required" sortKey="kyc" sortConfig={catSortConfig} onSort={handleCatSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
+                  <SortableTh label="Refund Hours" sortKey="refund" sortConfig={catSortConfig} onSort={handleCatSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
+                  <SortableTh label="Settlement" sortKey="settlement" sortConfig={catSortConfig} onSort={handleCatSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
+                  <SortableTh label="Invoice" sortKey="invoice" sortConfig={catSortConfig} onSort={handleCatSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
+                  <SortableTh label="Max/Beneficiary" sortKey="maxAmount" sortConfig={catSortConfig} onSort={handleCatSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
+                  <SortableTh label="Card Delay" sortKey="cardDelay" sortConfig={catSortConfig} onSort={handleCatSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
+                  <SortableTh label="Order" sortKey="order" sortConfig={catSortConfig} onSort={handleCatSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
+                  <SortableTh label="Retail" sortKey="retail" sortConfig={catSortConfig} onSort={handleCatSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
+                  <SortableTh label="Business" sortKey="business" sortConfig={catSortConfig} onSort={handleCatSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
+                  <SortableTh label="Status" sortKey="status" sortConfig={catSortConfig} onSort={handleCatSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
+                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -787,7 +781,7 @@ export default function PaymentCategories() {
                     </td>
                   </tr>
                 ) : (
-                  filteredCategories.map((cat) => (
+                  sortedCategories.map((cat) => (
                     <tr
                       key={cat.id}
                       className="hover:bg-gray-50 transition-colors"

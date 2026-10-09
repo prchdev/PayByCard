@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
+import { useTableSort, SortableTh } from './TableSort';
 
 interface BulkSMSCampaign {
   id: string;
@@ -323,6 +324,24 @@ export default function BulkSMS() {
     ? recipients
     : recipients.filter((r) => r.status === statusFilter);
 
+  const { sortedData, sortConfig, handleSort } = useTableSort<RecipientRecord>(
+    filteredRecipients,
+    (r, key) => {
+      switch (key) {
+        case 'phone':
+          return r.email_or_phone;
+        case 'status':
+          return r.status;
+        case 'sentAt':
+          return r.sent_at ? new Date(r.sent_at).getTime() : 0;
+        case 'error':
+          return r.error_message;
+        default:
+          return null;
+      }
+    },
+  );
+
   const totalPages = Math.ceil(recipientTotal / PER_PAGE);
 
   if (permLoading) return null;
@@ -420,14 +439,14 @@ export default function BulkSMS() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wider">
-                        <th className="pb-2 pr-4">Phone Number</th>
-                        <th className="pb-2 pr-4">Status</th>
-                        <th className="pb-2 pr-4">Sent At</th>
-                        <th className="pb-2">Error</th>
+                        <SortableTh label="Phone Number" sortKey="phone" sortConfig={sortConfig} onSort={handleSort} className="pb-2 pr-4" />
+                        <SortableTh label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="pb-2 pr-4" />
+                        <SortableTh label="Sent At" sortKey="sentAt" sortConfig={sortConfig} onSort={handleSort} className="pb-2 pr-4" />
+                        <SortableTh label="Error" sortKey="error" sortConfig={sortConfig} onSort={handleSort} className="pb-2" />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {filteredRecipients.map((r) => (
+                      {sortedData.map((r) => (
                         <tr key={r.id} className="hover:bg-gray-50">
                           <td className="py-2.5 pr-4 font-mono text-gray-700">{r.email_or_phone || '-'}</td>
                           <td className="py-2.5 pr-4">

@@ -4,6 +4,7 @@ import { Users, UserPlus, Search, RefreshCw, CreditCard as Edit, Power, Shield, 
 import AdminLayout from './AdminLayout';
 import { validatePassword, PASSWORD_REQUIREMENTS } from '../../utils/passwordValidation';
 import { useAdminPermission } from './useAdminPermission';
+import { useTableSort, SortableTh } from './TableSort';
 
 interface AdminUser {
   id: string;
@@ -118,6 +119,18 @@ export default function AdminUserManagement() {
       user.role.toLowerCase().includes(q)
     );
   });
+
+  const userAccessor = (user: AdminUser, key: string) => {
+    switch (key) {
+      case 'adminUser': return user.full_name;
+      case 'role': return user.role;
+      case 'status': return user.is_active ? 'active' : 'disabled';
+      case 'lastLogin': return user.last_login ? new Date(user.last_login).getTime() : 0;
+      default: return '';
+    }
+  };
+
+  const { sortedData, sortConfig, handleSort } = useTableSort(filtered, userAccessor);
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -276,25 +289,15 @@ export default function AdminUserManagement() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Admin User
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Last Login
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    <SortableTh label="Admin User" sortKey="adminUser" sortConfig={sortConfig} onSort={handleSort} className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider" />
+                    <SortableTh label="Role" sortKey="role" sortConfig={sortConfig} onSort={handleSort} className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider" />
+                    <SortableTh label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider" />
+                    <SortableTh label="Last Login" sortKey="lastLogin" sortConfig={sortConfig} onSort={handleSort} className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider" />
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filtered.map((user) => (
+                  {sortedData.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div>

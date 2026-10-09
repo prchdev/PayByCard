@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   UserSearch,
@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
+import { useTableSort, SortableTh } from './TableSort';
 
 interface UserProfile {
   id: string;
@@ -232,6 +233,41 @@ export default function AdminUserSummary() {
     if (!adminId) navigate('/admin/login');
   }, [adminId, navigate]);
 
+  const benAccessor = useCallback((b: any, key: string) => {
+    switch (key) {
+      case 'name': return b.full_name || b.beneficiary_name || b.name;
+      case 'bank': return b.bank_name;
+      case 'account': return b.bank_account || b.account_number || b.bank_account_number;
+      case 'ifsc': return b.ifsc || b.ifsc_code;
+      case 'status': return b.status;
+      case 'verified': return b.is_verified_merchant ?? b.merchant_verified ?? b.is_verified;
+      default: return null;
+    }
+  }, []);
+
+  const { sortedData: sortedBeneficiaries, sortConfig: benSortConfig, handleSort: handleBenSort } = useTableSort<any>(
+    summary?.beneficiaries ?? [],
+    benAccessor,
+  );
+
+  const txAccessor = useCallback((t: any, key: string) => {
+    switch (key) {
+      case 'reference': return t.payment_reference;
+      case 'date': return t.created_at ? new Date(t.created_at).getTime() : null;
+      case 'beneficiary': return t.beneficiary_details?.full_name || t.beneficiary_details?.beneficiary_name;
+      case 'cardType': return t.selected_payment_option?.card_type || t.card_type;
+      case 'amount': return Number(t.amount);
+      case 'total': return Number(t.total_amount);
+      case 'status': return t.display_status || t.status;
+      default: return null;
+    }
+  }, []);
+
+  const { sortedData: sortedTransactions, sortConfig: txSortConfig, handleSort: handleTxSort } = useTableSort<any>(
+    summary?.transactions ?? [],
+    txAccessor,
+  );
+
   if (!adminId) return null;
 
   const handleSearch = async () => {
@@ -309,7 +345,7 @@ export default function AdminUserSummary() {
   const u = summary?.user;
   const kyc = summary?.kyc;
 
-  const txSlice = summary ? summary.transactions.slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE) : [];
+  const txSlice = sortedTransactions.slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE);
   const ticketSlice = summary ? summary.supportTickets.slice((ticketPage - 1) * TICKET_PAGE_SIZE, ticketPage * TICKET_PAGE_SIZE) : [];
 
   const searched = !loading && query.trim().length > 0 && userList.length === 0 && !summary && !detailLoading && !error;
@@ -621,13 +657,16 @@ export default function AdminUserSummary() {
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
-                          {['Name', 'Bank', 'Account', 'IFSC', 'Status', 'Merchant Verified'].map(h => (
-                            <th key={h} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap">{h}</th>
-                          ))}
+                          <SortableTh label="Name" sortKey="name" sortConfig={benSortConfig} onSort={handleBenSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
+                          <SortableTh label="Bank" sortKey="bank" sortConfig={benSortConfig} onSort={handleBenSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
+                          <SortableTh label="Account" sortKey="account" sortConfig={benSortConfig} onSort={handleBenSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
+                          <SortableTh label="IFSC" sortKey="ifsc" sortConfig={benSortConfig} onSort={handleBenSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
+                          <SortableTh label="Status" sortKey="status" sortConfig={benSortConfig} onSort={handleBenSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
+                          <SortableTh label="Merchant Verified" sortKey="verified" sortConfig={benSortConfig} onSort={handleBenSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {summary.beneficiaries.map((b: any) => (
+                        {sortedBeneficiaries.map((b: any) => (
                           <tr key={b.id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-3 py-3 font-medium text-gray-900">{b.full_name || b.beneficiary_name || '—'}</td>
                             <td className="px-3 py-3 text-gray-600">{b.bank_name || '—'}</td>
@@ -663,9 +702,13 @@ export default function AdminUserSummary() {
                       <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                           <tr>
-                            {['Reference', 'Date', 'Beneficiary', 'Card Type', 'Amount', 'Total', 'Status'].map(h => (
-                              <th key={h} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap">{h}</th>
-                            ))}
+                            <SortableTh label="Reference" sortKey="reference" sortConfig={txSortConfig} onSort={handleTxSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
+                            <SortableTh label="Date" sortKey="date" sortConfig={txSortConfig} onSort={handleTxSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
+                            <SortableTh label="Beneficiary" sortKey="beneficiary" sortConfig={txSortConfig} onSort={handleTxSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
+                            <SortableTh label="Card Type" sortKey="cardType" sortConfig={txSortConfig} onSort={handleTxSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
+                            <SortableTh label="Amount" sortKey="amount" sortConfig={txSortConfig} onSort={handleTxSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
+                            <SortableTh label="Total" sortKey="total" sortConfig={txSortConfig} onSort={handleTxSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
+                            <SortableTh label="Status" sortKey="status" sortConfig={txSortConfig} onSort={handleTxSort} className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5 whitespace-nowrap" />
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">

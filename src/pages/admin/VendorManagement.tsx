@@ -8,6 +8,7 @@ import {
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
 import { downloadCsv } from '../../utils/csvExport';
+import { useTableSort, SortableTh } from './TableSort';
 
 interface Vendor {
   id: string;
@@ -213,10 +214,25 @@ export default function VendorManagement() {
     fetchVendors();
   };
 
-  const totalPages = Math.ceil(vendors.length / recordsPerPage);
+  const { sortedData, sortConfig, handleSort } = useTableSort<Vendor>(vendors, (v, key) => {
+    switch (key) {
+      case 'vendorCode': return v.vendor_code;
+      case 'name': return v.legal_name;
+      case 'type': return v.domestic_or_international;
+      case 'registration': return v.registration_status;
+      case 'di': return v.domestic_or_international;
+      case 'gst': return v.gst_number;
+      case 'pan': return v.pan_number;
+      case 'phone': return v.phone;
+      case 'status': return v.status;
+      case 'created': return new Date(v.created_at).getTime();
+      default: return null;
+    }
+  });
+  const totalPages = Math.ceil(sortedData.length / recordsPerPage);
   const startIndex = (currentPage - 1) * recordsPerPage;
   const endIndex = startIndex + recordsPerPage;
-  const paginatedVendors = vendors.slice(startIndex, endIndex);
+  const paginatedVendors = sortedData.slice(startIndex, endIndex);
   useEffect(() => { setCurrentPage(1); }, [vendors, recordsPerPage]);
 
   const exportVendors = (all: boolean) => {
@@ -411,9 +427,17 @@ export default function VendorManagement() {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      {['Vendor Code', 'Name', 'Type', 'Registration', 'D/I', 'GST', 'PAN', 'Phone', 'Status', 'Created', 'Actions'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                      ))}
+                      <SortableTh label="Vendor Code" sortKey="vendorCode" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Type" sortKey="type" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Registration" sortKey="registration" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="D/I" sortKey="di" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="GST" sortKey="gst" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="PAN" sortKey="pan" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Phone" sortKey="phone" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <SortableTh label="Created" sortKey="created" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">

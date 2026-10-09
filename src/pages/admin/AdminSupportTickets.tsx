@@ -4,6 +4,7 @@ import { RefreshCw, Search, ChevronLeft, ChevronRight, MessageSquare, Clock, Che
 import AdminLayout from './AdminLayout';
 import { createClient } from '@supabase/supabase-js';
 import { useAdminPermission } from './useAdminPermission';
+import { useTableSort, SortableTh } from './TableSort';
 
 interface SupportTicket {
   ticket_id: string;
@@ -348,9 +349,31 @@ export default function AdminSupportTickets() {
     return matchesSearch && matchesCategory;
   });
 
+  const { sortedData, sortConfig, handleSort } = useTableSort<SupportTicket>(
+    filteredTickets,
+    (ticket, key) => {
+      switch (key) {
+        case 'ticketNumber':
+          return ticket.ticket_number;
+        case 'userDetails':
+          return ticket.user_name;
+        case 'category':
+          return ticket.category;
+        case 'status':
+          return ticket.status;
+        case 'created':
+          return new Date(ticket.created_at).getTime();
+        case 'replies':
+          return ticket.reply_count;
+        default:
+          return null;
+      }
+    },
+  );
+
   const totalPages = Math.ceil(filteredTickets.length / recordsPerPage);
   const startIndex = (currentPage - 1) * recordsPerPage;
-  const paginatedTickets = filteredTickets.slice(startIndex, startIndex + recordsPerPage);
+  const paginatedTickets = sortedData.slice(startIndex, startIndex + recordsPerPage);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -493,12 +516,12 @@ export default function AdminSupportTickets() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b-2 border-gray-200">
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Ticket #</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">User Details</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Category</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Created</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Replies</th>
+                      <SortableTh label="Ticket #" sortKey="ticketNumber" sortConfig={sortConfig} onSort={handleSort} className="text-left py-3 px-4 text-sm font-semibold text-gray-700" />
+                      <SortableTh label="User Details" sortKey="userDetails" sortConfig={sortConfig} onSort={handleSort} className="text-left py-3 px-4 text-sm font-semibold text-gray-700" />
+                      <SortableTh label="Category" sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="text-left py-3 px-4 text-sm font-semibold text-gray-700" />
+                      <SortableTh label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="text-left py-3 px-4 text-sm font-semibold text-gray-700" />
+                      <SortableTh label="Created" sortKey="created" sortConfig={sortConfig} onSort={handleSort} className="text-left py-3 px-4 text-sm font-semibold text-gray-700" />
+                      <SortableTh label="Replies" sortKey="replies" sortConfig={sortConfig} onSort={handleSort} className="text-left py-3 px-4 text-sm font-semibold text-gray-700" />
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Action</th>
                     </tr>
                   </thead>

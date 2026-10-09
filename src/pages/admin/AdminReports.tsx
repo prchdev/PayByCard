@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
+import { useTableSort, SortableTh } from './TableSort';
 
 interface TxRecord {
   id: string;
@@ -1124,6 +1125,27 @@ export default function AdminReports() {
 
   const [records, setRecords] = useState<TxRecord[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const sortAccessor = useCallback((r: TxRecord, key: string): string | number | null | undefined => {
+    switch (key) {
+      case 'reference': return r.payment_reference;
+      case 'date': return new Date(r.created_at).getTime();
+      case 'sender': return r.sender?.full_name;
+      case 'beneficiary': return r.beneficiary_details?.full_name;
+      case 'bankIfsc': return r.beneficiary_details?.ifsc;
+      case 'optionGateway': return r.payment_option_name || r.card_type;
+      case 'amount': return Number(r.amount);
+      case 'total': return Number(r.total_amount);
+      case 'status': return r.display_status || r.status;
+      case 'gatewaySettlement': return r.gateway_settlement_status;
+      case 'payoutMode': return r.payout?.payout_type || r.payout_mode;
+      case 'settlement': return r.category_details?.settlement_time;
+      case 'payout': return r.payout?.status;
+      default: return undefined;
+    }
+  }, []);
+
+  const { sortedData, sortConfig, handleSort } = useTableSort(records, sortAccessor);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -1493,13 +1515,24 @@ export default function AdminReports() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {['Reference', 'Date', 'Sender', 'Beneficiary', 'Bank / IFSC', 'Option / Gateway', 'Amount', 'Total', 'Status', 'Gateway Sttlmt', 'Payout Mode', 'Settlement', 'Payout', ''].map((h, i) => (
-                      <th key={i} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
-                    ))}
+                    <SortableTh label="Reference" sortKey="reference" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <SortableTh label="Date" sortKey="date" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <SortableTh label="Sender" sortKey="sender" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <SortableTh label="Beneficiary" sortKey="beneficiary" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <SortableTh label="Bank / IFSC" sortKey="bankIfsc" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <SortableTh label="Option / Gateway" sortKey="optionGateway" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <SortableTh label="Amount" sortKey="amount" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <SortableTh label="Total" sortKey="total" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <SortableTh label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <SortableTh label="Gateway Sttlmt" sortKey="gatewaySettlement" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <SortableTh label="Payout Mode" sortKey="payoutMode" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <SortableTh label="Settlement" sortKey="settlement" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <SortableTh label="Payout" sortKey="payout" sortConfig={sortConfig} onSort={handleSort} className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap" />
+                    <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3 whitespace-nowrap"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {records.map(r => {
+                  {sortedData.map(r => {
                     const ds = r.display_status || r.status;
                     const bene = r.beneficiary_details || {};
                     return (

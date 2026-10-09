@@ -3,6 +3,7 @@ import {
   X, Upload, Download, FileText, CheckCircle, XCircle,
   AlertCircle, Loader2, ChevronDown, ChevronUp, FileSpreadsheet,
 } from 'lucide-react';
+import { useTableSort, SortableTh } from './TableSort';
 import * as XLSX from 'xlsx';
 
 interface ParsedRow {
@@ -130,6 +131,21 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
   const [dbChecked, setDbChecked] = useState(false);
   const [eligibleRows, setEligibleRows] = useState<ParsedRow[]>([]);
   const [ineligibleRows, setIneligibleRows] = useState<ParsedRow[]>([]);
+
+  const rowAccessor = (r: ParsedRow, key: string) => {
+    switch (key) {
+      case 'rowNum': return r.row_number;
+      case 'crn': return r.crn;
+      case 'txnDate': return r.transaction_date;
+      case 'utr': return r.utr;
+      case 'amount': return r.amount;
+      case 'status': return r.status;
+      default: return '';
+    }
+  };
+
+  const eligibleSort = useTableSort(eligibleRows, rowAccessor);
+  const successfulSort = useTableSort(successfulRows, rowAccessor);
 
   const clientErrorRows = parsedRows.filter(r => r.clientError);
   const hasClientErrors = clientErrorRows.length > 0;
@@ -431,13 +447,16 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
                     <table className="w-full text-xs">
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
-                          {['#', 'CRN', 'Txn Date', 'UTR', 'Amount', 'Status'].map(h => (
-                            <th key={h} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap">{h}</th>
-                          ))}
+                          <SortableTh label="#" sortKey="rowNum" sortConfig={eligibleSort.sortConfig} onSort={eligibleSort.handleSort} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap" />
+                          <SortableTh label="CRN" sortKey="crn" sortConfig={eligibleSort.sortConfig} onSort={eligibleSort.handleSort} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap" />
+                          <SortableTh label="Txn Date" sortKey="txnDate" sortConfig={eligibleSort.sortConfig} onSort={eligibleSort.handleSort} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap" />
+                          <SortableTh label="UTR" sortKey="utr" sortConfig={eligibleSort.sortConfig} onSort={eligibleSort.handleSort} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap" />
+                          <SortableTh label="Amount" sortKey="amount" sortConfig={eligibleSort.sortConfig} onSort={eligibleSort.handleSort} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap" />
+                          <SortableTh label="Status" sortKey="status" sortConfig={eligibleSort.sortConfig} onSort={eligibleSort.handleSort} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {eligibleRows.map(r => (
+                        {eligibleSort.sortedData.map(r => (
                           <tr key={r.row_number} className="hover:bg-green-50/30">
                             <td className="px-3 py-2 text-gray-400">{r.row_number}</td>
                             <td className="px-3 py-2 font-mono font-semibold text-[#8c76f0]">{r.crn}</td>
@@ -481,13 +500,16 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
                     <table className="w-full text-xs">
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
-                          {['#', 'CRN', 'Txn Date', 'UTR', 'Amount', 'Status'].map(h => (
-                            <th key={h} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap">{h}</th>
-                          ))}
+                          <SortableTh label="#" sortKey="rowNum" sortConfig={successfulSort.sortConfig} onSort={successfulSort.handleSort} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap" />
+                          <SortableTh label="CRN" sortKey="crn" sortConfig={successfulSort.sortConfig} onSort={successfulSort.handleSort} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap" />
+                          <SortableTh label="Txn Date" sortKey="txnDate" sortConfig={successfulSort.sortConfig} onSort={successfulSort.handleSort} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap" />
+                          <SortableTh label="UTR" sortKey="utr" sortConfig={successfulSort.sortConfig} onSort={successfulSort.handleSort} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap" />
+                          <SortableTh label="Amount" sortKey="amount" sortConfig={successfulSort.sortConfig} onSort={successfulSort.handleSort} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap" />
+                          <SortableTh label="Status" sortKey="status" sortConfig={successfulSort.sortConfig} onSort={successfulSort.handleSort} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {successfulRows.map(r => (
+                        {successfulSort.sortedData.map(r => (
                           <tr key={r.row_number} className="hover:bg-purple-50/30">
                             <td className="px-3 py-2 text-gray-400">{r.row_number}</td>
                             <td className="px-3 py-2 font-mono font-semibold text-[#8c76f0]">{r.crn}</td>

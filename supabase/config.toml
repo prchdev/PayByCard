@@ -301,3 +301,12 @@ verify_jwt = false
 
 [functions.admin-download-backup]
 verify_jwt = false
+
+[functions.admin-gateway-settlement]
+verify_jwt = false
+
+[functions.on-demand-settlement]
+verify_jwt = false
+
+[functions.track-settlement-status]
+verify_jwt = false

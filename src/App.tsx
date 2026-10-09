@@ -62,6 +62,7 @@ import AdminMerchantKyc from './pages/admin/AdminMerchantKyc';
 import VendorManagement from './pages/admin/VendorManagement';
 import Invoicing from './pages/admin/Invoicing';
 import DatabaseBackup from './pages/admin/DatabaseBackup';
+import PaymentGatewaySettlement from './pages/admin/PaymentGatewaySettlement';
 function MainLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -166,6 +167,7 @@ function App() {
           <Route path="/admin/vendor-management" element={<VendorManagement />} />
           <Route path="/admin/invoicing" element={<Invoicing />} />
           <Route path="/admin/database-backup" element={<DatabaseBackup />} />
+          <Route path="/admin/gateway-settlement" element={<PaymentGatewaySettlement />} />
           <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

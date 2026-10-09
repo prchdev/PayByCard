@@ -307,3 +307,9 @@ verify_jwt = false
 
 [functions.on-demand-settlement]
 verify_jwt = false
+
+[functions.get-user-permission-overrides]
+verify_jwt = false
+
+[functions.update-user-permissions]
+verify_jwt = false

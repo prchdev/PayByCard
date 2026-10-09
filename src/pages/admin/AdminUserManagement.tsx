@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, UserPlus, Search, RefreshCw, CreditCard as Edit, Power, Shield, User, Crown, X, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Users, UserPlus, Search, RefreshCw, CreditCard as Edit, Power, Shield, User, Crown, X, Loader2, AlertCircle, CheckCircle, Lock } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { validatePassword, PASSWORD_REQUIREMENTS } from '../../utils/passwordValidation';
 import { useAdminPermission } from './useAdminPermission';
@@ -25,10 +25,13 @@ export default function AdminUserManagement() {
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showPermsModal, setShowPermsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const adminRole = sessionStorage.getItem('adminRole') ?? localStorage.getItem('adminRole') ?? '';
 
   useEffect(() => {
     if (!adminId) {
@@ -338,6 +341,18 @@ export default function AdminUserManagement() {
                             <Edit className="w-5 h-5" />
                           </button>
                           )}
+                          {canEdit && adminRole === 'super_admin' && user.role !== 'super_admin' && (
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowPermsModal(true);
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Customize Permissions"
+                          >
+                            <Lock className="w-5 h-5" />
+                          </button>
+                          )}
                           {canEdit && (
                           <button
                             onClick={() => handleToggleStatus(user)}
@@ -387,6 +402,23 @@ export default function AdminUserManagement() {
             setShowEditModal(false);
             setSelectedUser(null);
             fetchAdminUsers();
+          }}
+          adminId={adminId}
+        />
+      )}
+
+      {showPermsModal && selectedUser && (
+        <CustomizePermissionsModal
+          user={selectedUser}
+          onClose={() => {
+            setShowPermsModal(false);
+            setSelectedUser(null);
+          }}
+          onSuccess={() => {
+            setShowPermsModal(false);
+            setSelectedUser(null);
+            setSuccess('User permissions updated successfully');
+            setTimeout(() => setSuccess(''), 5000);
           }}
           adminId={adminId}
         />
@@ -803,6 +835,300 @@ function EditAdminModal({ user, onClose, onSuccess, adminId }: EditAdminModalPro
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+interface PermissionPage {
+  id: string;
+  page_key: string;
+  page_name: string;
+  description: string;
+  display_order: number;
+  role_can_view: boolean;
+  role_can_edit: boolean;
+  has_override: boolean;
+  can_view: boolean;
+  can_edit: boolean;
+}
+
+interface CustomizePermissionsModalProps {
+  user: AdminUser;
+  onClose: () => void;
+  onSuccess: () => void;
+  adminId: string;
+}
+
+function CustomizePermissionsModal({ user, onClose, onSuccess, adminId }: CustomizePermissionsModalProps) {
+  const [pages, setPages] = useState<PermissionPage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchOverrides();
+  }, []);
+
+  const fetchOverrides = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-user-permission-overrides`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ adminId, targetUserId: user.id }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch permissions');
+      }
+
+      setPages(data.pages || []);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load permissions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggle = (pageId: string, field: 'can_view' | 'can_edit', value: boolean) => {
+    setPages(prev => prev.map(p => {
+      if (p.id !== pageId) return p;
+      if (field === 'can_view' && !value) {
+        return { ...p, can_view: false, can_edit: false };
+      }
+      if (field === 'can_edit' && value && !p.can_view) {
+        return p;
+      }
+      return { ...p, [field]: value };
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      const permissions = pages.map(p => ({
+        page_id: p.id,
+        can_view: p.can_view,
+        can_edit: p.can_edit,
+      }));
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-permissions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ adminId, targetUserId: user.id, permissions }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update permissions');
+      }
+
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message || 'Failed to save permissions');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetToRole = () => {
+    setPages(prev => prev.map(p => ({
+      ...p,
+      can_view: p.role_can_view,
+      can_edit: p.role_can_edit,
+    })));
+  };
+
+  const getRoleBadge = (role: string) => {
+    const config: Record<string, { bg: string; text: string; label: string }> = {
+      super_admin: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Super Admin' },
+      admin: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Admin' },
+      moderator: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Moderator' },
+    };
+    const style = config[role] || config.moderator;
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${style.bg} ${style.text}`}>
+        {style.label}
+      </span>
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="sticky top-0 bg-gradient-to-r from-[#8c76f0] to-purple-600 px-6 py-5 flex items-center justify-between rounded-t-2xl z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+              <Lock className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Customize Permissions</h2>
+              <p className="text-sm text-white/80">{user.full_name} ({user.email})</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-500 rounded-lg px-5 py-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <p className="text-red-700 text-sm font-medium">{error}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-blue-900">Role: {getRoleBadge(user.role)}</p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Customize this user's access on top of their role defaults. Overrides can only restrict, not expand.
+                </p>
+              </div>
+              <button
+                onClick={handleResetToRole}
+                disabled={loading || saving}
+                className="px-4 py-2 text-sm font-medium text-blue-700 bg-white border-2 border-blue-200 rounded-lg hover:bg-blue-50 transition-all disabled:opacity-50"
+              >
+                Reset to Role Defaults
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="p-12 text-center">
+              <Loader2 className="w-12 h-12 text-[#8c76f0] animate-spin mx-auto mb-4" />
+              <p className="text-gray-600 text-sm">Loading permissions...</p>
+            </div>
+          ) : (
+            <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
+              <div className="overflow-x-auto max-h-[50vh] overflow-y-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b-2 border-gray-200 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Page
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Role Default
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        View
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Edit
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {pages.map((page) => {
+                      const isRestricted = page.has_override;
+                      return (
+                        <tr key={page.id} className={`hover:bg-gray-50 transition-colors ${isRestricted ? 'bg-amber-50/50' : ''}`}>
+                          <td className="px-4 py-3">
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm">{page.page_name}</p>
+                              {page.description && (
+                                <p className="text-xs text-gray-500 mt-0.5">{page.description}</p>
+                              )}
+                              {isRestricted && (
+                                <span className="inline-flex items-center gap-1 mt-1 text-xs text-amber-700 font-medium">
+                                  <Lock className="w-3 h-3" /> Customized
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex justify-center gap-2 text-xs">
+                              <span className={`px-2 py-0.5 rounded ${page.role_can_view ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                {page.role_can_view ? 'View' : '—'}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded ${page.role_can_edit ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                {page.role_can_edit ? 'Edit' : '—'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-center">
+                              <input
+                                type="checkbox"
+                                checked={page.can_view}
+                                onChange={(e) => handleToggle(page.id, 'can_view', e.target.checked)}
+                                disabled={!page.role_can_view}
+                                className="w-4 h-4 text-[#8c76f0] border-gray-300 rounded focus:ring-[#8c76f0] disabled:opacity-30"
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-center">
+                              <input
+                                type="checkbox"
+                                checked={page.can_edit}
+                                onChange={(e) => handleToggle(page.id, 'can_edit', e.target.checked)}
+                                disabled={!page.role_can_edit || !page.can_view}
+                                className="w-4 h-4 text-[#8c76f0] border-gray-300 rounded focus:ring-[#8c76f0] disabled:opacity-30"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:border-[#8c76f0] hover:bg-purple-50 font-medium transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={loading || saving}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Shield className="w-5 h-5" />
+                  Save Permissions
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

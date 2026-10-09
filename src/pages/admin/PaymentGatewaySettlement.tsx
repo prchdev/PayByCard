@@ -15,6 +15,7 @@ interface SettlementSetting {
   last_settlement_amount: number | null;
   gateway_enabled: boolean;
   pending_settlement_amount: number;
+  pending_settlement_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -371,7 +372,17 @@ export default function PaymentGatewaySettlement() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-gray-100">
                     <div>
                       <p className="text-xs font-medium text-gray-400 mb-1">Pending Settlement</p>
-                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(s.pending_settlement_amount)}</p>
+                      {s.pending_settlement_error ? (
+                        <div className="flex items-center gap-1">
+                          <p className="text-sm font-semibold text-gray-900">{formatCurrency(s.pending_settlement_amount)}</p>
+                          <span className="flex items-center gap-0.5 text-xs text-amber-600" title={s.pending_settlement_error}>
+                            <AlertCircle className="w-3.5 h-3.5" />
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-sm font-semibold text-gray-900">{formatCurrency(s.pending_settlement_amount)}</p>
+                      )}
+                      <p className="text-[10px] text-gray-400 mt-0.5">Live from gateway API</p>
                     </div>
                     <div>
                       <p className="text-xs font-medium text-gray-400 mb-1">Last Settlement Status</p>

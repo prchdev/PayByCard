@@ -1,20 +1,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { serveAdmin } from "../_shared/session.ts";
+import {
+  isSupportedGateway,
+  getPendingSettlement,
+} from "../_shared/settlementApi.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
-
-// Only these gateways support on-demand settlement APIs
-const SUPPORTED_GATEWAYS = ["razorpay", "cashfree"];
-
-function isSupportedGateway(gatewayName: string): boolean {
-  const name = (gatewayName || "").toLowerCase();
-  return SUPPORTED_GATEWAYS.some((g) => name.includes(g));
-}
 
 serveAdmin(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -49,44 +45,39 @@ serveAdmin(async (req: Request) => {
 
       const { data: gateways, error: gErr } = await supabase
         .from("payment_gateway_settings")
-        .select("gateway_name, is_enabled")
+        .select("*")
         .order("gateway_name");
 
       if (gErr) throw new Error(`Gateway query failed: ${gErr.message}`);
 
       const supportedGateways = (gateways || []).filter((g: any) => isSupportedGateway(g.gateway_name));
 
-      // Pending settlement amount per gateway
-      const { data: pending, error: pErr } = await supabase
-        .from("payments")
-        .select("amount, payment_gateway_id, gateway_settlement_status")
-        .in("gateway_settlement_status", ["captured", "paid"]);
+      // Fetch pending settlement amount from each gateway's actual API
+      const rows = [];
+      for (const s of supportedSettings) {
+        const gw = supportedGateways.find((g: any) => g.gateway_name === s.gateway_name);
+        const env = gw?.environment || "production";
 
-      const pendingMap: Record<string, number> = {};
-      if (!pErr && pending) {
-        const { data: gwRows } = await supabase
-          .from("payment_gateway_settings")
-          .select("id, gateway_name");
-        const idToName: Record<string, string> = {};
-        for (const g of gwRows || []) {
-          idToName[g.id] = g.gateway_name;
-        }
-        for (const p of pending) {
-          const gname = idToName[p.payment_gateway_id];
-          if (gname && isSupportedGateway(gname)) {
-            pendingMap[gname] = (pendingMap[gname] || 0) + Number(p.amount || 0);
+        let pendingAmount = 0;
+        let apiError: string | null = null;
+
+        if (gw) {
+          try {
+            const result = await getPendingSettlement(s.gateway_name, gw, env);
+            pendingAmount = result.amount;
+          } catch (e: any) {
+            apiError = "Unable to fetch from gateway API";
+            console.error(`admin-gateway-settlement: failed to fetch pending for ${s.gateway_name}:`, e);
           }
         }
-      }
 
-      const rows = supportedSettings.map((s: any) => {
-        const gw = supportedGateways.find((g: any) => g.gateway_name === s.gateway_name);
-        return {
+        rows.push({
           ...s,
           gateway_enabled: gw?.is_enabled ?? false,
-          pending_settlement_amount: pendingMap[s.gateway_name] || 0,
-        };
-      });
+          pending_settlement_amount: pendingAmount,
+          pending_settlement_error: apiError,
+        });
+      }
 
       return new Response(
         JSON.stringify({ success: true, settings: rows }),

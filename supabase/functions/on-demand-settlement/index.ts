@@ -1,31 +1,31 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import {
+  isSupportedGateway,
+  getPendingSettlement,
+  initiateSettlement,
+  checkSettlementStatus,
+  disablePaymentOptionsForGateway,
+} from "../_shared/settlementApi.ts";
 
 /**
  * on-demand-settlement
  *
  * Scheduled every 5 minutes via pg_cron.
  *
- * Combines two responsibilities in a single run:
- *
  * PHASE 1 — Settlement status tracking:
  *   For each gateway with on_demand_settlement_enabled = true that has a
- *   non-terminal last_settlement_status (initiated, in_progress, onhold,
- *   etc.), checks the gateway API for the current settlement status.
- *   If the status is "onhold", disables all payment_options linked to
- *   that gateway. Updates last_settlement_status with the latest value.
+ *   non-terminal last_settlement_status, checks the gateway API for the
+ *   current settlement status. If "onhold", disables all payment_options
+ *   linked to that gateway.
  *
  * PHASE 2 — On-demand settlement initiation:
  *   For each gateway where on_demand_settlement_enabled = true:
- *   1. Checks if enough time has passed since last_settlement_at
- *      (settlement_trigger_minutes).
- *   2. Calculates the pending settlement amount (sum of captured/paid
- *      payments for that gateway that haven't been settled yet).
+ *   1. Checks if enough time has passed since last_settlement_at.
+ *   2. Fetches the actual pending settlement amount from the gateway API.
  *   3. If pending >= minimum_settlement_amount, initiates a settlement
  *      request to the gateway API.
- *   4. Records the settlement attempt in last_settlement_at/_status/_amount.
- *   5. If the gateway returns "onhold", immediately disables payment
- *      options using that gateway.
+ *   4. Records the settlement attempt. If "onhold", disables payment options.
  *
  * Currently supports Razorpay and Cashfree settlement APIs.
  */
@@ -36,259 +36,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
-// Gateways that support on-demand settlement APIs
-const SUPPORTED_GATEWAYS = ["razorpay", "cashfree"];
-
-function isSupportedGateway(gatewayName: string): boolean {
-  const name = (gatewayName || "").toLowerCase();
-  return SUPPORTED_GATEWAYS.some((g) => name.includes(g));
-}
-
-function getCredentials(gateway: any, env: string) {
-  const isTest = (env ?? "production").toLowerCase() === "test";
-  return {
-    apiKey: (isTest ? gateway.test_api_key : gateway.production_api_key) ?? "",
-    apiSecret: (isTest ? gateway.test_api_secret : gateway.production_api_secret) ?? "",
-  };
-}
-
-// ─── Razorpay on-demand settlement ───────────────────────────────────────────
-async function initiateRazorpaySettlement(
-  gateway: any,
-  env: string,
-  amount: number,
-): Promise<{ status: string; response?: any }> {
-  const { apiKey, apiSecret } = getCredentials(gateway, env);
-  if (!apiKey || !apiSecret) return { status: "check_failed" };
-
-  const accountNumber = gateway.razorpay_account_number;
-  if (!accountNumber) return { status: "no_account" };
-
-  try {
-    const res = await fetch("https://api.razorpay.com/v1/payouts", {
-      method: "POST",
-      headers: {
-        "Authorization": `Basic ${btoa(`${apiKey}:${apiSecret}`)}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        account_number: accountNumber,
-        amount: Math.round(amount * 100),
-        currency: "INR",
-        mode: "IMPS",
-        purpose: "settlement",
-        notes: { type: "on_demand_settlement" },
-      }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      const status = (data.error?.code || data.status || "").toLowerCase();
-      if (status.includes("onhold") || status.includes("on_hold")) {
-        return { status: "onhold", response: data };
-      }
-      return { status: "failed", response: data };
-    }
-
-    return { status: "initiated", response: data };
-  } catch {
-    return { status: "failed" };
-  }
-}
-
-// ─── Cashfree on-demand settlement ───────────────────────────────────────────
-async function initiateCashfreeSettlement(
-  gateway: any,
-  env: string,
-  amount: number,
-): Promise<{ status: string; response?: any }> {
-  const { apiKey, apiSecret } = getCredentials(gateway, env);
-  if (!apiKey || !apiSecret) return { status: "check_failed" };
-
-  const base = (env ?? "production").toLowerCase() === "test"
-    ? "https://sandbox.cashfree.com"
-    : "https://api.cashfree.com";
-
-  try {
-    const res = await fetch(`${base}/pg/settlements`, {
-      method: "POST",
-      headers: {
-        "x-client-id": apiKey,
-        "x-client-secret": apiSecret,
-        "x-api-version": "2023-08-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        amount: amount.toFixed(2),
-        currency: "INR",
-        type: "on_demand",
-      }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      const status = (data.error?.code || data.status || "").toLowerCase();
-      if (status.includes("onhold") || status.includes("on_hold")) {
-        return { status: "onhold", response: data };
-      }
-      return { status: "failed", response: data };
-    }
-
-    return { status: "initiated", response: data };
-  } catch {
-    return { status: "failed" };
-  }
-}
-
-// ─── Settlement initiation dispatcher ─────────────────────────────────────────
-async function initiateSettlement(
-  gatewayName: string,
-  gateway: any,
-  env: string,
-  amount: number,
-): Promise<{ status: string; response?: any }> {
-  const name = (gatewayName || "").toLowerCase();
-
-  if (name.includes("razorpay")) {
-    return initiateRazorpaySettlement(gateway, env, amount);
-  }
-  if (name.includes("cashfree")) {
-    return initiateCashfreeSettlement(gateway, env, amount);
-  }
-  return { status: "not_applicable" };
-}
-
-// ─── Razorpay settlement status check ────────────────────────────────────────
-async function checkRazorpaySettlementStatus(
-  gateway: any,
-  env: string,
-): Promise<{ status: string }> {
-  const { apiKey, apiSecret } = getCredentials(gateway, env);
-  if (!apiKey || !apiSecret) return { status: "check_failed" };
-
-  const accountNumber = gateway.razorpay_account_number;
-  if (!accountNumber) return { status: "no_account" };
-
-  try {
-    const res = await fetch(
-      `https://api.razorpay.com/v1/settlements?account_number=${accountNumber}&limit=1`,
-      {
-        headers: { "Authorization": `Basic ${btoa(`${apiKey}:${apiSecret}`)}` },
-      },
-    );
-
-    if (!res.ok) return { status: "check_failed" };
-
-    const data = await res.json();
-    const settlements = data.items || data.settlements || [];
-
-    if (settlements.length === 0) return { status: "no_settlement" };
-
-    const latest = settlements[0];
-    const rawStatus = (latest.status || "").toLowerCase();
-
-    if (rawStatus === "on_hold" || rawStatus === "onhold") {
-      return { status: "onhold" };
-    }
-    if (rawStatus === "settled" || rawStatus === "processed") {
-      return { status: "settled" };
-    }
-    if (rawStatus === "in_process" || rawStatus === "pending") {
-      return { status: "in_progress" };
-    }
-    if (rawStatus === "failed" || rawStatus === "cancelled") {
-      return { status: "failed" };
-    }
-    return { status: rawStatus || "unknown" };
-  } catch {
-    return { status: "check_failed" };
-  }
-}
-
-// ─── Cashfree settlement status check ────────────────────────────────────────
-async function checkCashfreeSettlementStatus(
-  gateway: any,
-  env: string,
-): Promise<{ status: string }> {
-  const { apiKey, apiSecret } = getCredentials(gateway, env);
-  if (!apiKey || !apiSecret) return { status: "check_failed" };
-
-  const base = (env ?? "production").toLowerCase() === "test"
-    ? "https://sandbox.cashfree.com"
-    : "https://api.cashfree.com";
-
-  try {
-    const res = await fetch(`${base}/pg/settlements`, {
-      headers: {
-        "x-client-id": apiKey,
-        "x-client-secret": apiSecret,
-        "x-api-version": "2023-08-01",
-      },
-    });
-
-    if (!res.ok) return { status: "check_failed" };
-
-    const data = await res.json();
-    const settlements = Array.isArray(data) ? data : (data.data || data.settlements || []);
-
-    if (settlements.length === 0) return { status: "no_settlement" };
-
-    const latest = settlements[0];
-    const rawStatus = (latest.settlement_status || latest.status || "").toLowerCase();
-
-    if (rawStatus.includes("onhold") || rawStatus.includes("on_hold")) {
-      return { status: "onhold" };
-    }
-    if (rawStatus === "success" || rawStatus === "settled" || rawStatus === "processed") {
-      return { status: "settled" };
-    }
-    if (rawStatus === "pending" || rawStatus === "in_process") {
-      return { status: "in_progress" };
-    }
-    if (rawStatus === "failed" || rawStatus === "cancelled") {
-      return { status: "failed" };
-    }
-    return { status: rawStatus || "unknown" };
-  } catch {
-    return { status: "check_failed" };
-  }
-}
-
-// ─── Status check dispatcher ──────────────────────────────────────────────────
-async function checkSettlementStatus(
-  gatewayName: string,
-  gateway: any,
-  env: string,
-): Promise<{ status: string }> {
-  const name = (gatewayName || "").toLowerCase();
-
-  if (name.includes("razorpay")) {
-    return checkRazorpaySettlementStatus(gateway, env);
-  }
-  if (name.includes("cashfree")) {
-    return checkCashfreeSettlementStatus(gateway, env);
-  }
-  return { status: "not_applicable" };
-}
-
-// ─── Helper: disable payment options for a gateway ────────────────────────────
-async function disablePaymentOptionsForGateway(
-  supabase: any,
-  gatewayId: string,
-  gatewayName: string,
-): Promise<number> {
-  const { data: disabled } = await supabase
-    .from("payment_options")
-    .update({ is_enabled: false, updated_at: new Date().toISOString() })
-    .eq("gateway_id", gatewayId)
-    .select("id, category_name");
-
-  const count = disabled?.length || 0;
-  console.log(`on-demand-settlement: ${gatewayName} is onhold — disabled ${count} payment options`);
-  return count;
-}
-
-// ─── Main handler ─────────────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -404,19 +151,31 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // Calculate pending settlement amount
-      const { data: pendingPayments, error: pErr } = await supabase
-        .from("payments")
-        .select("amount")
-        .eq("payment_gateway_id", gateway.id)
-        .in("gateway_settlement_status", ["captured", "paid"]);
+      // Fetch actual pending settlement amount from the gateway API
+      const env = gateway.environment || "production";
+      const { amount: pendingAmount, onHold } = await getPendingSettlement(setting.gateway_name, gateway, env);
 
-      if (pErr) {
-        initiateResults.push({ gateway: setting.gateway_name, status: "query_failed", skipped: true });
+      // If the gateway reports onhold, disable payment options immediately
+      if (onHold) {
+        await disablePaymentOptionsForGateway(supabase, gateway.id, setting.gateway_name);
+        await supabase
+          .from("gateway_settlement_settings")
+          .update({
+            last_settlement_at: now.toISOString(),
+            last_settlement_status: "onhold",
+            last_settlement_amount: pendingAmount,
+            updated_at: now.toISOString(),
+          })
+          .eq("id", setting.id);
+
+        initiateResults.push({
+          gateway: setting.gateway_name,
+          status: "onhold",
+          amount: pendingAmount,
+          skipped: false,
+        });
         continue;
       }
-
-      const pendingAmount = (pendingPayments || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
 
       if (pendingAmount < Number(setting.minimum_settlement_amount)) {
         initiateResults.push({
@@ -429,7 +188,7 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      const env = gateway.environment || "production";
+      // Initiate settlement via the gateway API
       const settlementResult = await initiateSettlement(setting.gateway_name, gateway, env, pendingAmount);
 
       await supabase

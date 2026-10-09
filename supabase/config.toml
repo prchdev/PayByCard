@@ -307,6 +307,3 @@ verify_jwt = false
 
 [functions.on-demand-settlement]
 verify_jwt = false
-
-[functions.track-settlement-status]
-verify_jwt = false

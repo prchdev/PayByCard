@@ -8,6 +8,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
+// Only these gateways support on-demand settlement APIs
+const SUPPORTED_GATEWAYS = ["razorpay", "cashfree"];
+
+function isSupportedGateway(gatewayName: string): boolean {
+  const name = (gatewayName || "").toLowerCase();
+  return SUPPORTED_GATEWAYS.some((g) => name.includes(g));
+}
+
 serveAdmin(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -22,7 +30,7 @@ serveAdmin(async (req: Request) => {
     const body = await req.json();
     const action = body.action || "get";
 
-    // ─── GET: return all gateway settlement settings + gateway status ───────
+    // ─── GET: return settlement settings for supported gateways only ──────
     if (action === "get") {
       const { data: settings, error: sErr } = await supabase
         .from("gateway_settlement_settings")
@@ -36,6 +44,9 @@ serveAdmin(async (req: Request) => {
 
       if (sErr) throw new Error(`Settings query failed: ${sErr.message}`);
 
+      // Filter to only supported gateways
+      const supportedSettings = (settings || []).filter((s: any) => isSupportedGateway(s.gateway_name));
+
       const { data: gateways, error: gErr } = await supabase
         .from("payment_gateway_settings")
         .select("gateway_name, is_enabled")
@@ -43,8 +54,9 @@ serveAdmin(async (req: Request) => {
 
       if (gErr) throw new Error(`Gateway query failed: ${gErr.message}`);
 
-      // Pending settlement amount per gateway: sum of payments with captured/paid
-      // settlement status (money received by gateway but not yet settled to bank)
+      const supportedGateways = (gateways || []).filter((g: any) => isSupportedGateway(g.gateway_name));
+
+      // Pending settlement amount per gateway
       const { data: pending, error: pErr } = await supabase
         .from("payments")
         .select("amount, payment_gateway_id, gateway_settlement_status")
@@ -52,11 +64,6 @@ serveAdmin(async (req: Request) => {
 
       const pendingMap: Record<string, number> = {};
       if (!pErr && pending) {
-        // Map gateway_id → gateway_name
-        const gwMap: Record<string, string> = {};
-        for (const g of gateways || []) {
-          gwMap[g.gateway_name] = g.gateway_name;
-        }
         const { data: gwRows } = await supabase
           .from("payment_gateway_settings")
           .select("id, gateway_name");
@@ -66,14 +73,14 @@ serveAdmin(async (req: Request) => {
         }
         for (const p of pending) {
           const gname = idToName[p.payment_gateway_id];
-          if (gname) {
+          if (gname && isSupportedGateway(gname)) {
             pendingMap[gname] = (pendingMap[gname] || 0) + Number(p.amount || 0);
           }
         }
       }
 
-      const rows = (settings || []).map((s: any) => {
-        const gw = (gateways || []).find((g: any) => g.gateway_name === s.gateway_name);
+      const rows = supportedSettings.map((s: any) => {
+        const gw = supportedGateways.find((g: any) => g.gateway_name === s.gateway_name);
         return {
           ...s,
           gateway_enabled: gw?.is_enabled ?? false,
@@ -94,6 +101,13 @@ serveAdmin(async (req: Request) => {
       if (!gateway_name) {
         return new Response(
           JSON.stringify({ success: false, error: "Gateway name is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      if (!isSupportedGateway(gateway_name)) {
+        return new Response(
+          JSON.stringify({ success: false, error: "On-demand settlement is not supported for this gateway" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }

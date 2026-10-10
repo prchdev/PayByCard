@@ -97,79 +97,72 @@ export default function CookieConsent() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] animate-in fade-in slide-in-from-bottom duration-300">
-      <div className="mx-auto max-w-5xl m-4 bg-white rounded-2xl shadow-2xl border-2 border-gray-200 overflow-hidden">
-        <div className="flex items-start justify-between p-5 pb-3">
-          <div className="flex items-start gap-3 flex-1">
-            <div className="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-              <Cookie className="w-5 h-5 text-blue-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold text-gray-900">Cookie Preferences</h3>
-              <p className="text-sm text-gray-600 mt-1 leading-relaxed">
-                We use essential cookies for session management and secure checkout.
-                Optional analytics cookies help us improve our services. You can accept all,
-                reject non-essential, or customize your preferences. See our{' '}
-                <Link to="/privacy" className="text-blue-600 hover:underline font-medium" onClick={() => setVisible(false)}>
-                  Privacy Policy
-                </Link>{' '}
-                for details.
-              </p>
-            </div>
+      <div className="mx-auto max-w-3xl m-3 sm:m-4 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center gap-2.5 px-4 py-3">
+          <div className="flex-shrink-0 w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+            <Cookie className="w-4 h-4 text-blue-600" />
           </div>
+          <p className="flex-1 text-xs sm:text-sm text-gray-600 leading-snug">
+            We use essential cookies for checkout. Optional analytics cookies help us improve.{' '}
+            <Link to="/privacy" className="text-blue-600 hover:underline font-medium" onClick={() => setVisible(false)}>
+              Learn more
+            </Link>
+          </p>
           <button
-            onClick={() => { handleRejectAll(); }}
-            className="flex-shrink-0 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors ml-2"
+            onClick={handleRejectAll}
+            className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
             title="Close"
+            aria-label="Close cookie banner"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {showPrefs && (
-          <div className="px-5 pb-3 border-t border-gray-100 pt-4 mt-1">
-            <label className="flex items-center justify-between py-2 cursor-pointer">
+          <div className="px-4 pb-2 border-t border-gray-100 pt-3">
+            <label className="flex items-center justify-between py-1.5 cursor-pointer">
               <div>
-                <span className="text-sm font-medium text-gray-900">Essential Cookies</span>
-                <p className="text-xs text-gray-500">Required for login, security, and checkout. Always active.</p>
+                <span className="text-xs font-medium text-gray-900">Essential</span>
+                <p className="text-[11px] text-gray-500">Required for login and checkout. Always active.</p>
               </div>
-              <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-3 py-1 rounded-full">Required</span>
+              <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Required</span>
             </label>
-            <label className="flex items-center justify-between py-2 cursor-pointer">
+            <label className="flex items-center justify-between py-1.5 cursor-pointer">
               <div>
-                <span className="text-sm font-medium text-gray-900">Analytics Cookies</span>
-                <p className="text-xs text-gray-500">Google Analytics to understand usage patterns and improve the platform.</p>
+                <span className="text-xs font-medium text-gray-900">Analytics</span>
+                <p className="text-[11px] text-gray-500">Google Analytics to improve the platform.</p>
               </div>
               <button
                 type="button"
                 role="switch"
                 aria-checked={analyticsEnabled}
                 onClick={() => setAnalyticsEnabled(!analyticsEnabled)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${analyticsEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${analyticsEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}
               >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${analyticsEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${analyticsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
               </button>
             </label>
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-3 px-5 py-4 bg-gray-50 border-t border-gray-100">
+        <div className="flex items-center justify-end gap-2 px-4 py-2.5 bg-gray-50 border-t border-gray-100">
           {!showPrefs ? (
             <>
               <button
                 onClick={handleRejectAll}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors"
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-md transition-colors"
               >
-                Reject Non-Essential
+                Reject
               </button>
               <button
                 onClick={() => setShowPrefs(true)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-white transition-colors"
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-white transition-colors"
               >
                 Customize
               </button>
               <button
                 onClick={handleAcceptAll}
-                className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors shadow-sm"
               >
                 Accept All
               </button>
@@ -178,15 +171,15 @@ export default function CookieConsent() {
             <>
               <button
                 onClick={() => setShowPrefs(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors"
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-md transition-colors"
               >
                 Back
               </button>
               <button
                 onClick={handleSavePrefs}
-                className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors shadow-sm"
               >
-                Save Preferences
+                Save
               </button>
             </>
           )}

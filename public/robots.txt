@@ -1,16 +1,5 @@
 User-agent: *
 Allow: /
-Disallow: /admin/
-Disallow: /dashboard
-Disallow: /change-password
-Disallow: /verify-otp
-Disallow: /kyc-verification
-Disallow: /my-bank-accounts
-Disallow: /my-beneficiaries
-Disallow: /make-payment
-Disallow: /my-transactions
-Disallow: /payment-gateway
-Disallow: /help-support
 
 User-agent: GPTBot
 Disallow: /

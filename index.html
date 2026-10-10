@@ -6,11 +6,13 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="X-Frame-Options" content="DENY" />
     <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <meta http-equiv="Strict-Transport-Security" content="max-age=63072000; includeSubDomains; preload" />
+    <meta http-equiv="Permissions-Policy" content="accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()" />
     <meta name="description" content="Pay any bill instantly using your Visa, MasterCard, RuPay, Amex, Diners Club credit card. Make secure online payments, pay bills, invoices and more with ease." />
     <meta name="keywords" content="pay any bill using credit card, credit card to bank transfer, credit card bill payment platform, credit card cash transfer service, instant credit card payments" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <!-- PCI DSS 6.4.3 — Content Security Policy for production (payment page script authorization & integrity) -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://checkout.razorpay.com https://sdk.cashfree.com https://jssdk.cashfree.com https://js.cashfree.com https://checkout-static.cashfree.com https://easebuzz.in https://payu.in https://zaakpay.com https://api.enkash.com https://cdn.enkash.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.paybycard.in https://www.google-analytics.com https://www.googletagmanager.com wss:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://secure.ccavenue.com https://api.enkash.com;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-qmRIvbuzeY3VoFLJHZppZ7rNhWnaMNzUg9AwWGlt/8o=' https://www.googletagmanager.com https://www.google-analytics.com https://checkout.razorpay.com https://sdk.cashfree.com https://jssdk.cashfree.com https://js.cashfree.com https://checkout-static.cashfree.com https://easebuzz.in https://payu.in https://zaakpay.com https://api.enkash.com https://cdn.enkash.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.paybycard.in https://www.google-analytics.com https://www.googletagmanager.com wss:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://secure.ccavenue.com https://api.enkash.com; upgrade-insecure-requests;" />
     <link rel="canonical" href="https://paybycard.in/" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/PayByCard-Logo.png" />
@@ -36,7 +38,7 @@
     <meta property="og:image" content="https://paybycard.in/PayByCard-Logo.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:image" content="https://paybycard.in/PayByCard-Logo.png">
-</head>
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

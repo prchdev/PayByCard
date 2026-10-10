@@ -150,21 +150,25 @@ export default function Privacy() {
             <div className="bg-gradient-to-r from-purple-50 via-violet-50 to-purple-50 rounded-2xl p-8 border-2 border-[#8c76f0]/30 shadow-lg">
               <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                 <Shield className="w-7 h-7 text-[#8c76f0] mr-3" />
-                6. Your Rights under the DPDP Act
+                6. Your Rights under the DPDP Act and GDPR
               </h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
-                  As a Data Principal, you have the following rights regarding your personal data:
+                  As a Data Principal (under the DPDP Act) and, where applicable, as a Data Subject under the General Data Protection Regulation (GDPR, EU 2016/679), you have the following rights regarding your personal data:
                 </p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li>Right to access and obtain a summary of your data</li>
-                  <li>Right to correction or erasure of inaccurate or unnecessary data</li>
-                  <li>Right to nomination (to appoint another person to exercise rights in case of your death or incapacity)</li>
-                  <li>Right to withdraw consent (where processing is based on consent)</li>
-                  <li>Right to grievance redressal</li>
+                  <li><span className="font-semibold">Right of access (GDPR Art. 15):</span> Obtain a copy of the personal data we hold about you</li>
+                  <li><span className="font-semibold">Right to rectification (GDPR Art. 16):</span> Correct inaccurate or incomplete data</li>
+                  <li><span className="font-semibold">Right to erasure (GDPR Art. 17):</span> Request deletion of your personal data, subject to legal retention obligations</li>
+                  <li><span className="font-semibold">Right to restrict processing (GDPR Art. 18):</span> Request that we limit processing of your data under certain conditions</li>
+                  <li><span className="font-semibold">Right to data portability (GDPR Art. 20):</span> Receive your data in a structured, machine-readable format and transmit it to another controller</li>
+                  <li><span className="font-semibold">Right to object (GDPR Art. 21):</span> Object to processing based on legitimate interests or direct marketing</li>
+                  <li><span className="font-semibold">Right to withdraw consent:</span> Withdraw consent for optional processing (e.g., analytics cookies) at any time</li>
+                  <li><span className="font-semibold">Right to nomination (DPDP Act):</span> Appoint another person to exercise your rights in case of death or incapacity</li>
+                  <li><span className="font-semibold">Right to grievance redressal:</span> Lodge a complaint with us or with a supervisory authority (GDPR Art. 77)</li>
                 </ul>
                 <p className="mt-4">
-                  To exercise any of these rights, please write to us at <a href="mailto:support@paybycard.in" className="text-[#8c76f0] hover:underline font-semibold">support@paybycard.in</a> with sufficient details for verification. We will respond within the timelines prescribed under applicable law.
+                  To exercise any of these rights, please write to us at <a href="mailto:support@paybycard.in" className="text-[#8c76f0] hover:underline font-semibold">support@paybycard.in</a> with sufficient details for verification. We will respond within the timelines prescribed under applicable law (generally within 30 days).
                 </p>
               </div>
             </div>
@@ -176,7 +180,23 @@ export default function Privacy() {
               </h3>
               <div className="space-y-3 text-gray-700 leading-relaxed">
                 <p>
-                  We use essential cookies to enable core functionality (e.g., session management and secure checkout). You may manage cookie preferences through your browser settings. Disabling certain cookies may affect your experience on the Platform.
+                  We use cookies and similar technologies for the following purposes:
+                </p>
+                <div className="ml-4 space-y-3">
+                  <div>
+                    <p className="font-semibold text-gray-900">Essential Cookies (Always Active)</p>
+                    <p className="text-sm">Session authentication, secure checkout, fraud prevention, and load balancing. These cannot be disabled as they are required for the Platform to function.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">Analytics Cookies (Optional — Consent Required)</p>
+                    <p className="text-sm">We use Google Analytics (GA4, property ID G-8B9RQ6VV5E) to collect anonymized usage data such as page views, session duration, and device type. IP addresses are anonymized. Analytics cookies are only set after you grant consent via our cookie consent banner.</p>
+                  </div>
+                </div>
+                <p className="mt-3">
+                  When you first visit the Platform, a cookie consent banner appears allowing you to Accept All, Reject Non-Essential, or Customize your preferences. You can change your choice at any time by clearing your browser storage and reloading the page. We implement Google Consent Mode v2, meaning analytics data is only collected after you explicitly opt in.
+                </p>
+                <p>
+                  You may also manage cookies through your browser settings. Disabling essential cookies may affect your ability to use the Platform.
                 </p>
               </div>
             </div>

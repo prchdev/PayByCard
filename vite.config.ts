@@ -20,7 +20,7 @@ export default defineConfig({
       'Permissions-Policy': 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Access-Control-Allow-Origin': 'https://paybycard.in',
-      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.paybycard.in https://www.google-analytics.com https://www.googletagmanager.com ws:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';",
+      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://checkout.razorpay.com https://sdk.cashfree.com https://jssdk.cashfree.com https://js.cashfree.com https://checkout-static.cashfree.com https://easebuzz.in https://payu.in https://zaakpay.com https://api.enkash.com https://cdn.enkash.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.paybycard.in https://www.google-analytics.com https://www.googletagmanager.com wss:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://secure.ccavenue.com https://api.enkash.com;",
     },
   },
 });

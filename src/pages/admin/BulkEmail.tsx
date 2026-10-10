@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
+import { sanitizeHtml } from '../../utils/htmlSanitize';
 import type { SortConfig } from './TableSort';
 import { SortableTh } from './TableSort';
 
@@ -606,7 +607,7 @@ export default function BulkEmail() {
               </span>
             </div>
             <p className="text-sm text-gray-600 mb-1 font-medium">{reportCampaign.subject}</p>
-            <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-xl border border-gray-200 mb-4 max-h-40 overflow-y-auto" dangerouslySetInnerHTML={{ __html: reportCampaign.body_html || '<p class="text-gray-400">No content</p>' }} />
+            <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-xl border border-gray-200 mb-4 max-h-40 overflow-y-auto" dangerouslySetInnerHTML={{ __html: sanitizeHtml(reportCampaign.body_html || '<p class="text-gray-400">No content</p>') }} />
 
             {/* Progress bar */}
             <div className="mb-4">

@@ -2,6 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useSeoMeta } from './seo/useSeoMeta';
+import CookieConsent, { initDefaultConsent } from './components/CookieConsent';
+
+initDefaultConsent();
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -171,6 +174,7 @@ function App() {
           <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <CookieConsent />
       </AuthProvider>
     </BrowserRouter>
   );

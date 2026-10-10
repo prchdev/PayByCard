@@ -296,6 +296,7 @@ export default function MakePayment() {
         const script = document.createElement('script');
         script.src = src;
         script.async = true;
+        script.crossOrigin = 'anonymous';
         document.body.appendChild(script);
       }
     }
@@ -1032,12 +1033,39 @@ export default function MakePayment() {
 
   const loadScript = (src: string): Promise<boolean> => {
     return new Promise((resolve, reject) => {
+      // PCI DSS 6.4.3 — validate SDK URL against allowlist of known gateway domains
+      const ALLOWED_SDK_DOMAINS = [
+        'checkout.razorpay.com',
+        'sdk.cashfree.com',
+        'jssdk.cashfree.com',
+        'js.cashfree.com',
+        'checkout-static.cashfree.com',
+        'easebuzz.in',
+        'payu.in',
+        'zaakpay.com',
+        'api.enkash.com',
+        'cdn.enkash.com',
+      ];
+      try {
+        const parsed = new URL(src);
+        const isAllowed = ALLOWED_SDK_DOMAINS.some(
+          d => parsed.hostname === d || parsed.hostname.endsWith('.' + d)
+        );
+        if (!isAllowed) {
+          reject(new Error(`Blocked script from unverified domain: ${parsed.hostname}`));
+          return;
+        }
+      } catch {
+        reject(new Error(`Invalid SDK URL: ${src}`));
+        return;
+      }
       if (document.querySelector(`script[src="${src}"]`)) {
         resolve(true);
         return;
       }
       const script = document.createElement('script');
       script.src = src;
+      script.crossOrigin = 'anonymous';
       script.onload = () => resolve(true);
       script.onerror = () => reject(new Error(`Failed to load SDK script from ${src}`));
       document.body.appendChild(script);

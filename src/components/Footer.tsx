@@ -28,6 +28,7 @@ export default function Footer({ onNavigate }: FooterProps) {
     legal: [
       { name: 'Terms & Services', page: 'terms' },
       { name: 'Privacy Policy', page: 'privacy' },
+      { name: 'Cookie Policy', page: 'privacy' },
       { name: 'Refund Policy', page: 'refund' },
       { name: 'Fraud Reporting', page: 'fraud' },
     ],

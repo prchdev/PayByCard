@@ -407,9 +407,25 @@ async function createGatewayPaymentConfig(
         throw new Error("Razorpay credentials not configured");
       }
 
+      // Look up per-payment-option Razorpay configuration
+      let razorpayConfig: { methods: string[]; allowed_card_networks: string[] } | null = null;
+      if (payment.payment_category_id) {
+        const { data: rzConfig } = await supabase
+          .from("razorpay_payment_configs")
+          .select("methods, allowed_card_networks")
+          .eq("payment_gateway_id", gatewaySettings.id)
+          .eq("payment_option_id", payment.payment_category_id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (rzConfig) {
+          razorpayConfig = rzConfig;
+        }
+      }
+
       // Create Razorpay order
       const authString = btoa(`${keyId}:${keySecret}`);
-      const orderData = {
+      const orderData: any = {
         amount: Math.round(payment.total_amount * 100),
         currency: "INR",
         receipt: payment.payment_reference,
@@ -418,6 +434,16 @@ async function createGatewayPaymentConfig(
           user_id: payment.user_id
         }
       };
+
+      // Apply method restrictions if configured
+      if (razorpayConfig?.methods?.length > 0) {
+        orderData.method = {
+          card: razorpayConfig.methods.includes("card"),
+          netbanking: razorpayConfig.methods.includes("netbanking"),
+          wallet: razorpayConfig.methods.includes("wallet"),
+          upi: razorpayConfig.methods.includes("upi"),
+        };
+      }
 
       const orderResponse = await fetch("https://api.razorpay.com/v1/orders", {
         method: "POST",
@@ -434,12 +460,6 @@ async function createGatewayPaymentConfig(
       }
 
       const orderResult = await orderResponse.json();
-
-      // Razorpay card network filtering:
-      // - Domestic/International card filtering is controlled at the merchant dashboard level
-      // - To accept only Indian cards, disable "International Payments" in Razorpay Dashboard
-      // - Checkout configuration only allows hiding methods, not filtering by card BIN/network
-      // - Card type validation (Visa/Master/RuPay/Amex) happens at payment gateway
 
       const options: any = {
         key: keyId,
@@ -462,6 +482,23 @@ async function createGatewayPaymentConfig(
           }
         }
       };
+
+      // Apply card network restrictions if configured
+      if (razorpayConfig?.allowed_card_networks?.length > 0) {
+        const networkMap: Record<string, string> = {
+          "Visa": "Visa",
+          "MasterCard": "MasterCard",
+          "RuPay": "RuPay",
+          "AmericanExpress": "AmericanExpress",
+          "DinersClub": "DinersClub",
+          "Discover": "Discover",
+          "JCB": "JCB",
+          "Maestro": "Maestro",
+        };
+        options["x_config_card_networks"] = razorpayConfig.allowed_card_networks
+          .map((n: string) => networkMap[n] || n)
+          .join(",");
+      }
 
       return {
         ...config,

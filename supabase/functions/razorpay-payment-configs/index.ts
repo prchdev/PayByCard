@@ -62,7 +62,8 @@ serveAdmin(async (req: Request) => {
         const rows = configs.map((c: any) => ({
           payment_gateway_id: gateway_id,
           payment_option_id: c.payment_option_id,
-          checkout_config_id: c.checkout_config_id || null,
+          methods: c.methods || [],
+          allowed_card_networks: c.allowed_card_networks || [],
           is_active: c.is_active !== false,
         }));
 

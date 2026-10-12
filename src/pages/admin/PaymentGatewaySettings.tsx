@@ -11,9 +11,13 @@ interface PaymentOption {
 
 interface RazorpayConfig {
   payment_option_id: string;
-  checkout_config_id: string;
+  methods: string[];
+  allowed_card_networks: string[];
   is_active: boolean;
 }
+
+const RAZORPAY_METHODS = ['card', 'netbanking', 'wallet', 'upi'];
+const RAZORPAY_CARD_NETWORKS = ['Visa', 'MasterCard', 'RuPay', 'AmericanExpress', 'DinersClub', 'Discover', 'JCB', 'Maestro'];
 
 interface PhonePeConfig {
   payment_option_id: string;
@@ -115,7 +119,8 @@ export default function PaymentGatewaySettings() {
         for (const c of data.configs) {
           map[c.payment_option_id] = {
             payment_option_id: c.payment_option_id,
-            checkout_config_id: c.checkout_config_id || '',
+            methods: c.methods || [],
+            allowed_card_networks: c.allowed_card_networks || [],
             is_active: c.is_active !== false,
           };
         }
@@ -133,11 +138,29 @@ export default function PaymentGatewaySettings() {
       ...prev,
       [optionId]: {
         payment_option_id: optionId,
-        checkout_config_id: prev[optionId]?.checkout_config_id || '',
+        methods: prev[optionId]?.methods || [],
+        allowed_card_networks: prev[optionId]?.allowed_card_networks || [],
         is_active: prev[optionId]?.is_active ?? true,
         [field]: value,
       },
     }));
+  };
+
+  const toggleRazorpayMultiSelect = (optionId: string, field: 'methods' | 'allowed_card_networks', value: string) => {
+    setRazorpayConfigs(prev => {
+      const current = prev[optionId] || {
+        payment_option_id: optionId,
+        methods: [] as string[],
+        allowed_card_networks: [] as string[],
+        is_active: true,
+      };
+      const arr = current[field] as string[];
+      const newArr = arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value];
+      return {
+        ...prev,
+        [optionId]: { ...current, [field]: newArr },
+      };
+    });
   };
 
   const saveRazorpayConfigs = async (gatewayId: string) => {
@@ -546,7 +569,7 @@ export default function PaymentGatewaySettings() {
                       <h3 className="text-sm font-semibold text-gray-900">Payment Option Configurations</h3>
                     </div>
                     <p className="text-xs text-gray-500 mb-4">
-                      Configure a Razorpay Checkout Config ID for each payment option. If a payment option is not configured below, the default Razorpay checkout configuration is used.
+                      Configure Razorpay payment methods and allowed card networks for each payment option. If a payment option is not configured below, the default Razorpay checkout is used (all methods and networks allowed).
                     </p>
 
                     {configsLoading ? (
@@ -576,17 +599,47 @@ export default function PaymentGatewaySettings() {
                                   </div>
                                 </div>
                                 {isEnabled && (
-                                  <div className="pl-7">
-                                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Checkout Config ID</label>
-                                    <input
-                                      type="text"
-                                      value={config?.checkout_config_id || ''}
-                                      onChange={(e) => updateRazorpayConfig(option.id, 'checkout_config_id', e.target.value)}
-                                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-50 outline-none transition-all text-sm"
-                                      placeholder="e.g. config_1234567890"
-                                    />
-                                    <p className="text-xs text-gray-400 mt-1">
-                                      The Razorpay Checkout Config ID to use for this payment option. Leave empty to use the default configuration.
+                                  <div className="pl-7 space-y-4">
+                                    {/* Methods */}
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Payment Methods</label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {RAZORPAY_METHODS.map((m) => {
+                                          const selected = (config?.methods || []).includes(m);
+                                          return (
+                                            <button
+                                              key={m}
+                                              type="button"
+                                              onClick={() => toggleRazorpayMultiSelect(option.id, 'methods', m)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${selected ? 'border-[#8c76f0] bg-[#8c76f0] text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-[#8c76f0]/50'}`}
+                                            >
+                                              {m.charAt(0).toUpperCase() + m.slice(1)}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                    {/* Card Networks */}
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Allowed Card Networks</label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {RAZORPAY_CARD_NETWORKS.map((n) => {
+                                          const selected = (config?.allowed_card_networks || []).includes(n);
+                                          return (
+                                            <button
+                                              key={n}
+                                              type="button"
+                                              onClick={() => toggleRazorpayMultiSelect(option.id, 'allowed_card_networks', n)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${selected ? 'border-[#8c76f0] bg-[#8c76f0] text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-[#8c76f0]/50'}`}
+                                            >
+                                              {n}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                    <p className="text-xs text-gray-400">
+                                      If all fields are left empty, the default Razorpay checkout is used with all methods and networks allowed.
                                     </p>
                                   </div>
                                 )}

@@ -475,71 +475,52 @@ async function createGatewayPaymentConfig(
         }
       };
 
-      // Apply method restrictions if configured (checkout-level, not order-level)
-      if (razorpayConfig?.methods?.length > 0) {
-        options.method = {
-          card: razorpayConfig.methods.includes("card"),
-          netbanking: razorpayConfig.methods.includes("netbanking"),
-          wallet: razorpayConfig.methods.includes("wallet"),
-          upi: razorpayConfig.methods.includes("upi"),
-        };
-      }
-
-      // Apply card network restrictions if configured
-      if (razorpayConfig?.allowed_card_networks?.length > 0) {
-        const networkMap: Record<string, string> = {
-          "Visa": "Visa",
-          "MasterCard": "MasterCard",
-          "RuPay": "RuPay",
-          "AmericanExpress": "AmericanExpress",
-          "DinersClub": "DinersClub",
-          "Discover": "Discover",
-          "JCB": "JCB",
-          "Maestro": "Maestro",
-        };
-        options["x_config_card_networks"] = razorpayConfig.allowed_card_networks
-          .map((n: string) => networkMap[n] || n)
-          .join(",");
-      }
-
-      // Apply card type (credit/debit) and sub_type (consumer/business) restrictions
-      // via Razorpay checkout config instruments
+      // Build Razorpay checkout config with instrument-level restrictions
+      // per Razorpay docs: networks, type, sub_type are top-level on the instrument
+      const hasMethods = razorpayConfig?.methods?.length > 0;
       const hasCardTypes = razorpayConfig?.card_types?.length > 0;
       const hasCardSubTypes = razorpayConfig?.card_sub_types?.length > 0;
       const hasNetworks = razorpayConfig?.allowed_card_networks?.length > 0;
 
-      if (hasCardTypes || hasCardSubTypes || hasNetworks) {
-        const cardInstruments: any[] = [];
+      if (hasMethods || hasCardTypes || hasCardSubTypes || hasNetworks) {
+        const blocks: any = {};
+        const sequence: string[] = [];
 
-        // Build instruments for each combination of card_type × sub_type
-        const types = hasCardTypes ? razorpayConfig!.card_types : ["credit", "debit"];
-        const subTypes = hasCardSubTypes ? razorpayConfig!.card_sub_types : ["consumer", "business"];
-
-        for (const ct of types) {
-          for (const st of subTypes) {
-            const instrument: any = {
-              method: "card",
-              instrument: {
-                type: ct,
-                sub_type: st,
-              },
-            };
-            cardInstruments.push(instrument);
+        if (razorpayConfig!.methods.includes("card")) {
+          const cardInstrument: any = { method: "card" };
+          if (hasNetworks) {
+            cardInstrument.networks = razorpayConfig!.allowed_card_networks;
           }
+          if (hasCardTypes) {
+            cardInstrument.type = razorpayConfig!.card_types[0];
+          }
+          if (hasCardSubTypes) {
+            cardInstrument.sub_type = razorpayConfig!.card_sub_types[0];
+          }
+          blocks.cards = { name: "Cards", instruments: [cardInstrument] };
+          sequence.push("block.cards");
+        }
+
+        if (razorpayConfig!.methods.includes("upi")) {
+          blocks.upi = { name: "UPI", instruments: [{ method: "upi" }] };
+          sequence.push("block.upi");
+        }
+
+        if (razorpayConfig!.methods.includes("netbanking")) {
+          blocks.netbanking = { name: "Net Banking", instruments: [{ method: "netbanking" }] };
+          sequence.push("block.netbanking");
+        }
+
+        if (razorpayConfig!.methods.includes("wallet")) {
+          blocks.wallets = { name: "Wallets", instruments: [{ method: "wallet" }] };
+          sequence.push("block.wallets");
         }
 
         options.config = {
           display: {
-            blocks: {
-              cards: {
-                name: "Cards",
-                instruments: cardInstruments,
-              },
-            },
-            sequence: ["block.cards"],
-            preferences: {
-              show_default_blocks: false,
-            },
+            blocks,
+            sequence,
+            preferences: { show_default_blocks: false },
           },
         };
       }

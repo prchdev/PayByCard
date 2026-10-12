@@ -189,7 +189,7 @@ export default function PaymentGatewaySettlement() {
   if (permLoading || loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" />
         </div>
       </AdminLayout>
@@ -198,54 +198,61 @@ export default function PaymentGatewaySettlement() {
 
   return (
     <AdminLayout>
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+      <div className="max-w-5xl">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#8c76f0]/10 flex items-center justify-center">
-              <Landmark className="w-5 h-5 text-[#8c76f0]" />
-            </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Payment Gateway Settlement</h1>
+          <p className="text-gray-600 mt-1">Configure on-demand settlement for each payment gateway</p>
+        </div>
+
+        {/* Message */}
+        {message && (
+          <div
+            className={`mb-6 p-4 rounded-xl border-2 flex items-start gap-3 ${
+              message.type === 'success'
+                ? 'bg-green-50 border-green-300'
+                : 'bg-red-50 border-red-300'
+            }`}
+          >
+            {message.type === 'success' ? (
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            )}
+            <p className={`text-sm font-medium ${message.type === 'success' ? 'text-green-900' : 'text-red-900'}`}>
+              {message.text}
+            </p>
+          </div>
+        )}
+
+        {/* Info banner */}
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Payment Gateway Settlement</h1>
-              <p className="text-sm text-gray-500">Configure on-demand settlement for each payment gateway</p>
+              <p className="text-sm font-medium text-blue-900">How On-Demand Settlement Works</p>
+              <p className="text-sm text-blue-800 mt-1">
+                When enabled, a background job runs every 5 minutes and checks if the pending settlement amount meets your minimum threshold after the configured time interval. If the settlement gateway returns an "on hold" status, all payment options using that gateway are automatically disabled until the issue is resolved.
+              </p>
             </div>
           </div>
+        </div>
+
+        {/* Refresh button */}
+        <div className="mb-6">
           <button
             onClick={fetchSettings}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
           </button>
         </div>
 
-        {/* Message */}
-        {message && (
-          <div className={`flex items-center gap-2 px-4 py-3 rounded-lg mb-6 text-sm ${
-            message.type === 'success'
-              ? 'bg-green-50 text-green-700 border border-green-200'
-              : 'bg-red-50 text-red-700 border border-red-200'
-          }`}>
-            {message.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-            {message.text}
-          </div>
-        )}
-
-        {/* Info banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <div className="flex gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-700">
-              <p className="font-medium mb-1">How On-Demand Settlement Works</p>
-              <p>When enabled, a background job runs every 5 minutes and checks if the pending settlement amount meets your minimum threshold after the configured time interval. If the settlement gateway returns an "on hold" status, all payment options using that gateway are automatically disabled until the issue is resolved.</p>
-            </div>
-          </div>
-        </div>
-
         {/* Gateway cards */}
-        <div className="grid gap-4">
+        <div className="space-y-6">
           {settings.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
+            <div className="bg-white rounded-2xl border-2 border-gray-300 p-12 text-center text-gray-500">
               No payment gateways found. Configure gateways in Payment Gateway settings first.
             </div>
           )}
@@ -257,20 +264,20 @@ export default function PaymentGatewaySettlement() {
             return (
               <div
                 key={s.id}
-                className={`bg-white rounded-xl border transition-shadow hover:shadow-md ${
-                  s.on_demand_settlement_enabled ? 'border-[#8c76f0]/30' : 'border-gray-200'
+                className={`bg-white rounded-2xl border-2 p-6 transition-shadow hover:shadow-md ${
+                  s.on_demand_settlement_enabled ? 'border-[#8c76f0]/30' : 'border-gray-300'
                 }`}
               >
                 {/* Card header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 border-b border-gray-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                       s.gateway_enabled ? 'bg-green-50' : 'bg-gray-100'
                     }`}>
                       <Power className={`w-5 h-5 ${s.gateway_enabled ? 'text-green-600' : 'text-gray-400'}`} />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{s.gateway_name}</h3>
+                      <h2 className="text-lg font-semibold text-gray-900">{s.gateway_name}</h2>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           s.gateway_enabled
@@ -309,95 +316,93 @@ export default function PaymentGatewaySettlement() {
                   </div>
                 </div>
 
-                {/* Card body */}
-                <div className="p-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {/* Minimum Amount */}
-                    <div>
-                      <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5">
-                        <IndianRupee className="w-3.5 h-3.5" />
-                        Minimum Amount for Settlement
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">&#8377;</span>
-                        <input
-                          type="number"
-                          value={ev.minimum}
-                          onChange={(e) => setEditValues(prev => ({
-                            ...prev,
-                            [s.gateway_name]: { ...prev[s.gateway_name], minimum: e.target.value }
-                          }))}
-                          disabled={!canEdit || isSaving}
-                          min="0"
-                          step="0.01"
-                          className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8c76f0]/30 focus:border-[#8c76f0] disabled:bg-gray-50 disabled:text-gray-400"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Trigger Minutes */}
-                    <div>
-                      <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5">
-                        <Clock className="w-3.5 h-3.5" />
-                        Time in Mins to Trigger Settlement
-                      </label>
+                {/* Card body — settings */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+                  {/* Minimum Amount */}
+                  <div>
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">
+                      <IndianRupee className="w-4 h-4" />
+                      Minimum Amount for Settlement
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">&#8377;</span>
                       <input
                         type="number"
-                        value={ev.minutes}
+                        value={ev.minimum}
                         onChange={(e) => setEditValues(prev => ({
                           ...prev,
-                          [s.gateway_name]: { ...prev[s.gateway_name], minutes: e.target.value }
+                          [s.gateway_name]: { ...prev[s.gateway_name], minimum: e.target.value }
                         }))}
                         disabled={!canEdit || isSaving}
-                        min="1"
-                        step="1"
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8c76f0]/30 focus:border-[#8c76f0] disabled:bg-gray-50 disabled:text-gray-400"
+                        min="0"
+                        step="0.01"
+                        className="w-full pl-7 pr-3 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-400"
                       />
-                    </div>
-
-                    {/* Save button */}
-                    <div className="flex items-end">
-                      <button
-                        onClick={() => handleSave(s.gateway_name)}
-                        disabled={!canEdit || isSaving}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#8c76f0] rounded-lg hover:bg-[#7a66e0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full justify-center"
-                      >
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        Save
-                      </button>
                     </div>
                   </div>
 
-                  {/* Status row */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-gray-100">
-                    <div>
-                      <p className="text-xs font-medium text-gray-400 mb-1">Pending Settlement</p>
-                      {s.pending_settlement_error ? (
-                        <div className="flex items-center gap-1">
-                          <p className="text-sm font-semibold text-gray-900">{formatCurrency(s.pending_settlement_amount)}</p>
-                          <span className="flex items-center gap-0.5 text-xs text-amber-600" title={s.pending_settlement_error}>
-                            <AlertCircle className="w-3.5 h-3.5" />
-                          </span>
-                        </div>
-                      ) : (
+                  {/* Trigger Minutes */}
+                  <div>
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">
+                      <Clock className="w-4 h-4" />
+                      Time in Mins to Trigger Settlement
+                    </label>
+                    <input
+                      type="number"
+                      value={ev.minutes}
+                      onChange={(e) => setEditValues(prev => ({
+                        ...prev,
+                        [s.gateway_name]: { ...prev[s.gateway_name], minutes: e.target.value }
+                      }))}
+                      disabled={!canEdit || isSaving}
+                      min="1"
+                      step="1"
+                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Save button */}
+                <div className="pt-6">
+                  <button
+                    onClick={() => handleSave(s.gateway_name)}
+                    disabled={!canEdit || isSaving}
+                    className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Save
+                  </button>
+                </div>
+
+                {/* Status row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-200">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-1">Pending Settlement</p>
+                    {s.pending_settlement_error ? (
+                      <div className="flex items-center gap-1">
                         <p className="text-sm font-semibold text-gray-900">{formatCurrency(s.pending_settlement_amount)}</p>
-                      )}
-                      <p className="text-[10px] text-gray-400 mt-0.5">Live from gateway API</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-400 mb-1">Last Settlement Status</p>
-                      <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium border ${statusColor}`}>
-                        {formatStatus(s.last_settlement_status)}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-400 mb-1">Last Settlement Amount</p>
-                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(s.last_settlement_amount)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-400 mb-1">Last Settlement At</p>
-                      <p className="text-sm font-semibold text-gray-900">{formatDate(s.last_settlement_at)}</p>
-                    </div>
+                        <span className="flex items-center gap-0.5 text-xs text-amber-600" title={s.pending_settlement_error}>
+                          <AlertCircle className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(s.pending_settlement_amount)}</p>
+                    )}
+                    <p className="text-[10px] text-gray-400 mt-0.5">Live from gateway API</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-1">Last Settlement Status</p>
+                    <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium border ${statusColor}`}>
+                      {formatStatus(s.last_settlement_status)}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-1">Last Settlement Amount</p>
+                    <p className="text-sm font-semibold text-gray-900">{formatCurrency(s.last_settlement_amount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-1">Last Settlement At</p>
+                    <p className="text-sm font-semibold text-gray-900">{formatDate(s.last_settlement_at)}</p>
                   </div>
                 </div>
               </div>

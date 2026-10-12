@@ -437,16 +437,6 @@ async function createGatewayPaymentConfig(
         }
       };
 
-      // Apply method restrictions if configured
-      if (razorpayConfig?.methods?.length > 0) {
-        orderData.method = {
-          card: razorpayConfig.methods.includes("card"),
-          netbanking: razorpayConfig.methods.includes("netbanking"),
-          wallet: razorpayConfig.methods.includes("wallet"),
-          upi: razorpayConfig.methods.includes("upi"),
-        };
-      }
-
       const orderResponse = await fetch("https://api.razorpay.com/v1/orders", {
         method: "POST",
         headers: {
@@ -484,6 +474,16 @@ async function createGatewayPaymentConfig(
           }
         }
       };
+
+      // Apply method restrictions if configured (checkout-level, not order-level)
+      if (razorpayConfig?.methods?.length > 0) {
+        options.method = {
+          card: razorpayConfig.methods.includes("card"),
+          netbanking: razorpayConfig.methods.includes("netbanking"),
+          wallet: razorpayConfig.methods.includes("wallet"),
+          upi: razorpayConfig.methods.includes("upi"),
+        };
+      }
 
       // Apply card network restrictions if configured
       if (razorpayConfig?.allowed_card_networks?.length > 0) {

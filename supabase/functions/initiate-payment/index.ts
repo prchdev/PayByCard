@@ -408,11 +408,11 @@ async function createGatewayPaymentConfig(
       }
 
       // Look up per-payment-option Razorpay configuration
-      let razorpayConfig: { methods: string[]; allowed_card_networks: string[] } | null = null;
+      let razorpayConfig: { methods: string[]; allowed_card_networks: string[]; card_types: string[]; card_sub_types: string[] } | null = null;
       if (payment.payment_category_id) {
         const { data: rzConfig } = await supabase
           .from("razorpay_payment_configs")
-          .select("methods, allowed_card_networks")
+          .select("methods, allowed_card_networks, card_types, card_sub_types")
           .eq("payment_gateway_id", gatewaySettings.id)
           .eq("payment_option_id", payment.payment_category_id)
           .eq("is_active", true)
@@ -498,6 +498,48 @@ async function createGatewayPaymentConfig(
         options["x_config_card_networks"] = razorpayConfig.allowed_card_networks
           .map((n: string) => networkMap[n] || n)
           .join(",");
+      }
+
+      // Apply card type (credit/debit) and sub_type (consumer/business) restrictions
+      // via Razorpay checkout config instruments
+      const hasCardTypes = razorpayConfig?.card_types?.length > 0;
+      const hasCardSubTypes = razorpayConfig?.card_sub_types?.length > 0;
+      const hasNetworks = razorpayConfig?.allowed_card_networks?.length > 0;
+
+      if (hasCardTypes || hasCardSubTypes || hasNetworks) {
+        const cardInstruments: any[] = [];
+
+        // Build instruments for each combination of card_type × sub_type
+        const types = hasCardTypes ? razorpayConfig!.card_types : ["credit", "debit"];
+        const subTypes = hasCardSubTypes ? razorpayConfig!.card_sub_types : ["consumer", "business"];
+
+        for (const ct of types) {
+          for (const st of subTypes) {
+            const instrument: any = {
+              method: "card",
+              instrument: {
+                type: ct,
+                sub_type: st,
+              },
+            };
+            cardInstruments.push(instrument);
+          }
+        }
+
+        options.config = {
+          display: {
+            blocks: {
+              cards: {
+                name: "Cards",
+                instruments: cardInstruments,
+              },
+            },
+            sequence: ["block.cards"],
+            preferences: {
+              show_default_blocks: false,
+            },
+          },
+        };
       }
 
       return {

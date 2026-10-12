@@ -64,6 +64,8 @@ serveAdmin(async (req: Request) => {
           payment_option_id: c.payment_option_id,
           methods: c.methods || [],
           allowed_card_networks: c.allowed_card_networks || [],
+          card_types: c.card_types || [],
+          card_sub_types: c.card_sub_types || [],
           is_active: c.is_active !== false,
         }));
 

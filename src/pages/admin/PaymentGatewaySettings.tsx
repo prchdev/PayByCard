@@ -13,11 +13,15 @@ interface RazorpayConfig {
   payment_option_id: string;
   methods: string[];
   allowed_card_networks: string[];
+  card_types: string[];
+  card_sub_types: string[];
   is_active: boolean;
 }
 
 const RAZORPAY_METHODS = ['card', 'netbanking', 'wallet', 'upi'];
 const RAZORPAY_CARD_NETWORKS = ['Visa', 'MasterCard', 'RuPay', 'AmericanExpress', 'DinersClub', 'Discover', 'JCB', 'Maestro'];
+const RAZORPAY_CARD_TYPES = ['credit', 'debit'];
+const RAZORPAY_CARD_SUB_TYPES = ['consumer', 'business'];
 
 interface PhonePeConfig {
   payment_option_id: string;
@@ -121,6 +125,8 @@ export default function PaymentGatewaySettings() {
             payment_option_id: c.payment_option_id,
             methods: c.methods || [],
             allowed_card_networks: c.allowed_card_networks || [],
+            card_types: c.card_types || [],
+            card_sub_types: c.card_sub_types || [],
             is_active: c.is_active !== false,
           };
         }
@@ -140,18 +146,22 @@ export default function PaymentGatewaySettings() {
         payment_option_id: optionId,
         methods: prev[optionId]?.methods || [],
         allowed_card_networks: prev[optionId]?.allowed_card_networks || [],
+        card_types: prev[optionId]?.card_types || [],
+        card_sub_types: prev[optionId]?.card_sub_types || [],
         is_active: prev[optionId]?.is_active ?? true,
         [field]: value,
       },
     }));
   };
 
-  const toggleRazorpayMultiSelect = (optionId: string, field: 'methods' | 'allowed_card_networks', value: string) => {
+  const toggleRazorpayMultiSelect = (optionId: string, field: 'methods' | 'allowed_card_networks' | 'card_types' | 'card_sub_types', value: string) => {
     setRazorpayConfigs(prev => {
       const current = prev[optionId] || {
         payment_option_id: optionId,
         methods: [] as string[],
         allowed_card_networks: [] as string[],
+        card_types: [] as string[],
+        card_sub_types: [] as string[],
         is_active: true,
       };
       const arr = current[field] as string[];
@@ -569,7 +579,7 @@ export default function PaymentGatewaySettings() {
                       <h3 className="text-sm font-semibold text-gray-900">Payment Option Configurations</h3>
                     </div>
                     <p className="text-xs text-gray-500 mb-4">
-                      Configure Razorpay payment methods and allowed card networks for each payment option. If a payment option is not configured below, the default Razorpay checkout is used (all methods and networks allowed).
+                      Configure Razorpay payment methods, card networks, card types, and card sub-types for each payment option. If a payment option is not configured below, the default Razorpay checkout is used (all methods, networks, and card types allowed).
                     </p>
 
                     {configsLoading ? (
@@ -638,8 +648,46 @@ export default function PaymentGatewaySettings() {
                                         })}
                                       </div>
                                     </div>
+                                    {/* Card Types */}
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Card Types</label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {RAZORPAY_CARD_TYPES.map((ct) => {
+                                          const selected = (config?.card_types || []).includes(ct);
+                                          return (
+                                            <button
+                                              key={ct}
+                                              type="button"
+                                              onClick={() => toggleRazorpayMultiSelect(option.id, 'card_types', ct)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${selected ? 'border-[#8c76f0] bg-[#8c76f0] text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-[#8c76f0]/50'}`}
+                                            >
+                                              {ct.charAt(0).toUpperCase() + ct.slice(1)}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                    {/* Card Sub-Types */}
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Card Sub-Types</label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {RAZORPAY_CARD_SUB_TYPES.map((st) => {
+                                          const selected = (config?.card_sub_types || []).includes(st);
+                                          return (
+                                            <button
+                                              key={st}
+                                              type="button"
+                                              onClick={() => toggleRazorpayMultiSelect(option.id, 'card_sub_types', st)}
+                                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${selected ? 'border-[#8c76f0] bg-[#8c76f0] text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-[#8c76f0]/50'}`}
+                                            >
+                                              {st.charAt(0).toUpperCase() + st.slice(1)}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
                                     <p className="text-xs text-gray-400">
-                                      If all fields are left empty, the default Razorpay checkout is used with all methods and networks allowed.
+                                      If all fields are left empty, the default Razorpay checkout is used with all methods, networks, and card types allowed.
                                     </p>
                                   </div>
                                 )}

@@ -311,6 +311,7 @@ Deno.serve(withUserSession(async (req: Request) => {
     }
 
     const gatewayConfig = await createGatewayPaymentConfig(
+      supabase,
       gatewaySettings,
       payment,
       allowedCards,
@@ -379,6 +380,7 @@ async function generatePhonePeChecksum(base64Payload: string, apiEndpoint: strin
 }
 
 async function createGatewayPaymentConfig(
+  supabase: any,
   gatewaySettings: any,
   payment: any,
   allowedCards: string[],

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   RefreshCw, Users, Clock, XCircle, CheckCircle, Search,
   ChevronLeft, ChevronRight, ShieldCheck, X, ZoomIn, Eye,
@@ -933,16 +933,10 @@ export default function AdminMerchantKyc() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<MerchantRecord | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
-
-  useEffect(() => {
-    const q = searchParams.get('search');
-    if (q) setSearch(q);
-  }, [searchParams]);
 
   useEffect(() => {
     if (!adminId) { navigate('/admin/login'); return; }

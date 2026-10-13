@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Loader2,
   AlertCircle,
@@ -21,6 +21,8 @@ import {
   Download,
   Upload,
   Filter,
+  Copy,
+  CheckCheck,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -54,7 +56,7 @@ interface PayoutRecord {
   sender: { full_name: string; email: string; mobile: string } | null;
   beneficiary: { beneficiary_name: string; account_number: string; ifsc_code: string; bank_name: string; mobile?: string | null; email?: string | null } | null;
   gateway: { gateway_name: string } | null;
-  merchant_kyc: { status: string; pan_number: string; pan_photo_url: string } | null;
+  merchant_kyc: { status: string; pan_number: string; pan_photo_url: string; token?: string } | null;
   kyc_required?: boolean;
   payout_mode?: string | null;
   settlement_time?: string | null;
@@ -187,24 +189,45 @@ function GatewaySettlementBadge({ status }: { status: string | null | undefined 
 }
 
 
+function CopyKycLinkButton({ token }: { token: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/merchant-onboarding?token=${token}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
+      title="Copy beneficiary KYC link"
+    >
+      {copied ? <CheckCheck className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+      {copied ? 'Copied!' : 'Copy KYC Link'}
+    </button>
+  );
+}
+
 function KycBadge({ payout }: { payout: PayoutRecord }) {
   const kyc = payout.merchant_kyc;
   const paymentStatus = payout.payment_status || payout.status;
-  const ref = payout.payment_reference || payout.payout_reference || '';
 
   // If a merchant_onboarding record exists, its status always takes precedence
   if (kyc) {
-    const kycUrl = `/admin/merchant-kyc?search=${encodeURIComponent(ref)}`;
     if (kyc.status === 'verified') {
-      return <Link to={kycUrl} className="inline-flex items-center gap-1 text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full font-medium hover:bg-blue-200 transition-colors"><ShieldCheck className="w-3 h-3" />KYC Verified – Settlement In Progress</Link>;
+      return <span className="inline-flex items-center gap-1 text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full font-medium"><ShieldCheck className="w-3 h-3" />KYC Verified – Settlement In Progress</span>;
     }
     if (kyc.status === 'submitted') {
-      return <Link to={kycUrl} className="inline-flex items-center gap-1 text-xs text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full font-medium hover:bg-sky-200 transition-colors"><ShieldAlert className="w-3 h-3" />KYC In Review</Link>;
+      return <span className="inline-flex items-center gap-1 text-xs text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full font-medium"><ShieldAlert className="w-3 h-3" />KYC In Review</span>;
     }
     if (kyc.status === 'rejected') {
-      return <Link to={kycUrl} className="inline-flex items-center gap-1 text-xs text-red-700 bg-red-100 px-2 py-0.5 rounded-full font-medium hover:bg-red-200 transition-colors"><XCircle className="w-3 h-3" />KYC Rejected</Link>;
+      return <span className="inline-flex items-center gap-1 text-xs text-red-700 bg-red-100 px-2 py-0.5 rounded-full font-medium"><XCircle className="w-3 h-3" />KYC Rejected</span>;
     }
-    return <Link to={kycUrl} className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium hover:bg-amber-200 transition-colors"><ShieldAlert className="w-3 h-3" />KYC Pending</Link>;
+    // pending — link sent, merchant hasn't submitted yet
+    return <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium"><ShieldAlert className="w-3 h-3" />KYC Pending</span>;
   }
 
   // No merchant_onboarding record
@@ -540,6 +563,7 @@ export default function ManualPayout() {
                     <SortableTh label="Payout Mode" sortKey="payoutMode" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
                     <SortableTh label="Settlement" sortKey="settlement" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
                     <SortableTh label="Date" sortKey="date" sortConfig={sortConfig} onSort={handleSort} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap" />
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">KYC</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">Remark</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">Actions</th>
                   </tr>
@@ -599,6 +623,12 @@ export default function ManualPayout() {
                         <span className="text-xs text-gray-600 whitespace-nowrap">{formatSettlementTime(payout.settlement_time)}</span>
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{fmtDate(payout.created_at)}</td>
+                      <td className="px-4 py-3">
+                        <KycBadge payout={payout} />
+                        {payout.merchant_kyc?.token && payout.merchant_kyc.status !== 'verified' && (
+                          <CopyKycLinkButton token={payout.merchant_kyc.token} />
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">
                           {payout.is_payment_record && (

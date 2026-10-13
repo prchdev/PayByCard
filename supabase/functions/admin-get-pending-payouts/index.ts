@@ -99,7 +99,7 @@ serveAdmin(async (req: Request) => {
           const gw = payment.payment_gateway_settings;
           const [userRes, kycRes, categoryDetails] = await Promise.all([
             supabase.from("users").select("first_name, last_name, email, mobile_number").eq("id", payment.user_id).maybeSingle(),
-            supabase.from("merchant_onboarding").select("status, pan_number, pan_photo_url").eq("payment_id", payment.id).maybeSingle(),
+            supabase.from("merchant_onboarding").select("status, pan_number, pan_photo_url, token").eq("payment_id", payment.id).maybeSingle(),
             getCategoryDetails(payment.payment_category_id),
           ]);
 
@@ -154,7 +154,7 @@ serveAdmin(async (req: Request) => {
           supabase.from("users").select("first_name, last_name, email, mobile_number").eq("id", payout.user_id).maybeSingle(),
           supabase.from("beneficiaries").select("beneficiary_name, account_number, ifsc_code, bank_name, mobile, email").eq("id", payout.beneficiary_id).maybeSingle(),
           supabase.from("payment_gateway_settings").select("gateway_name, payout_mode").eq("id", payout.payment_gateway_id).maybeSingle(),
-          supabase.from("merchant_onboarding").select("status, pan_number, pan_photo_url").eq("payment_id", payout.payment_id).maybeSingle(),
+          supabase.from("merchant_onboarding").select("status, pan_number, pan_photo_url, token").eq("payment_id", payout.payment_id).maybeSingle(),
           payout.payment_id
             ? supabase.from("payments").select("gateway_transaction_id, card_type, gateway_environment, charges, gst, total_amount, payment_reference, status, payment_category_id, gateway_settlement_status, payout_mode").eq("id", payout.payment_id).maybeSingle()
             : Promise.resolve({ data: null }),

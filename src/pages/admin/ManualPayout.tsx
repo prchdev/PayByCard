@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Loader2,
   AlertCircle,
@@ -190,20 +190,21 @@ function GatewaySettlementBadge({ status }: { status: string | null | undefined 
 function KycBadge({ payout }: { payout: PayoutRecord }) {
   const kyc = payout.merchant_kyc;
   const paymentStatus = payout.payment_status || payout.status;
+  const ref = payout.payment_reference || payout.payout_reference || '';
 
   // If a merchant_onboarding record exists, its status always takes precedence
   if (kyc) {
+    const kycUrl = `/admin/merchant-kyc?search=${encodeURIComponent(ref)}`;
     if (kyc.status === 'verified') {
-      return <span className="inline-flex items-center gap-1 text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full font-medium"><ShieldCheck className="w-3 h-3" />KYC Verified – Settlement In Progress</span>;
+      return <Link to={kycUrl} className="inline-flex items-center gap-1 text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full font-medium hover:bg-blue-200 transition-colors"><ShieldCheck className="w-3 h-3" />KYC Verified – Settlement In Progress</Link>;
     }
     if (kyc.status === 'submitted') {
-      return <span className="inline-flex items-center gap-1 text-xs text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full font-medium"><ShieldAlert className="w-3 h-3" />KYC In Review</span>;
+      return <Link to={kycUrl} className="inline-flex items-center gap-1 text-xs text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full font-medium hover:bg-sky-200 transition-colors"><ShieldAlert className="w-3 h-3" />KYC In Review</Link>;
     }
     if (kyc.status === 'rejected') {
-      return <span className="inline-flex items-center gap-1 text-xs text-red-700 bg-red-100 px-2 py-0.5 rounded-full font-medium"><XCircle className="w-3 h-3" />KYC Rejected</span>;
+      return <Link to={kycUrl} className="inline-flex items-center gap-1 text-xs text-red-700 bg-red-100 px-2 py-0.5 rounded-full font-medium hover:bg-red-200 transition-colors"><XCircle className="w-3 h-3" />KYC Rejected</Link>;
     }
-    // pending — link sent, merchant hasn't submitted yet
-    return <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium"><ShieldAlert className="w-3 h-3" />KYC Pending</span>;
+    return <Link to={kycUrl} className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium hover:bg-amber-200 transition-colors"><ShieldAlert className="w-3 h-3" />KYC Pending</Link>;
   }
 
   // No merchant_onboarding record

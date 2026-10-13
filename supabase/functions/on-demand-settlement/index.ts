@@ -176,8 +176,13 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // If balance check returned 0 with no error, skip without DB write
-      if (!balanceError && pendingAmount === 0) {
+      // For Razorpay: always attempt settlement using settle_full_balance=true.
+      // The recon API may report 0 or fail entirely, but Razorpay will settle
+      // whatever is actually available when settle_full_balance=true is sent.
+      // For other gateways: skip if no balance or if the balance check failed.
+      const isRazorpay = setting.gateway_name.toLowerCase().includes("razorpay");
+
+      if (!isRazorpay && !balanceError && pendingAmount === 0) {
         initiateResults.push({
           gateway: setting.gateway_name,
           status: "no_balance",
@@ -188,10 +193,17 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // If balance check failed (error), still attempt settlement using
-      // settle_full_balance=true — Razorpay will settle whatever is actually
-      // available. This handles cases where the recon API is unavailable or
-      // returns unexpected data but there IS a balance to settle.
+      if (!isRazorpay && balanceError) {
+        initiateResults.push({
+          gateway: setting.gateway_name,
+          status: "check_failed",
+          amount: 0,
+          skipped: true,
+          reason: `Balance check failed: ${balanceError}`,
+        });
+        continue;
+      }
+
       if (balanceError) {
         console.log(`on-demand-settlement: balance check failed for ${setting.gateway_name} (${balanceError}), attempting settlement with settle_full_balance`);
       }

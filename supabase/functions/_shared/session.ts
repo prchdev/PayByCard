@@ -79,7 +79,7 @@ export function isInternalCall(req: Request): boolean {
   return auth === `Bearer ${serviceKey}` || auth === serviceKey;
 }
 
-function unauthorized(): Response {
+export function unauthorized(): Response {
   return new Response(
     JSON.stringify({
       error: "Your session is no longer valid. Please sign in again.",

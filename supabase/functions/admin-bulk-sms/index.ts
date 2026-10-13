@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
-import { serveAdmin } from "../_shared/session.ts";
+import { isInternalCall, readSessionToken, ADMIN_SESSION_HEADER, unauthorized } from "../_shared/session.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -10,7 +10,7 @@ const corsHeaders = {
 const CRON_INTERVAL_MINUTES = 5;
 const MINUTES_PER_HOUR = 60;
 
-serveAdmin(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -62,6 +62,13 @@ serveAdmin(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Admin ID is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (!isInternalCall(req)) {
+      const session = await readSessionToken(req.headers.get(ADMIN_SESSION_HEADER));
+      if (!session || session.kind !== "admin" || session.id !== admin_id) {
+        return unauthorized();
+      }
     }
 
     const { data: admin, error: adminError } = await supabase

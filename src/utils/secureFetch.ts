@@ -75,11 +75,19 @@ function attachSessionHeaders(
   } catch {
     // storage unavailable
   }
-  if (!userToken && !adminToken) return init;
 
   const headers = new Headers(
     init?.headers ?? (typeof input === 'object' && 'headers' in input ? input.headers : undefined)
   );
+
+  // Supabase's API gateway requires an apikey header on every edge-function call.
+  // Some call sites omit it (they only send Authorization), so add it here centrally.
+  if (!headers.has('apikey')) {
+    headers.set('apikey', SUPABASE_ANON_KEY);
+  }
+
+  if (!userToken && !adminToken) return { ...(init || {}), headers };
+
   if (userToken && !headers.has('x-pbc-session')) headers.set('x-pbc-session', userToken);
   if (adminToken && !headers.has('x-pbc-admin-session')) {
     headers.set('x-pbc-admin-session', adminToken);

@@ -201,7 +201,7 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
             adminId,
             dry_run: true,
             rows: rowsToCheck.map(r => ({
-              reference: r.reference,
+              reference: r.crn,
               payout_date: r.transaction_date,
               utr_reference: r.utr,
               confirmed_amount: String(r.amount),
@@ -220,7 +220,7 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
       const eligible: ParsedRow[] = [];
       const ineligible: ParsedRow[] = [];
       rowsToCheck.forEach(r => {
-        const dbResult = previewMap.get(r.reference);
+        const dbResult = previewMap.get(r.crn);
         if (dbResult && dbResult.action === 'will_update') {
           eligible.push(r);
         } else {
@@ -256,7 +256,7 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
           body: JSON.stringify({
             adminId,
             rows: eligibleRows.map(r => ({
-              reference: r.reference,
+              reference: r.crn,
               payout_date: r.transaction_date,
               utr_reference: r.utr,
               confirmed_amount: String(r.amount),

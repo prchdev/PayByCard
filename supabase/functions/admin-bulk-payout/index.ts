@@ -121,13 +121,28 @@ async function checkPayment(
   supabase: any,
   reference: string,
 ): Promise<{ payment: any | null; error?: string; skipReason?: string }> {
-  const { data: payment, error: fetchErr } = await supabase
+  let { data: payment, error: fetchErr } = await supabase
     .from("payments")
     .select("*, payment_gateway_settings(*), beneficiaries(*)")
     .ilike("payment_reference", reference)
     .maybeSingle();
 
   if (fetchErr) return { payment: null, error: `DB error: ${fetchErr.message}` };
+
+  // Fallback: try with hyphens removed if exact match failed
+  if (!payment) {
+    const stripped = reference.replace(/-/g, "");
+    if (stripped !== reference) {
+      const res2 = await supabase
+        .from("payments")
+        .select("*, payment_gateway_settings(*), beneficiaries(*)")
+        .ilike("payment_reference", stripped)
+        .maybeSingle();
+      payment = res2.data;
+      if (res2.error) return { payment: null, error: `DB error: ${res2.error.message}` };
+    }
+  }
+
   if (!payment) return { payment: null, skipReason: `Payment reference not found` };
 
   if (payment.status === "completed") return { payment, skipReason: `Already completed` };

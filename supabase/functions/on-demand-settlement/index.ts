@@ -153,7 +153,7 @@ Deno.serve(async (req: Request) => {
 
       // Fetch actual pending settlement amount from the gateway API
       const env = gateway.environment || "production";
-      const { amount: pendingAmount, onHold } = await getPendingSettlement(setting.gateway_name, gateway, env);
+      const { amount: pendingAmount, onHold, error: balanceError } = await getPendingSettlement(setting.gateway_name, gateway, env);
 
       // If the gateway reports onhold, disable payment options immediately
       if (onHold) {
@@ -177,7 +177,8 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      if (pendingAmount < Number(setting.minimum_settlement_amount)) {
+      // If balance check succeeded and amount is below minimum, skip without DB write
+      if (!balanceError && pendingAmount < Number(setting.minimum_settlement_amount)) {
         initiateResults.push({
           gateway: setting.gateway_name,
           status: "below_minimum",
@@ -188,9 +189,30 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
+      // If balance check returned 0 with no error, skip without DB write
+      if (!balanceError && pendingAmount === 0) {
+        initiateResults.push({
+          gateway: setting.gateway_name,
+          status: "no_balance",
+          amount: 0,
+          skipped: true,
+          reason: "No pending balance available for settlement",
+        });
+        continue;
+      }
+
+      // If balance check failed (error), still attempt settlement using
+      // settle_full_balance=true — Razorpay will settle whatever is actually
+      // available. This handles cases where the recon API is unavailable or
+      // returns unexpected data but there IS a balance to settle.
+      if (balanceError) {
+        console.log(`on-demand-settlement: balance check failed for ${setting.gateway_name} (${balanceError}), attempting settlement with settle_full_balance`);
+      }
+
       // Initiate settlement via the gateway API
       const settlementResult = await initiateSettlement(setting.gateway_name, gateway, env, pendingAmount);
 
+      // Only record in DB if a settlement was actually attempted
       await supabase
         .from("gateway_settlement_settings")
         .update({

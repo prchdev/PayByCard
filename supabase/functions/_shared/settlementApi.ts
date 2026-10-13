@@ -16,91 +16,117 @@ export function isSupportedGateway(gatewayName: string): boolean {
   return name.includes("razorpay") || name.includes("cashfree");
 }
 
-// ─── Razorpay: fetch pending settlement balance via recon API ────────────────
-// GET /v1/settlements/recon/combined returns per-payment settlement reconciliation data.
-// Requires year and month parameters. Each item has: amount (paise), fee, tax,
-// on_hold (bool), settled (bool). Pending = sum of amount where settled=false and
-// on_hold=false. We query the current and previous month to catch recent unsettled txns.
+// ─── Razorpay: fetch available settlement balance ────────────────────────────
+// Razorpay doesn't have a single "get balance" endpoint. We use the recon API
+// to sum unsettled payment amounts. We try multiple endpoint variants and
+// log all errors so issues are visible.
 export async function getRazorpayPendingSettlement(
   gateway: any,
   env: string,
-): Promise<{ amount: number; onHold: boolean }> {
+): Promise<{ amount: number; onHold: boolean; error: string | null }> {
   const { apiKey, apiSecret } = getCredentials(gateway, env);
-  if (!apiKey || !apiSecret) return { amount: 0, onHold: false };
+  if (!apiKey || !apiSecret) return { amount: 0, onHold: false, error: "Missing API credentials" };
 
-  try {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1; // 0-indexed
+  const authHeader = "Basic " + btoa(`${apiKey}:${apiSecret}`);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
 
-    // Build list of (year, month) pairs to query — current month and previous month
-    const months: { year: number; month: number }[] = [
-      { year: currentYear, month: currentMonth },
-    ];
-    if (currentMonth === 1) {
-      months.push({ year: currentYear - 1, month: 12 });
-    } else {
-      months.push({ year: currentYear, month: currentMonth - 1 });
-    }
+  // Query current month, previous month, and 2 months ago to catch unsettled txns
+  const months: { year: number; month: number }[] = [
+    { year: currentYear, month: currentMonth },
+  ];
+  for (let i = 1; i <= 2; i++) {
+    let m = currentMonth - i;
+    let y = currentYear;
+    while (m <= 0) { m += 12; y -= 1; }
+    months.push({ year: y, month: m });
+  }
 
-    let pendingPaise = 0;
-    let hasOnHold = false;
+  let pendingPaise = 0;
+  let hasOnHold = false;
+  let lastError: string | null = null;
+  let anySuccess = false;
 
-    for (const { year, month } of months) {
-      let skip = 0;
-      let hasMore = true;
+  for (const { year, month } of months) {
+    let skip = 0;
+    let hasMore = true;
 
-      while (hasMore) {
-        const url = `https://api.razorpay.com/v1/settlements/recon/combined?year=${year}&month=${month}&count=100&skip=${skip}`;
-        const res = await fetch(url, {
-          headers: { "Authorization": `Basic ${btoa(`${apiKey}:${apiSecret}`)}` },
-        });
+    while (hasMore) {
+      // Try /recon/combined first, then /recon as fallback
+      const urls = [
+        `https://api.razorpay.com/v1/settlements/recon/combined?year=${year}&month=${month}&count=100&skip=${skip}`,
+        `https://api.razorpay.com/v1/settlements/recon?year=${year}&month=${month}&count=100&skip=${skip}`,
+      ];
 
-        if (!res.ok) {
-          console.error(`Razorpay recon API returned ${res.status} for year=${year} month=${month}`);
-          // Don't return early — try the next month
-          break;
-        }
+      let data: any = null;
+      let success = false;
 
-        const data = await res.json();
-        const items = data.items || [];
+      for (const url of urls) {
+        try {
+          const res = await fetch(url, {
+            headers: { "Authorization": authHeader },
+          });
 
-        if (items.length === 0) {
-          hasMore = false;
-          break;
-        }
-
-        for (const item of items) {
-          if (item.on_hold) hasOnHold = true;
-          if (!item.settled && !item.on_hold) {
-            pendingPaise += Number(item.amount || 0);
+          if (res.ok) {
+            data = await res.json();
+            success = true;
+            anySuccess = true;
+            break;
+          } else {
+            const errBody = await res.text();
+            lastError = `HTTP ${res.status}: ${errBody.substring(0, 200)}`;
+            // If first URL fails, try the next; if both fail, move to next month
           }
-        }
-
-        if (items.length < 100) {
-          hasMore = false;
-        } else {
-          skip += 100;
+        } catch (e: any) {
+          lastError = `Fetch error: ${e?.message || String(e)}`;
         }
       }
-    }
 
-    return { amount: pendingPaise / 100, onHold: hasOnHold };
-  } catch (e) {
-    console.error("getRazorpayPendingSettlement error:", e);
-    return { amount: 0, onHold: false };
+      if (!success) {
+        // Both URLs failed for this month — move to next month
+        hasMore = false;
+        break;
+      }
+
+      const items = data.items || data.data || [];
+
+      if (items.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      for (const item of items) {
+        if (item.on_hold) hasOnHold = true;
+        if (!item.settled && !item.on_hold) {
+          pendingPaise += Number(item.amount || 0);
+        }
+      }
+
+      if (items.length < 100) {
+        hasMore = false;
+      } else {
+        skip += 100;
+      }
+    }
   }
+
+  // If nothing succeeded, return the error so the admin page can display it
+  if (!anySuccess && lastError) {
+    console.error(`getRazorpayPendingSettlement: all API calls failed. Last error: ${lastError}`);
+    return { amount: 0, onHold: false, error: lastError };
+  }
+
+  return { amount: pendingPaise / 100, onHold: hasOnHold, error: null };
 }
 
 // ─── Cashfree: fetch pending settlement balance via settlements API ───────────
-// GET /pg/settlements returns settlement records with settlement_status.
-// Pending = sum of settlement_amount where status is PENDING or NOT_INITIATED.
 export async function getCashfreePendingSettlement(
   gateway: any,
   env: string,
-): Promise<{ amount: number; onHold: boolean }> {
+): Promise<{ amount: number; onHold: boolean; error: string | null }> {
   const { apiKey, apiSecret } = getCredentials(gateway, env);
-  if (!apiKey || !apiSecret) return { amount: 0, onHold: false };
+  if (!apiKey || !apiSecret) return { amount: 0, onHold: false, error: "Missing API credentials" };
 
   const base = (env ?? "production").toLowerCase() === "test"
     ? "https://sandbox.cashfree.com"
@@ -115,7 +141,10 @@ export async function getCashfreePendingSettlement(
       },
     });
 
-    if (!res.ok) return { amount: 0, onHold: false };
+    if (!res.ok) {
+      const errBody = await res.text();
+      return { amount: 0, onHold: false, error: `HTTP ${res.status}: ${errBody.substring(0, 200)}` };
+    }
 
     const data = await res.json();
     const settlements = Array.isArray(data) ? data : (data.data || data.settlements || []);
@@ -133,9 +162,9 @@ export async function getCashfreePendingSettlement(
       }
     }
 
-    return { amount: pending, onHold: hasOnHold };
-  } catch {
-    return { amount: 0, onHold: false };
+    return { amount: pending, onHold: hasOnHold, error: null };
+  } catch (e: any) {
+    return { amount: 0, onHold: false, error: `Fetch error: ${e?.message || String(e)}` };
   }
 }
 
@@ -144,7 +173,7 @@ export async function getPendingSettlement(
   gatewayName: string,
   gateway: any,
   env: string,
-): Promise<{ amount: number; onHold: boolean }> {
+): Promise<{ amount: number; onHold: boolean; error: string | null }> {
   const name = (gatewayName || "").toLowerCase();
 
   if (name.includes("razorpay")) {
@@ -153,11 +182,13 @@ export async function getPendingSettlement(
   if (name.includes("cashfree")) {
     return getCashfreePendingSettlement(gateway, env);
   }
-  return { amount: 0, onHold: false };
+  return { amount: 0, onHold: false, error: "Unsupported gateway" };
 }
 
 // ─── Razorpay: initiate on-demand settlement ─────────────────────────────────
 // POST /v1/settlements/ondemand with amount (paise) and settle_full_balance.
+// When settle_full_balance=true, Razorpay settles the maximum available amount
+// and the amount parameter is ignored.
 export async function initiateRazorpaySettlement(
   gateway: any,
   env: string,
@@ -167,22 +198,30 @@ export async function initiateRazorpaySettlement(
   if (!apiKey || !apiSecret) return { status: "check_failed" };
 
   try {
+    const body: Record<string, any> = {
+      settle_full_balance: true,
+      description: "On-demand settlement initiated by PayByCard",
+    };
+
+    // Also include amount — Razorpay ignores it when settle_full_balance=true
+    // but some API versions require it to be present
+    if (amount > 0) {
+      body.amount = Math.round(amount * 100);
+    }
+
     const res = await fetch("https://api.razorpay.com/v1/settlements/ondemand", {
       method: "POST",
       headers: {
         "Authorization": `Basic ${btoa(`${apiKey}:${apiSecret}`)}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        amount: Math.round(amount * 100),
-        settle_full_balance: false,
-        description: "On-demand settlement initiated by PayByCard",
-      }),
+      body: JSON.stringify(body),
     });
 
     const data = await res.json();
     if (!res.ok) {
       const errText = (data.error?.code || data.error?.description || data.error?.reason || "").toLowerCase();
+      console.error("Razorpay on-demand settlement failed:", res.status, JSON.stringify(data));
       if (errText.includes("onhold") || errText.includes("on_hold") || errText.includes("hold")) {
         return { status: "onhold", response: data };
       }
@@ -190,7 +229,8 @@ export async function initiateRazorpaySettlement(
     }
 
     return { status: "initiated", response: data };
-  } catch {
+  } catch (e) {
+    console.error("initiateRazorpaySettlement error:", e);
     return { status: "failed" };
   }
 }
@@ -258,8 +298,6 @@ export async function initiateSettlement(
 }
 
 // ─── Razorpay: check on-demand settlement status ─────────────────────────────
-// GET /v1/settlements/ondemand returns all on-demand settlements.
-// We fetch the most recent one and check its status.
 export async function checkRazorpaySettlementStatus(
   gateway: any,
   env: string,

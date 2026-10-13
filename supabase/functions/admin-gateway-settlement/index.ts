@@ -3,7 +3,6 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { serveAdmin } from "../_shared/session.ts";
 import {
   isSupportedGateway,
-  getPendingSettlement,
 } from "../_shared/settlementApi.ts";
 
 const corsHeaders = {
@@ -52,30 +51,13 @@ serveAdmin(async (req: Request) => {
 
       const supportedGateways = (gateways || []).filter((g: any) => isSupportedGateway(g.gateway_name));
 
-      // Fetch pending settlement amount from each gateway's actual API
       const rows = [];
       for (const s of supportedSettings) {
         const gw = supportedGateways.find((g: any) => g.gateway_name === s.gateway_name);
-        const env = gw?.environment || "production";
-
-        let pendingAmount = 0;
-        let apiError: string | null = null;
-
-        if (gw) {
-          try {
-            const result = await getPendingSettlement(s.gateway_name, gw, env);
-            pendingAmount = result.amount;
-          } catch (e: any) {
-            apiError = "Unable to fetch from gateway API";
-            console.error(`admin-gateway-settlement: failed to fetch pending for ${s.gateway_name}:`, e);
-          }
-        }
 
         rows.push({
           ...s,
           gateway_enabled: gw?.is_enabled ?? false,
-          pending_settlement_amount: pendingAmount,
-          pending_settlement_error: apiError,
         });
       }
 

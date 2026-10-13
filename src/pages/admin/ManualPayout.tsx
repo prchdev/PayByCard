@@ -21,8 +21,6 @@ import {
   Download,
   Upload,
   Filter,
-  Copy,
-  CheckCheck,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -188,28 +186,6 @@ function GatewaySettlementBadge({ status }: { status: string | null | undefined 
   return <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${entry.cls}`}>{entry.label}</span>;
 }
 
-
-function CopyKycLinkButton({ token }: { token: string }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const url = `${window.location.origin}/merchant-onboarding?token=${token}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-  return (
-    <button
-      onClick={handleCopy}
-      className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
-      title="Copy beneficiary KYC link"
-    >
-      {copied ? <CheckCheck className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-      {copied ? 'Copied!' : 'Copy KYC Link'}
-    </button>
-  );
-}
 
 function KycBadge({ payout }: { payout: PayoutRecord }) {
   const kyc = payout.merchant_kyc;
@@ -625,9 +601,6 @@ export default function ManualPayout() {
                       <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{fmtDate(payout.created_at)}</td>
                       <td className="px-4 py-3">
                         <KycBadge payout={payout} />
-                        {payout.merchant_kyc?.token && payout.merchant_kyc.status !== 'verified' && (
-                          <CopyKycLinkButton token={payout.merchant_kyc.token} />
-                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">

@@ -116,7 +116,30 @@ async function sendSettledSms(supabase: any, payment: any, confirmedAmount: numb
   } catch (_) {}
 }
 
-// Look up a payment by reference (with hyphens removed) and return it + eligibility info
+// Given a reference without hyphens (e.g. "PAY20260930123456"), generate
+// possible hyphenated variants that may exist in the DB (e.g. "PAY-20260930-123456").
+function buildHyphenatedReferences(ref: string): string[] {
+  const clean = ref.replace(/-/g, "");
+  const candidates: string[] = [];
+  // Common pattern: PAY-YYYYMMDD-NNNNNN (hyphens at positions 3 and 11)
+  if (clean.length >= 12 && /^[A-Z]{3}\d{8}/i.test(clean)) {
+    candidates.push(`${clean.slice(0, 3)}-${clean.slice(3, 11)}-${clean.slice(11)}`);
+  }
+  // Generic: try inserting a hyphen after any alpha prefix (first 2-4 chars)
+  const alphaMatch = clean.match(/^([A-Z]{2,4})(\d.+)$/i);
+  if (alphaMatch && !candidates.includes(ref)) {
+    const prefix = alphaMatch[1];
+    const rest = alphaMatch[2];
+    // Try hyphen after prefix, and after an 8-digit date segment
+    candidates.push(`${prefix}-${rest}`);
+    if (/^\d{8}/.test(rest)) {
+      candidates.push(`${prefix}-${rest.slice(0, 8)}-${rest.slice(8)}`);
+    }
+  }
+  return candidates;
+}
+
+// Look up a payment by reference, matching with or without hyphens, and return it + eligibility info
 async function checkPayment(
   supabase: any,
   reference: string,
@@ -129,7 +152,7 @@ async function checkPayment(
 
   if (fetchErr) return { payment: null, error: `DB error: ${fetchErr.message}` };
 
-  // Fallback: try with hyphens removed if exact match failed
+  // Fallback 1: try with hyphens removed from the input reference
   if (!payment) {
     const stripped = reference.replace(/-/g, "");
     if (stripped !== reference) {
@@ -140,6 +163,23 @@ async function checkPayment(
         .maybeSingle();
       payment = res2.data;
       if (res2.error) return { payment: null, error: `DB error: ${res2.error.message}` };
+    }
+  }
+
+  // Fallback 2: input has no hyphens but DB reference may have them (e.g. PAY-20260930-123456).
+  // Try inserting hyphens at the known positions in the PAY-YYYYMMDD-NNNNNN format.
+  if (!payment) {
+    const candidates = buildHyphenatedReferences(reference);
+    for (const candidate of candidates) {
+      if (candidate === reference) continue;
+      const res3 = await supabase
+        .from("payments")
+        .select("*, payment_gateway_settings(*), beneficiaries(*)")
+        .ilike("payment_reference", candidate)
+        .maybeSingle();
+      payment = res3.data;
+      if (res3.error) return { payment: null, error: `DB error: ${res3.error.message}` };
+      if (payment) break;
     }
   }
 

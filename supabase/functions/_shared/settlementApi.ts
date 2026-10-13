@@ -17,9 +17,10 @@ export function isSupportedGateway(gatewayName: string): boolean {
 }
 
 // ─── Razorpay: fetch pending settlement balance via recon API ────────────────
-// GET /v1/settlements/recon returns per-payment settlement reconciliation data.
-// Each item has: amount (paise), fee, tax, on_hold (bool), settled (bool).
-// Pending = sum of amount where settled=false and on_hold=false.
+// GET /v1/settlements/recon/combined returns per-payment settlement reconciliation data.
+// Requires year and month parameters. Each item has: amount (paise), fee, tax,
+// on_hold (bool), settled (bool). Pending = sum of amount where settled=false and
+// on_hold=false. We query the current and previous month to catch recent unsettled txns.
 export async function getRazorpayPendingSettlement(
   gateway: any,
   env: string,
@@ -28,45 +29,65 @@ export async function getRazorpayPendingSettlement(
   if (!apiKey || !apiSecret) return { amount: 0, onHold: false };
 
   try {
-    // Fetch recon data — Razorpay returns up to 100 items by default
-    // We paginate to get all unsettled items
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 0-indexed
+
+    // Build list of (year, month) pairs to query — current month and previous month
+    const months: { year: number; month: number }[] = [
+      { year: currentYear, month: currentMonth },
+    ];
+    if (currentMonth === 1) {
+      months.push({ year: currentYear - 1, month: 12 });
+    } else {
+      months.push({ year: currentYear, month: currentMonth - 1 });
+    }
+
     let pendingPaise = 0;
     let hasOnHold = false;
-    let hasMore = true;
-    let skip = 0;
 
-    while (hasMore) {
-      const url = `https://api.razorpay.com/v1/settlements/recon?count=100&skip=${skip}`;
-      const res = await fetch(url, {
-        headers: { "Authorization": `Basic ${btoa(`${apiKey}:${apiSecret}`)}` },
-      });
+    for (const { year, month } of months) {
+      let skip = 0;
+      let hasMore = true;
 
-      if (!res.ok) return { amount: 0, onHold: false };
+      while (hasMore) {
+        const url = `https://api.razorpay.com/v1/settlements/recon/combined?year=${year}&month=${month}&count=100&skip=${skip}`;
+        const res = await fetch(url, {
+          headers: { "Authorization": `Basic ${btoa(`${apiKey}:${apiSecret}`)}` },
+        });
 
-      const data = await res.json();
-      const items = data.items || [];
-
-      if (items.length === 0) {
-        hasMore = false;
-        break;
-      }
-
-      for (const item of items) {
-        if (item.on_hold) hasOnHold = true;
-        if (!item.settled && !item.on_hold) {
-          pendingPaise += Number(item.amount || 0);
+        if (!res.ok) {
+          console.error(`Razorpay recon API returned ${res.status} for year=${year} month=${month}`);
+          // Don't return early — try the next month
+          break;
         }
-      }
 
-      if (items.length < 100) {
-        hasMore = false;
-      } else {
-        skip += 100;
+        const data = await res.json();
+        const items = data.items || [];
+
+        if (items.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        for (const item of items) {
+          if (item.on_hold) hasOnHold = true;
+          if (!item.settled && !item.on_hold) {
+            pendingPaise += Number(item.amount || 0);
+          }
+        }
+
+        if (items.length < 100) {
+          hasMore = false;
+        } else {
+          skip += 100;
+        }
       }
     }
 
     return { amount: pendingPaise / 100, onHold: hasOnHold };
-  } catch {
+  } catch (e) {
+    console.error("getRazorpayPendingSettlement error:", e);
     return { amount: 0, onHold: false };
   }
 }

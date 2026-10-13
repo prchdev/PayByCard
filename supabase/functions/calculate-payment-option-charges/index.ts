@@ -146,7 +146,3 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-// redeploy v2
-// renamed from calculate-payment-charges
-// redeploy-cors-fix
-// cors-update-20261013

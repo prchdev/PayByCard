@@ -457,7 +457,3 @@ async function triggerAutoPayout(supabase: any, payment: any, gateway: any) {
 }
 
 
-// redeploy
-// redeploy-1790387697
-// redeploy-cors-fix
-// cors-update-20261013

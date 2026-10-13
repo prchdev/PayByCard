@@ -974,4 +974,3 @@ async function listAllPaths(supabase: any, bucketName: string, prefix: string): 
   return results;
 }
 
-// redeploy

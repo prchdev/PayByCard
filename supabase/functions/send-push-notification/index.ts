@@ -19,7 +19,7 @@ interface ExpoPushMessage {
   priority?: string;
   data?: Record<string, unknown>;
   "mutable-content"?: number;
-  images?: string[];
+  richContent?: { image?: string };
 }
 
 interface ExpoPushTicket {
@@ -163,7 +163,7 @@ Deno.serve(async (req: Request) => {
           };
           if (campaign.image_url) {
             msg["mutable-content"] = 1;
-            msg.images = [campaign.image_url];
+            msg.richContent = { image: campaign.image_url };
             msg.data = { ...msg.data, image_url: campaign.image_url };
           }
           return msg;

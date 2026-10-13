@@ -9,6 +9,7 @@ const corsHeaders = {
 
 const CRON_INTERVAL_MINUTES = 5;
 const MINUTES_PER_HOUR = 60;
+const LOCK_WINDOW_MINUTES = CRON_INTERVAL_MINUTES - 1;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -48,7 +49,12 @@ Deno.serve(async (req: Request) => {
         .eq("status", "sending");
 
       let totalProcessed = 0;
+      const lockCutoff = new Date(Date.now() - LOCK_WINDOW_MINUTES * 60 * 1000).toISOString();
       for (const c of (sendingCampaigns || [])) {
+        // Skip if another cron run is likely still processing this campaign
+        if (c.last_batch_sent_at && c.last_batch_sent_at > lockCutoff) {
+          continue;
+        }
         const processed = await processEmailCampaignBatch(supabaseUrl, supabaseKey, supabase, c);
         totalProcessed += processed;
       }
@@ -334,6 +340,11 @@ async function processEmailCampaignBatch(
 ): Promise<number> {
   const hourlyRate = campaign.hourly_rate || 100;
   const perCycle = Math.max(1, Math.floor(hourlyRate * CRON_INTERVAL_MINUTES / MINUTES_PER_HOUR));
+
+  // Set lock timestamp immediately so concurrent cron runs skip this campaign
+  await supabase.from("bulk_email_campaigns")
+    .update({ last_batch_sent_at: new Date().toISOString() })
+    .eq("id", campaign.id);
 
   const { data: batch, error } = await supabase
     .from("bulk_campaign_recipients")

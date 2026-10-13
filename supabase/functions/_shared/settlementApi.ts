@@ -200,14 +200,14 @@ export async function initiateRazorpaySettlement(
   try {
     const body: Record<string, any> = {
       settle_full_balance: true,
-      description: "On-demand settlement initiated by PayByCard",
+      // Razorpay enforces max 30 chars, alphanumeric + spaces only
+      description: "PayByCard settlement",
     };
 
-    // Also include amount — Razorpay ignores it when settle_full_balance=true
-    // but some API versions require it to be present
-    if (amount > 0) {
-      body.amount = Math.round(amount * 100);
-    }
+    // amount is required by the API even when settle_full_balance=true
+    // (Razorpay ignores the value but the field must be present).
+    // Use at least 100 paise (₹1) to satisfy the minimum validation.
+    body.amount = amount > 0 ? Math.round(amount * 100) : 100;
 
     const res = await fetch("https://api.razorpay.com/v1/settlements/ondemand", {
       method: "POST",
@@ -222,8 +222,12 @@ export async function initiateRazorpaySettlement(
     if (!res.ok) {
       const errText = (data.error?.code || data.error?.description || data.error?.reason || "").toLowerCase();
       console.error("Razorpay on-demand settlement failed:", res.status, JSON.stringify(data));
+      console.error("Razorpay on-demand settlement request body:", JSON.stringify(body));
       if (errText.includes("onhold") || errText.includes("on_hold") || errText.includes("hold")) {
         return { status: "onhold", response: data };
+      }
+      if (errText.includes("already") || errText.includes("duplicate") || errText.includes("in progress") || errText.includes("being processed")) {
+        return { status: "in_progress", response: data };
       }
       return { status: "failed", response: data };
     }

@@ -27,6 +27,10 @@ import {
  *   4. Records the settlement attempt. If "onhold", disables payment options.
  *
  * Currently supports Razorpay and Cashfree settlement APIs.
+ *
+ * Razorpay notes: amount is always sent (required by API) but
+ * settle_full_balance=true tells Razorpay to ignore it and settle
+ * everything available. Description must be <=30 chars, alphanumeric+spaces.
  */
 
 const corsHeaders = {

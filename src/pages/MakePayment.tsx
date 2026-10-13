@@ -17,7 +17,7 @@ import DashboardNavigation from '../components/DashboardNavigation';
 import DashboardSidebar from '../components/DashboardSidebar';
 import Footer from '../components/Footer';
 import { useAuth } from '../contexts/AuthContext';
-import { getClientIp } from '../utils/getClientIp';
+
 
 interface Beneficiary {
   id: string;
@@ -917,8 +917,6 @@ export default function MakePayment() {
         setBillFileUrl(uploadedBillFileUrl);
       }
 
-      const clientIp = await getClientIp();
-
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/initiate-payment`,
         {
@@ -940,7 +938,6 @@ export default function MakePayment() {
             discount: chargesDetails?.discount,
             totalAmount: chargesDetails?.totalAmount,
             billFileUrl: uploadedBillFileUrl,
-            ipAddress: clientIp,
             beneficiaryDetails: {
               full_name: selectedBeneficiary?.full_name,
               email: selectedBeneficiary?.email,

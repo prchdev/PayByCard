@@ -90,3 +90,5 @@ Deno.serve(async (req: Request) => {
 });
 
 // redeploy v2
+// redeploy-cors-fix
+// cors-update-20261013

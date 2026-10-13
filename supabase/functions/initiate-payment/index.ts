@@ -42,7 +42,6 @@ Deno.serve(withUserSession(async (req: Request) => {
       discount,
       totalAmount,
       billFileUrl,
-      ipAddress,
       beneficiaryDetails,
       categoryDetails,
       paymentOptionDetails,
@@ -222,6 +221,11 @@ Deno.serve(withUserSession(async (req: Request) => {
 
     const allowedCards = determineAllowedCards(cardType);
 
+    const clientIp =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+
     const paymentReference = await generatePaymentReference(supabase);
 
     const transactionSummary = {
@@ -236,7 +240,7 @@ Deno.serve(withUserSession(async (req: Request) => {
       environment: optionEnvironment,
       allowed_cards: allowedCards,
       initiated_at: new Date().toISOString(),
-      ip_address: ipAddress || "unknown",
+      ip_address: clientIp,
     };
 
     const validCardType = cardType ? extractSingleCardType(cardType) : null;
@@ -265,7 +269,7 @@ Deno.serve(withUserSession(async (req: Request) => {
         bill_file_url: billFileUrl || null,
         invoice_status: billFileUrl ? "pending_verification" : "not_required",
         status: "pending",
-        ip_address: ipAddress || "unknown",
+        ip_address: clientIp,
         transaction_summary: transactionSummary,
         beneficiary_details: beneficiaryDetails || {},
         category_details: categoryDetails || {},

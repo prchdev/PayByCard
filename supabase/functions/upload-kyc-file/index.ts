@@ -84,8 +84,16 @@ Deno.serve(async (req: Request) => {
     }
 
     // F12: userId comes from the verified session token, not the request body.
+    // For public merchant-onboarding uploads (no session), fall back to the
+    // userId provided in the form data, but only if it starts with "merchant-".
     const session = await readSessionToken(req.headers.get(SESSION_HEADER));
-    const userId = session?.kind === "user" ? session.id : null;
+    const sessionUserId = session?.kind === "user" ? session.id : null;
+    const formUserId = formData.get("userId") as string;
+
+    let userId: string | null = sessionUserId;
+    if (!userId && formUserId && formUserId.startsWith("merchant-")) {
+      userId = formUserId;
+    }
 
     if (!userId) {
       return new Response(JSON.stringify({ error: "Authentication required" }), {

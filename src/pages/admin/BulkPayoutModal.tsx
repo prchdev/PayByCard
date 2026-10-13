@@ -132,6 +132,11 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
   const [eligibleRows, setEligibleRows] = useState<ParsedRow[]>([]);
   const [ineligibleRows, setIneligibleRows] = useState<ParsedRow[]>([]);
 
+  const clientErrorRows = parsedRows.filter(r => r.clientError);
+  const hasClientErrors = clientErrorRows.length > 0;
+  const successfulRows = parsedRows.filter(r => !r.clientError && r.status.toLowerCase() === 'successful');
+  const failedStatusRows = parsedRows.filter(r => !r.clientError && r.status.toLowerCase() !== 'successful');
+
   const rowAccessor = (r: ParsedRow, key: string) => {
     switch (key) {
       case 'rowNum': return r.row_number;
@@ -146,11 +151,6 @@ export default function BulkPayoutModal({ adminId, onClose, onSuccess }: BulkPay
 
   const eligibleSort = useTableSort(eligibleRows, rowAccessor);
   const successfulSort = useTableSort(successfulRows, rowAccessor);
-
-  const clientErrorRows = parsedRows.filter(r => r.clientError);
-  const hasClientErrors = clientErrorRows.length > 0;
-  const successfulRows = parsedRows.filter(r => !r.clientError && r.status.toLowerCase() === 'successful');
-  const failedStatusRows = parsedRows.filter(r => !r.clientError && r.status.toLowerCase() !== 'successful');
 
   const handleFile = useCallback((file: File) => {
     const isXlsx = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');

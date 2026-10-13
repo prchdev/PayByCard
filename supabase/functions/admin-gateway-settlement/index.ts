@@ -31,7 +31,7 @@ serveAdmin(async (req: Request) => {
         .from("gateway_settlement_settings")
         .select(`
           id, gateway_name, on_demand_settlement_enabled,
-          minimum_settlement_amount, settlement_trigger_minutes,
+          settlement_trigger_minutes,
           last_settlement_at, last_settlement_status, last_settlement_amount,
           created_at, updated_at
         `)
@@ -69,7 +69,7 @@ serveAdmin(async (req: Request) => {
 
     // ─── SAVE: update a single gateway's settlement settings ───────────────
     if (action === "save") {
-      const { gateway_name, on_demand_settlement_enabled, minimum_settlement_amount, settlement_trigger_minutes } = body;
+      const { gateway_name, on_demand_settlement_enabled, settlement_trigger_minutes } = body;
 
       if (!gateway_name) {
         return new Response(
@@ -91,12 +91,6 @@ serveAdmin(async (req: Request) => {
 
       if (typeof on_demand_settlement_enabled === "boolean") {
         updates.on_demand_settlement_enabled = on_demand_settlement_enabled;
-      }
-      if (minimum_settlement_amount !== undefined && minimum_settlement_amount !== null) {
-        const amt = Number(minimum_settlement_amount);
-        if (!isNaN(amt) && amt >= 0) {
-          updates.minimum_settlement_amount = amt;
-        }
       }
       if (settlement_trigger_minutes !== undefined && settlement_trigger_minutes !== null) {
         const mins = Number(settlement_trigger_minutes);

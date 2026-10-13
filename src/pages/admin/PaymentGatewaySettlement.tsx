@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Landmark, Save, AlertCircle, CheckCircle, Loader2, RefreshCw, Power, Clock, IndianRupee } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, Loader2, RefreshCw, Power, Clock } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
 
@@ -8,7 +8,6 @@ interface SettlementSetting {
   id: string;
   gateway_name: string;
   on_demand_settlement_enabled: boolean;
-  minimum_settlement_amount: number;
   settlement_trigger_minutes: number;
   last_settlement_at: string | null;
   last_settlement_status: string | null;
@@ -26,7 +25,6 @@ const STATUS_COLORS: Record<string, string> = {
   failed: 'bg-red-50 text-red-700 border-red-200',
   not_applicable: 'bg-gray-50 text-gray-600 border-gray-200',
   check_failed: 'bg-amber-50 text-amber-700 border-amber-200',
-  below_minimum: 'bg-gray-50 text-gray-600 border-gray-200',
   skipped: 'bg-gray-50 text-gray-600 border-gray-200',
 };
 
@@ -55,7 +53,7 @@ export default function PaymentGatewaySettlement() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [editValues, setEditValues] = useState<Record<string, { minimum: string; minutes: string }>>({});
+  const [editValues, setEditValues] = useState<Record<string, { minutes: string }>>({});
 
   useEffect(() => {
     if (!adminId) {
@@ -83,10 +81,9 @@ export default function PaymentGatewaySettlement() {
       const data = await response.json();
       if (response.ok && data.success) {
         setSettings(data.settings || []);
-        const ev: Record<string, { minimum: string; minutes: string }> = {};
+        const ev: Record<string, { minutes: string }> = {};
         for (const s of data.settings || []) {
           ev[s.gateway_name] = {
-            minimum: String(s.minimum_settlement_amount ?? 0),
             minutes: String(s.settlement_trigger_minutes ?? 60),
           };
         }
@@ -136,12 +133,7 @@ export default function PaymentGatewaySettlement() {
   const handleSave = async (gatewayName: string) => {
     const ev = editValues[gatewayName];
     if (!ev) return;
-    const minAmt = Number(ev.minimum);
     const mins = Number(ev.minutes);
-    if (isNaN(minAmt) || minAmt < 0) {
-      setMessage({ type: 'error', text: 'Minimum amount must be a valid non-negative number' });
-      return;
-    }
     if (isNaN(mins) || mins < 1) {
       setMessage({ type: 'error', text: 'Trigger interval must be at least 1 minute' });
       return;
@@ -161,7 +153,6 @@ export default function PaymentGatewaySettlement() {
         body: JSON.stringify({
           action: 'save',
           gateway_name: gatewayName,
-          minimum_settlement_amount: minAmt,
           settlement_trigger_minutes: mins,
           adminId,
         }),
@@ -170,7 +161,6 @@ export default function PaymentGatewaySettlement() {
       if (response.ok && data.success) {
         setSettings(prev => prev.map(s => s.gateway_name === gatewayName ? {
           ...s,
-          minimum_settlement_amount: minAmt,
           settlement_trigger_minutes: Math.round(mins),
         } : s));
         setMessage({ type: 'success', text: `${gatewayName} settlement settings saved` });
@@ -230,7 +220,7 @@ export default function PaymentGatewaySettlement() {
             <div>
               <p className="text-sm font-medium text-blue-900">How On-Demand Settlement Works</p>
               <p className="text-sm text-blue-800 mt-1">
-                When enabled, a background job runs every 5 minutes and checks if the pending settlement amount meets your minimum threshold after the configured time interval. If the settlement gateway returns an "on hold" status, all payment options using that gateway are automatically disabled until the issue is resolved.
+                When enabled, a background job runs every 5 minutes and initiates a settlement request after the configured time interval. If the settlement gateway returns an "on hold" status, all payment options using that gateway are automatically disabled until the issue is resolved.
               </p>
             </div>
           </div>
@@ -255,7 +245,7 @@ export default function PaymentGatewaySettlement() {
             </div>
           )}
           {settings.map((s) => {
-            const ev = editValues[s.gateway_name] || { minimum: '0', minutes: '60' };
+            const ev = editValues[s.gateway_name] || { minutes: '60' };
             const statusColor = STATUS_COLORS[s.last_settlement_status || ''] || 'bg-gray-50 text-gray-600 border-gray-200';
             const isSaving = savingId === s.gateway_name;
 
@@ -315,30 +305,7 @@ export default function PaymentGatewaySettlement() {
                 </div>
 
                 {/* Card body — settings */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
-                  {/* Minimum Amount */}
-                  <div>
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">
-                      <IndianRupee className="w-4 h-4" />
-                      Minimum Amount for Settlement
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">&#8377;</span>
-                      <input
-                        type="number"
-                        value={ev.minimum}
-                        onChange={(e) => setEditValues(prev => ({
-                          ...prev,
-                          [s.gateway_name]: { ...prev[s.gateway_name], minimum: e.target.value }
-                        }))}
-                        disabled={!canEdit || isSaving}
-                        min="0"
-                        step="0.01"
-                        className="w-full pl-7 pr-3 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-400"
-                      />
-                    </div>
-                  </div>
-
+                <div className="grid grid-cols-1 gap-6 pt-6">
                   {/* Trigger Minutes */}
                   <div>
                     <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">

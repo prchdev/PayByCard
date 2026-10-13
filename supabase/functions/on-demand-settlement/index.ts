@@ -23,8 +23,7 @@ import {
  *   For each gateway where on_demand_settlement_enabled = true:
  *   1. Checks if enough time has passed since last_settlement_at.
  *   2. Fetches the actual pending settlement amount from the gateway API.
- *   3. If pending >= minimum_settlement_amount, initiates a settlement
- *      request to the gateway API.
+ *   3. Initiates a settlement request to the gateway API.
  *   4. Records the settlement attempt. If "onhold", disables payment options.
  *
  * Currently supports Razorpay and Cashfree settlement APIs.
@@ -117,7 +116,7 @@ Deno.serve(async (req: Request) => {
     const { data: initSettings, error: sErr } = await supabase
       .from("gateway_settlement_settings")
       .select(`
-        id, gateway_name, minimum_settlement_amount,
+        id, gateway_name,
         settlement_trigger_minutes, last_settlement_at
       `)
       .eq("on_demand_settlement_enabled", true);
@@ -173,18 +172,6 @@ Deno.serve(async (req: Request) => {
           status: "onhold",
           amount: pendingAmount,
           skipped: false,
-        });
-        continue;
-      }
-
-      // If balance check succeeded and amount is below minimum, skip without DB write
-      if (!balanceError && pendingAmount < Number(setting.minimum_settlement_amount)) {
-        initiateResults.push({
-          gateway: setting.gateway_name,
-          status: "below_minimum",
-          amount: pendingAmount,
-          skipped: true,
-          reason: `Pending ${pendingAmount} < minimum ${setting.minimum_settlement_amount}`,
         });
         continue;
       }

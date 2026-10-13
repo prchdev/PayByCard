@@ -72,7 +72,6 @@ export async function uploadKycFile(
     method: 'POST',
     headers: {
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      'x-pbc-session': sessionStorage.getItem('pbc_session') || '',
     },
     body: formData,
   });

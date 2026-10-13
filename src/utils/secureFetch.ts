@@ -66,6 +66,20 @@ function attachSessionHeaders(
   input: RequestInfo | URL,
   init?: RequestInit
 ): RequestInit | undefined {
+  const url =
+    typeof input === 'string'
+      ? input
+      : input instanceof URL
+      ? input.href
+      : input.url;
+
+  // Only attach Supabase-specific headers to Supabase edge function calls.
+  // Adding apikey/Authorization/x-pbc-session to external requests (e.g. api.ipify.org)
+  // triggers CORS preflight failures because those servers don't allow these headers.
+  if (!isSupabaseEdgeFunction(url)) {
+    return init;
+  }
+
   let userToken: string | null = null;
   let adminToken: string | null = null;
   try {

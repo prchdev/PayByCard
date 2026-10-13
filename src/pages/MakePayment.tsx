@@ -887,10 +887,6 @@ export default function MakePayment() {
     let gatewayOpened = false;
 
     try {
-      if (billFile) {
-        setBillFileUrl(`uploads/${userId}/${Date.now()}_${billFile.name}`);
-      }
-
       if (!selectedPaymentOption) {
         throw new Error('Please select a payment option');
       }
@@ -915,6 +911,14 @@ export default function MakePayment() {
         throw new Error('Payment amount is not calculated');
       }
 
+      let uploadedBillFileUrl: string | null = null;
+      if (billFile) {
+        uploadedBillFileUrl = `uploads/${userId}/${Date.now()}_${billFile.name}`;
+        setBillFileUrl(uploadedBillFileUrl);
+      }
+
+      const clientIp = await getClientIp();
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/initiate-payment`,
         {
@@ -922,7 +926,6 @@ export default function MakePayment() {
           headers: {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
-            'x-pbc-session': sessionStorage.getItem('pbc_session') || '',
           },
           body: JSON.stringify({
             userId,
@@ -936,8 +939,8 @@ export default function MakePayment() {
             gst: chargesDetails?.gst,
             discount: chargesDetails?.discount,
             totalAmount: chargesDetails?.totalAmount,
-            billFileUrl: billFileUrl || null,
-            ipAddress: await getClientIp(),
+            billFileUrl: uploadedBillFileUrl,
+            ipAddress: clientIp,
             beneficiaryDetails: {
               full_name: selectedBeneficiary?.full_name,
               email: selectedBeneficiary?.email,

@@ -9,19 +9,14 @@
 //
 // A session token is a stateless HMAC over `kind.id.expiry`, signed with the
 // project service-role key, which never leaves the server. The client stores the
-// token it receives at login and sends it in the `Authorization` header (as
-// `Bearer <token>`) on every request; the guards below verify it and refuse any
-// request whose claimed identifier does not match the token.
-//
-// We use Authorization instead of custom x-pbc-session headers because Supabase's
-// API gateway handles CORS preflight (OPTIONS) and only allows standard headers
-// (Authorization, Content-Type, Apikey, X-Client-Info) in its preflight response.
+// token it receives at login and sends it in the `x-pbc-session` header on every
+// request; the guards below verify it and refuse any request whose claimed
+// identifier does not match the token.
 
 const encoder = new TextEncoder();
 
 export const SESSION_HEADER = "x-pbc-session";
 export const ADMIN_SESSION_HEADER = "x-pbc-admin-session";
-const SESSION_BEARER_PREFIX = "PBC ";
 export const DEFAULT_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days, matches "remember me"
 
 const corsHeaders = {
@@ -84,21 +79,6 @@ export function isInternalCall(req: Request): boolean {
   return auth === `Bearer ${serviceKey}` || auth === serviceKey;
 }
 
-// Extracts a session token from the request. Checks the Authorization header
-// (format: "Bearer PBC <token>") first, then falls back to the custom headers
-// for backward compatibility with the mobile app.
-function extractSessionToken(req: Request, isAdmin: boolean): string | null {
-  const auth = req.headers.get("Authorization") || "";
-  if (auth.startsWith("Bearer ")) {
-    const bearerValue = auth.slice(7);
-    if (bearerValue.startsWith(SESSION_BEARER_PREFIX)) {
-      return bearerValue.slice(SESSION_BEARER_PREFIX.length);
-    }
-  }
-  const headerName = isAdmin ? ADMIN_SESSION_HEADER : SESSION_HEADER;
-  return req.headers.get(headerName);
-}
-
 function unauthorized(): Response {
   return new Response(
     JSON.stringify({
@@ -122,7 +102,8 @@ export function withSession(kind: "admin" | "user", idFields: string[]) {
       if (req.method === "OPTIONS") return handler(req);
       if (isInternalCall(req)) return handler(req);
 
-      const session = await readSessionToken(extractSessionToken(req, kind === "admin"));
+      const header = kind === "admin" ? ADMIN_SESSION_HEADER : SESSION_HEADER;
+      const session = await readSessionToken(req.headers.get(header));
       if (!session || session.kind !== kind) return unauthorized();
 
       // Only JSON bodies are re-read and re-serialised. Multipart/binary bodies are
@@ -222,8 +203,8 @@ export function serveMixed(
       customerFacing = false;
     }
     if (customerFacing) {
-      const user = await readSessionToken(extractSessionToken(req, false));
-      const admin = await readSessionToken(extractSessionToken(req, true));
+      const user = await readSessionToken(req.headers.get(SESSION_HEADER));
+      const admin = await readSessionToken(req.headers.get(ADMIN_SESSION_HEADER));
       if (!user && !admin) return unauthorized();
       return handler(req);
     }
@@ -240,7 +221,7 @@ export function serveUserOrAdmin(handler: Handler): void {
   Deno.serve(async (req: Request) => {
     if (req.method === "OPTIONS") return handler(req);
     if (isInternalCall(req)) return handler(req);
-    const admin = await readSessionToken(extractSessionToken(req, true));
+    const admin = await readSessionToken(req.headers.get(ADMIN_SESSION_HEADER));
     if (admin && admin.kind === "admin") return handler(req);
     return withUserSession(handler)(req);
   });

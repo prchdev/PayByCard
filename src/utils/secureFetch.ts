@@ -86,22 +86,18 @@ function attachSessionHeaders(
     headers.set('apikey', SUPABASE_ANON_KEY);
   }
 
-  if (!userToken && !adminToken) return { ...(init || {}), headers };
-
-  // Send session token via Authorization header (Bearer PBC <token>) to avoid
-  // CORS preflight issues with custom headers on Supabase's gateway.
-  if (!headers.has('Authorization') || headers.get('Authorization') === `Bearer ${SUPABASE_ANON_KEY}`) {
-    if (adminToken) {
-      headers.set('Authorization', `Bearer PBC ${adminToken}`);
-    } else if (userToken) {
-      headers.set('Authorization', `Bearer PBC ${userToken}`);
-    }
+  // Ensure Authorization is set to the anon key for gateway authentication.
+  // Call sites that set their own Authorization (e.g. Bearer <anon_key>) are left alone.
+  if (!headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${SUPABASE_ANON_KEY}`);
   }
 
-  // Strip custom session headers — they trigger CORS preflight failures on
-  // Supabase's gateway. The session token is carried via Authorization instead.
-  headers.delete('x-pbc-session');
-  headers.delete('x-pbc-admin-session');
+  if (!userToken && !adminToken) return { ...(init || {}), headers };
+
+  if (userToken && !headers.has('x-pbc-session')) headers.set('x-pbc-session', userToken);
+  if (adminToken && !headers.has('x-pbc-admin-session')) {
+    headers.set('x-pbc-admin-session', adminToken);
+  }
   return { ...(init || {}), headers };
 }
 

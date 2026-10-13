@@ -127,8 +127,9 @@ export default function DatabaseBackup() {
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer PBC ${sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || ''}`,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
+            'x-pbc-admin-session': sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || '',
           },
           body: JSON.stringify({ adminId }),
         }
@@ -197,8 +198,9 @@ export default function DatabaseBackup() {
           {
             method: 'POST',
             headers: {
-              Authorization: `Bearer PBC ${sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || ''}`,
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
               'Content-Type': 'application/json',
+              'x-pbc-admin-session': sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || '',
             },
             body: JSON.stringify({ adminId, backupType: type }),
           }
@@ -230,8 +232,9 @@ export default function DatabaseBackup() {
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer PBC ${sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || ''}`,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
+            'x-pbc-admin-session': sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || '',
           },
           body: JSON.stringify({ adminId, backupId: backup.id }),
         }
@@ -262,8 +265,9 @@ export default function DatabaseBackup() {
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer PBC ${sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || ''}`,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
+            'x-pbc-admin-session': sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || '',
           },
           body: JSON.stringify({ adminId, backupId: backup.id }),
         }
@@ -304,8 +308,9 @@ export default function DatabaseBackup() {
           {
             method: 'POST',
             headers: {
-              Authorization: `Bearer PBC ${sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || ''}`,
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
               'Content-Type': 'application/json',
+              'x-pbc-admin-session': sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || '',
             },
             body: JSON.stringify({ adminId, backupId: backup.id }),
           }

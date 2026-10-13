@@ -76,8 +76,9 @@ export default function PaymentGatewaySettlement() {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-gateway-settlement`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer PBC ${sessionToken || ''}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
+          'x-pbc-admin-session': sessionToken || '',
         },
         body: JSON.stringify({ action: 'get', adminId }),
       });
@@ -110,8 +111,9 @@ export default function PaymentGatewaySettlement() {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-gateway-settlement`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer PBC ${sessionToken || ''}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
+          'x-pbc-admin-session': sessionToken || '',
         },
         body: JSON.stringify({
           action: 'save',
@@ -154,8 +156,9 @@ export default function PaymentGatewaySettlement() {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-gateway-settlement`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer PBC ${sessionToken || ''}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
+          'x-pbc-admin-session': sessionToken || '',
         },
         body: JSON.stringify({
           action: 'save',

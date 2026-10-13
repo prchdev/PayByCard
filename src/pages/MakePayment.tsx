@@ -920,8 +920,9 @@ export default function MakePayment() {
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer PBC ${sessionStorage.getItem('pbc_session') || ''}`,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
+            'x-pbc-session': sessionStorage.getItem('pbc_session') || '',
           },
           body: JSON.stringify({
             userId,

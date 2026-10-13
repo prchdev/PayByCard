@@ -26,6 +26,7 @@ interface BulkEmailCampaign {
   total_recipients: number;
   sent_count: number;
   failed_count: number;
+  pending_count?: number;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
@@ -636,7 +637,7 @@ export default function BulkEmail() {
               </div>
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
                 <p className="text-xs text-gray-500 mb-1">Pending</p>
-                <p className="text-lg font-bold text-gray-700">{Math.max(0, reportCampaign.total_recipients - reportCampaign.sent_count - reportCampaign.failed_count)}</p>
+                <p className="text-lg font-bold text-gray-700">{reportCampaign.pending_count !== undefined ? reportCampaign.pending_count : Math.max(0, reportCampaign.total_recipients - reportCampaign.sent_count - reportCampaign.failed_count)}</p>
               </div>
             </div>
 
@@ -1084,6 +1085,7 @@ export default function BulkEmail() {
                         <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {c.total_recipients} recipients</span>
                         <span className="flex items-center gap-1"><Send className="w-3.5 h-3.5" /> {c.sent_count} sent</span>
                         {c.failed_count > 0 && <span className="flex items-center gap-1 text-red-500"><AlertCircle className="w-3.5 h-3.5" /> {c.failed_count} failed</span>}
+                        {(c.pending_count !== undefined && c.pending_count > 0 && c.status === 'sending') && <span className="flex items-center gap-1 text-gray-500"><Clock className="w-3.5 h-3.5" /> {c.pending_count} pending</span>}
                         <span>Created: {fmtDate(c.created_at)}</span>
                         {c.scheduled_at && <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {fmtDate(c.scheduled_at)}</span>}
                         {c.completed_at && <span>Completed: {fmtDate(c.completed_at)}</span>}

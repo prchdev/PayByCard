@@ -89,7 +89,35 @@ Deno.serve(async (req: Request) => {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ campaigns }), {
+
+      const enriched = await Promise.all((campaigns || []).map(async (c: any) => {
+        const { count: sentCount } = await supabase
+          .from("bulk_campaign_recipients")
+          .select("id", { count: "exact", head: true })
+          .eq("campaign_type", "sms")
+          .eq("campaign_id", c.id)
+          .eq("status", "sent");
+        const { count: failedCount } = await supabase
+          .from("bulk_campaign_recipients")
+          .select("id", { count: "exact", head: true })
+          .eq("campaign_type", "sms")
+          .eq("campaign_id", c.id)
+          .eq("status", "failed");
+        const { count: pendingCount } = await supabase
+          .from("bulk_campaign_recipients")
+          .select("id", { count: "exact", head: true })
+          .eq("campaign_type", "sms")
+          .eq("campaign_id", c.id)
+          .eq("status", "pending");
+        return {
+          ...c,
+          sent_count: sentCount || 0,
+          failed_count: failedCount || 0,
+          pending_count: pendingCount || 0,
+        };
+      }));
+
+      return new Response(JSON.stringify({ campaigns: enriched }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

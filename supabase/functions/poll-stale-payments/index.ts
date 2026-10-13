@@ -750,7 +750,7 @@ async function processSuccessfulPayment(supabase: any, payment: any, gatewayResu
 
   EdgeRuntime.waitUntil(sendInitiatedSms(supabase, enriched || payment));
   EdgeRuntime.waitUntil(sendTransactionEmails(supabase, enriched || payment, resolvedStatus));
-  if (isEligibleForPayout) {
+  if (isEligibleForPayout && payoutMode !== "manual") {
     EdgeRuntime.waitUntil(sendSettledSms(supabase, enriched || payment));
   }
   if (!isEligibleForPayout) {

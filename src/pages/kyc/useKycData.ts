@@ -71,8 +71,7 @@ export async function uploadKycFile(
   const res = await fetch(`${SUPABASE_URL}/functions/v1/upload-kyc-file`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      'x-pbc-session': sessionStorage.getItem('pbc_session') || '',
+      Authorization: `Bearer PBC ${sessionStorage.getItem('pbc_session') || ''}`,
     },
     body: formData,
   });

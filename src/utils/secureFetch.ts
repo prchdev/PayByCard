@@ -88,10 +88,20 @@ function attachSessionHeaders(
 
   if (!userToken && !adminToken) return { ...(init || {}), headers };
 
-  if (userToken && !headers.has('x-pbc-session')) headers.set('x-pbc-session', userToken);
-  if (adminToken && !headers.has('x-pbc-admin-session')) {
-    headers.set('x-pbc-admin-session', adminToken);
+  // Send session token via Authorization header (Bearer PBC <token>) to avoid
+  // CORS preflight issues with custom headers on Supabase's gateway.
+  if (!headers.has('Authorization') || headers.get('Authorization') === `Bearer ${SUPABASE_ANON_KEY}`) {
+    if (adminToken) {
+      headers.set('Authorization', `Bearer PBC ${adminToken}`);
+    } else if (userToken) {
+      headers.set('Authorization', `Bearer PBC ${userToken}`);
+    }
   }
+
+  // Strip custom session headers — they trigger CORS preflight failures on
+  // Supabase's gateway. The session token is carried via Authorization instead.
+  headers.delete('x-pbc-session');
+  headers.delete('x-pbc-admin-session');
   return { ...(init || {}), headers };
 }
 

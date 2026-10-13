@@ -121,7 +121,7 @@ export default function Invoicing() {
     try {
       const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-download-finance-document`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'x-pbc-admin-session': adminSessionToken },
+        headers: { Authorization: `Bearer PBC ${adminSessionToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminId, documentId, entityType }),
       });
       const data = await response.json();
@@ -165,7 +165,7 @@ export default function Invoicing() {
       formData.append('entityId', entityId);
       const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-upload-finance-document`, {
         method: 'POST',
-        headers: { 'x-pbc-admin-session': adminSessionToken },
+        headers: { Authorization: `Bearer PBC ${adminSessionToken}` },
         body: formData,
       });
       const data = await response.json();

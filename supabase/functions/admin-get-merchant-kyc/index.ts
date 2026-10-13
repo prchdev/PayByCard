@@ -69,7 +69,7 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
       );
     }
 
-    // Enrich with payment reference
+    // Enrich with payment reference and beneficiary bank details
     const enriched = await Promise.all((records || []).map(async (rec: any) => {
       let payment_reference = null;
       let amount = null;
@@ -92,7 +92,27 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
         invoice_rejection_reason = payment?.invoice_rejection_reason ?? null;
         invoice_confirmed_at = payment?.invoice_confirmed_at ?? null;
       }
-      return { ...rec, payment_reference, amount, bill_file_url, invoice_status, invoice_verified_at, invoice_rejection_reason, invoice_confirmed_at };
+
+      // Fetch bank details from beneficiaries table if not already on the record
+      let bank_account_number = rec.bank_account_number ?? null;
+      let bank_ifsc = rec.bank_ifsc ?? null;
+      let bank_name = rec.bank_name ?? null;
+      let bank_branch = rec.bank_branch ?? null;
+      if (rec.beneficiary_id && (!bank_account_number || !bank_ifsc || !bank_name)) {
+        const { data: bene } = await supabase
+          .from("beneficiaries")
+          .select("bank_name, branch_name, ifsc, bank_account")
+          .eq("id", rec.beneficiary_id)
+          .maybeSingle();
+        if (bene) {
+          bank_account_number = bank_account_number || bene.bank_account || null;
+          bank_ifsc = bank_ifsc || bene.ifsc || null;
+          bank_name = bank_name || bene.bank_name || null;
+          bank_branch = bank_branch || bene.branch_name || null;
+        }
+      }
+
+      return { ...rec, payment_reference, amount, bill_file_url, invoice_status, invoice_verified_at, invoice_rejection_reason, invoice_confirmed_at, bank_account_number, bank_ifsc, bank_name, bank_branch };
     }));
 
     return new Response(

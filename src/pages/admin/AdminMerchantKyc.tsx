@@ -4,7 +4,7 @@ import {
   RefreshCw, Users, Clock, XCircle, CheckCircle, Search,
   ChevronLeft, ChevronRight, ShieldCheck, X, ZoomIn, Eye,
   AlertCircle, Loader2, FileCode2, Globe, CalendarCheck, ScanFace, CreditCard,
-  Download,
+  Download, Link as LinkIcon, Copy, Check,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -517,6 +517,30 @@ function ReviewModal({
   const [payoutResult, setPayoutResult] = useState<PayoutResult>(null);
   const [refundResult, setRefundResult] = useState<RefundResult>(null);
   const [done, setDone] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const merchantKycLink = record.token
+    ? `${window.location.origin}/merchant-onboarding?token=${record.token}`
+    : '';
+
+  const handleCopyLink = async () => {
+    if (!merchantKycLink) return;
+    try {
+      await navigator.clipboard.writeText(merchantKycLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = merchantKycLink;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!action) return;
@@ -785,6 +809,34 @@ function ReviewModal({
                   <DigiLockerDocLinks docs={docs} />
                 );
               })()}
+            </div>
+          )}
+
+          {/* Merchant KYC Link */}
+          {merchantKycLink && (
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <LinkIcon className="w-4 h-4 text-gray-600" />
+                <h3 className="text-sm font-semibold text-gray-800">Merchant KYC Link</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={merchantKycLink}
+                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs text-gray-600 font-mono truncate focus:outline-none"
+                />
+                <button
+                  onClick={handleCopyLink}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                    linkCopied
+                      ? 'bg-green-100 text-green-700 border border-green-300'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                  }`}
+                >
+                  {linkCopied ? <><Check className="w-3.5 h-3.5" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                </button>
+              </div>
             </div>
           )}
 

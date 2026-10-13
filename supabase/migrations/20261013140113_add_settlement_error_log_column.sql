@@ -1,0 +1,1 @@
+ALTER TABLE gateway_settlement_settings ADD COLUMN IF NOT EXISTS last_settlement_error text;

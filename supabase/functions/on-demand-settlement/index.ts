@@ -216,12 +216,17 @@ Deno.serve(async (req: Request) => {
       const settlementResult = await initiateSettlement(setting.gateway_name, gateway, env, pendingAmount);
 
       // Only record in DB if a settlement was actually attempted
+      const errorDetail = settlementResult.status === "failed" || settlementResult.status === "check_failed"
+        ? JSON.stringify(settlementResult.response || {}).substring(0, 500)
+        : null;
+
       await supabase
         .from("gateway_settlement_settings")
         .update({
           last_settlement_at: now.toISOString(),
           last_settlement_status: settlementResult.status,
           last_settlement_amount: pendingAmount,
+          last_settlement_error: errorDetail,
           updated_at: now.toISOString(),
         })
         .eq("id", setting.id);

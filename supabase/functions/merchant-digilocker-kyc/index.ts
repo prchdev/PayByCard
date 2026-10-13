@@ -2,7 +2,6 @@ import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { withSignedKycUrls } from "../_shared/kycUrls.ts";
 import { lookupStateFromPincode } from "../_shared/pincodeLookup.ts";
 
-import { serveUser } from "../_shared/session.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -763,7 +762,7 @@ async function writeMerchantKyc(
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
-serveUser(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }

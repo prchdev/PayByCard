@@ -47,7 +47,7 @@ function fmtMoney(v: number | string): string {
   return `₹${parseFloat(String(v)).toFixed(2)}`;
 }
 
-async function sendEmail(to: string, subject: string, body: string, buttonText?: string, buttonLink?: string) {
+async function sendEmail(to: string, subject: string, body: string, buttonText?: string, buttonLink?: string, cc?: string) {
   try {
     await fetch(`${SUPABASE_URL()}/functions/v1/send-email`, {
       method: "POST",
@@ -58,6 +58,7 @@ async function sendEmail(to: string, subject: string, body: string, buttonText?:
         body,
         body_type: "html",
         use_template: true,
+        ...(cc ? { cc } : {}),
         ...(buttonText ? { button_text: buttonText } : {}),
         ...(buttonLink ? { button_link: buttonLink } : {}),
       }),
@@ -168,7 +169,7 @@ serveUser(async (req: Request) => {
             Click the button below to start the process.</p>
             <p style="color:#dc2626;font-weight:600;">If you do not complete KYC before the expiry time, the payment will be automatically refunded to the sender.</p>
           `;
-          await sendEmail(merchantEmail, merchantSubject, merchantBody, "Complete KYC Now", kycLink);
+          await sendEmail(merchantEmail, merchantSubject, merchantBody, "Complete KYC Now", kycLink, senderEmail || undefined);
         }
 
         // 2. Send email to sender user

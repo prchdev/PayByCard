@@ -17,6 +17,7 @@ interface EmailAttachment {
 
 interface EmailRequest {
   to: string;
+  cc?: string;
   subject: string;
   body: string;
   body_type?: 'text' | 'html';
@@ -44,6 +45,7 @@ serveInternal(async (req: Request) => {
 
     const {
       to,
+      cc,
       subject,
       body,
       body_type = 'html',
@@ -190,6 +192,7 @@ serveInternal(async (req: Request) => {
     const mailOptions: any = {
       from: `${settings.from_display_name} <${settings.from_email}>`,
       to: to,
+      ...(cc ? { cc } : {}),
       subject: subject,
       text: body_type === 'text' ? body : undefined,
       html: body_type === 'html' ? emailContent : undefined,

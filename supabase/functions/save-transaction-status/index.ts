@@ -38,6 +38,7 @@ async function sendEmail(
   attachmentBase64?: string | null,
   attachmentFilename?: string,
   attachmentContentType?: string,
+  cc?: string,
 ) {
   try {
     await fetch(`${SUPABASE_URL()}/functions/v1/send-email`, {
@@ -48,6 +49,7 @@ async function sendEmail(
       },
       body: JSON.stringify({
         to, subject, body, body_type: "html", use_template: true,
+        ...(cc ? { cc } : {}),
         ...(buttonText && buttonLink ? { button_text: buttonText, button_link: buttonLink } : {}),
         ...(attachmentBase64 ? {
           attachment_base64: attachmentBase64,
@@ -538,6 +540,8 @@ async function sendKycRequestEmails(supabase: any, payment: any): Promise<boolea
         kycBody,
         "Complete KYC Verification",
         onboardingLink,
+        undefined, undefined, undefined,
+        senderUser?.email,
       );
     }
 

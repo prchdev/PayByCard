@@ -10,7 +10,9 @@ const corsHeaders = {
 };
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+const EXPO_RECEIPTS_URL = "https://exp.host/--/api/v2/push/getReceipts";
 const BATCH_SIZE = 100;
+const RECEIPT_DELAY_MS = 3000;
 
 interface ExpoPushMessage {
   to: string;
@@ -24,6 +26,13 @@ interface ExpoPushMessage {
 }
 
 interface ExpoPushTicket {
+  status: "ok" | "error";
+  id?: string;
+  message?: string;
+  details?: { error?: string };
+}
+
+interface ExpoReceipt {
   status: "ok" | "error";
   message?: string;
   details?: { error?: string };
@@ -56,6 +65,33 @@ async function sendExpoBatch(
     };
   }
 }
+
+async function checkExpoReceipts(ids: string[]): Promise<Map<string, ExpoReceipt>> {
+  const receipts = new Map<string, ExpoReceipt>();
+  if (ids.length === 0) return receipts;
+
+  try {
+    const resp = await fetch(EXPO_RECEIPTS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+
+    if (!resp.ok) return receipts;
+
+    const json = await resp.json();
+    if (json.data) {
+      for (const [id, receipt] of Object.entries(json.data)) {
+        receipts.set(id, receipt as ExpoReceipt);
+      }
+    }
+  } catch {
+    // If receipts check fails, treat as unknown — don't deactivate tokens
+  }
+  return receipts;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 serveAdmin(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -116,7 +152,6 @@ serveAdmin(async (req: Request) => {
       );
     }
 
-    // If resetLogs is true, clear previous delivery logs so "once" campaigns resend to everyone
     if (resetLogs) {
       await supabase
         .from("mobile_notification_logs")
@@ -124,7 +159,6 @@ serveAdmin(async (req: Request) => {
         .eq("campaign_id", campaignId);
     }
 
-    // Determine which users have already been pushed (for "once" campaigns without reset)
     let alreadyPushedUserIds: Set<string> = new Set();
     if (campaign.frequency === "once" && !resetLogs) {
       const { data: allLogs } = await supabase
@@ -139,7 +173,6 @@ serveAdmin(async (req: Request) => {
       }
     }
 
-    // Fetch all active push tokens
     const { data: tokens, error: tokErr } = await supabase
       .from("mobile_push_tokens")
       .select("user_id, push_token, platform")
@@ -165,6 +198,7 @@ serveAdmin(async (req: Request) => {
 
     let totalSent = 0;
     let totalFailed = 0;
+    const tokensToDeactivate: string[] = [];
 
     for (let i = 0; i < eligibleTokens.length; i += BATCH_SIZE) {
       const batch = eligibleTokens.slice(i, i + BATCH_SIZE);
@@ -203,21 +237,70 @@ serveAdmin(async (req: Request) => {
         continue;
       }
 
+      // Collect ticket IDs for receipt checking
+      const ticketIdByIndex: (string | null)[] = batch.map((_, idx) => {
+        const ticket = tickets[idx];
+        if (ticket && ticket.status === "ok" && ticket.id) {
+          return ticket.id;
+        }
+        return null;
+      });
+      const ticketIds = ticketIdByIndex.filter((id): id is string => id !== null);
+
+      // Wait briefly for Expo to process, then check receipts
+      if (ticketIds.length > 0) {
+        await sleep(RECEIPT_DELAY_MS);
+      }
+      const receipts = await checkExpoReceipts(ticketIds);
+
       let batchSuccess = 0;
       let batchFailed = 0;
       const nowIso = new Date().toISOString();
 
       const logRows = batch.map((t: any, idx: number) => {
         const ticket = tickets[idx] || ({ status: "error" } as ExpoPushTicket);
-        const isOk = ticket.status === "ok";
-        if (isOk) batchSuccess++;
-        else batchFailed++;
+
+        if (ticket.status !== "ok") {
+          batchFailed++;
+          const errMsg = ticket.message || ticket.details?.error || "Unknown Expo error";
+          if (ticket.details?.error === "DeviceNotRegistered") {
+            tokensToDeactivate.push(t.push_token);
+          }
+          return {
+            campaign_id: campaign.id,
+            user_id: t.user_id,
+            pushed_at: nowIso,
+            status: "failed",
+            error_message: errMsg,
+          };
+        }
+
+        const tid = ticketIdByIndex[idx];
+        if (tid) {
+          const receipt = receipts.get(tid);
+          if (receipt && receipt.status === "error") {
+            batchFailed++;
+            const errMsg = receipt.message || receipt.details?.error || "Delivery failed";
+            if (receipt.details?.error === "DeviceNotRegistered") {
+              tokensToDeactivate.push(t.push_token);
+            }
+            return {
+              campaign_id: campaign.id,
+              user_id: t.user_id,
+              pushed_at: nowIso,
+              status: "failed",
+              error_message: errMsg,
+            };
+          }
+        }
+
+        batchSuccess++;
         return {
           campaign_id: campaign.id,
           user_id: t.user_id,
           pushed_at: nowIso,
-          status: isOk ? "delivered" : "failed",
-          error_message: isOk ? null : (ticket.message || ticket.details?.error || "Unknown Expo error"),
+          status: "sent",
+          error_message: null,
         };
       });
 
@@ -226,28 +309,43 @@ serveAdmin(async (req: Request) => {
 
       await supabase.from("mobile_notification_logs").insert(logRows);
 
-      // Create in-app notification rows
-      const notifRows = batch.map((t: any) => ({
-        user_id: t.user_id,
-        type: "campaign",
-        title: campaign.title,
-        body: campaign.message,
-        data: { campaign_id: campaign.id, ...(campaign.image_url ? { image_url: campaign.image_url } : {}) },
-        campaign_id: campaign.id,
-        image_url: campaign.image_url || null,
-        notification_format: campaign.image_url ? "image" : "text",
-        is_read: false,
-      }));
+      // Create in-app notification rows only for tokens that were actually sent
+      const successfulTokens = batch.filter((_: any, idx: number) => logRows[idx].status === "sent");
+      if (successfulTokens.length > 0) {
+        const notifRows = successfulTokens.map((t: any) => ({
+          user_id: t.user_id,
+          type: "campaign",
+          title: campaign.title,
+          body: campaign.message,
+          data: { campaign_id: campaign.id, ...(campaign.image_url ? { image_url: campaign.image_url } : {}) },
+          campaign_id: campaign.id,
+          image_url: campaign.image_url || null,
+          notification_format: campaign.image_url ? "image" : "text",
+          is_read: false,
+        }));
+        await supabase.from("mobile_notifications").insert(notifRows);
+      }
+    }
 
-      await supabase.from("mobile_notifications").insert(notifRows);
+    // Deactivate stale tokens that Expo reported as DeviceNotRegistered
+    if (tokensToDeactivate.length > 0) {
+      const uniqueTokens = [...new Set(tokensToDeactivate)];
+      for (const token of uniqueTokens) {
+        await supabase
+          .from("mobile_push_tokens")
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .eq("push_token", token);
+      }
+      console.log(`Deactivated ${uniqueTokens.length} stale push tokens`);
     }
 
     return new Response(
       JSON.stringify({
-        message: "Push notifications sent",
+        message: "Push notifications processed",
         sent: totalSent,
         failed: totalFailed,
         totalEligible: eligibleTokens.length,
+        stale_tokens_deactivated: tokensToDeactivate.length,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

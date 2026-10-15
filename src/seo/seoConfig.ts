@@ -66,7 +66,7 @@ export const seoConfig: Record<string, SeoMeta> = {
     canonical: 'https://paybycard.in/refund-policy',
   },
   ,
-  '/refund-policy': {
+  '/offers': {
     title: 'Refund & Cancellation Policy | PayByCard',
     description: "Learn about PayByCard's refund and cancellation policy, including refund eligibility, applicable charges, processing timelines and transaction cancellation conditions.",
     keywords: 'PayByCard refund policy, PayByCard cancellation policy, PayByCard refund, PayByCard payment refund, credit card payment refund',

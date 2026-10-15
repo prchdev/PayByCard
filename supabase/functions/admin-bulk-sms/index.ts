@@ -9,6 +9,7 @@ const corsHeaders = {
 
 const CRON_INTERVAL_MINUTES = 5;
 const MINUTES_PER_HOUR = 60;
+const SMS_CONCURRENCY = 10;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -354,55 +355,82 @@ async function processSmsCampaignBatch(
     return 0;
   }
 
-  let sentThisCycle = 0;
-  let failedThisCycle = 0;
+  // Pre-fetch all user names in a single query
+  const userIds = [...new Set(batch.map((r: any) => r.user_id))];
+  const { data: users } = await supabase
+    .from("users")
+    .select("id, first_name, middle_name, last_name")
+    .in("id", userIds);
+  const userMap = new Map((users || []).map((u: any) => [u.id, u]));
 
-  for (const recipient of batch) {
+  const sendSingleSms = async (recipient: any): Promise<{ ok: boolean; id: string; error?: string }> => {
+    const user = userMap.get(recipient.user_id);
+    const firstName = user?.first_name || "";
+    const middleName = user?.middle_name || "";
+    const lastName = user?.last_name || "";
+    const personalizedMessage = (campaign.message || "")
+      .replace(/\{first_name\}/g, firstName)
+      .replace(/\{middle_name\}/g, middleName)
+      .replace(/\{last_name\}/g, lastName);
+
+    const smsPayload: any = {
+      mobile: recipient.email_or_phone,
+      message: personalizedMessage,
+      message_type: "transactional",
+      template_id: campaign.dlt_template_id || undefined,
+    };
+
     try {
-      const { data: user } = await supabase
-        .from("users")
-        .select("first_name, middle_name, last_name")
-        .eq("id", recipient.user_id)
-        .maybeSingle();
-
-      const firstName = user?.first_name || "";
-      const middleName = user?.middle_name || "";
-      const lastName = user?.last_name || "";
-
-      let personalizedMessage = (campaign.message || "").replace(/\{first_name\}/g, firstName).replace(/\{middle_name\}/g, middleName).replace(/\{last_name\}/g, lastName);
-
-      const smsPayload: any = {
-        mobile: recipient.email_or_phone,
-        message: personalizedMessage,
-        message_type: "transactional",
-        template_id: campaign.dlt_template_id || undefined,
-      };
-
       const smsResponse = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
         body: JSON.stringify(smsPayload),
       });
-
-      if (smsResponse.ok) {
-        sentThisCycle++;
-        await supabase.from("bulk_campaign_recipients")
-          .update({ status: "sent", sent_at: new Date().toISOString() })
-          .eq("id", recipient.id);
-      } else {
-        failedThisCycle++;
-        const errData = await smsResponse.json().catch(() => ({}));
-        await supabase.from("bulk_campaign_recipients")
-          .update({ status: "failed", error_message: (errData.error || "SMS send failed").substring(0, 500) })
-          .eq("id", recipient.id);
-      }
+      if (smsResponse.ok) return { ok: true, id: recipient.id };
+      const errData = await smsResponse.json().catch(() => ({}));
+      return { ok: false, id: recipient.id, error: (errData.error || "SMS send failed").substring(0, 500) };
     } catch (err) {
-      failedThisCycle++;
-      await supabase.from("bulk_campaign_recipients")
-        .update({ status: "failed", error_message: (err instanceof Error ? err.message : "Unknown error").substring(0, 500) })
-        .eq("id", recipient.id);
+      return { ok: false, id: recipient.id, error: (err instanceof Error ? err.message : "Unknown error").substring(0, 500) };
+    }
+  };
+
+  // Send in concurrent chunks
+  const sentIds: string[] = [];
+  const failedIds: string[] = [];
+  const errorMessages: Record<string, string> = {};
+  for (let i = 0; i < batch.length; i += SMS_CONCURRENCY) {
+    const chunk = batch.slice(i, i + SMS_CONCURRENCY);
+    const results = await Promise.all(chunk.map(sendSingleSms));
+    for (const r of results) {
+      if (r.ok) sentIds.push(r.id);
+      else { failedIds.push(r.id); if (r.error) errorMessages[r.id] = r.error; }
     }
   }
+
+  // Batch update sent recipients
+  const sentAt = new Date().toISOString();
+  if (sentIds.length > 0) {
+    await supabase.from("bulk_campaign_recipients")
+      .update({ status: "sent", sent_at: sentAt })
+      .in("id", sentIds);
+  }
+  // Batch update failed recipients
+  if (failedIds.length > 0) {
+    await supabase.from("bulk_campaign_recipients")
+      .update({ status: "failed", error_message: "SMS send failed" })
+      .in("id", failedIds);
+    // Update individual error messages where available
+    for (const id of failedIds) {
+      if (errorMessages[id] && errorMessages[id] !== "SMS send failed") {
+        await supabase.from("bulk_campaign_recipients")
+          .update({ error_message: errorMessages[id] })
+          .eq("id", id);
+      }
+    }
+  }
+
+  const sentThisCycle = sentIds.length;
+  const failedThisCycle = failedIds.length;
 
   // Count actual sent/failed from the database to avoid stale accumulation
   const { count: actualSent } = await supabase

@@ -11,6 +11,9 @@ const CRON_INTERVAL_MINUTES = 5;
 const MINUTES_PER_HOUR = 60;
 const LOCK_WINDOW_MINUTES = CRON_INTERVAL_MINUTES - 1;
 
+// How many emails to send concurrently within a single cron cycle
+const CONCURRENCY = 10;
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -42,7 +45,7 @@ Deno.serve(async (req: Request) => {
           .eq("id", c.id);
       }
 
-      // Pick up all campaigns in "sending" status (includes just-activated "Send Now" + due scheduled)
+      // Pick up all campaigns in "sending" status
       const { data: sendingCampaigns } = await supabase
         .from("bulk_email_campaigns")
         .select("*")
@@ -326,11 +329,55 @@ async function insertRecipientRecords(supabase: any, campaignType: string, campa
   }
 }
 
+async function sendSingleEmail(
+  supabaseUrl: string,
+  supabaseKey: string,
+  recipient: { id: string; email_or_phone: string; first_name: string; middle_name: string; last_name: string },
+  campaign: any,
+): Promise<{ success: boolean; error?: string }> {
+  const firstName = recipient.first_name || "";
+  const middleName = recipient.middle_name || "";
+  const lastName = recipient.last_name || "";
+
+  const personalizedSubject = (campaign.subject || "")
+    .replace(/\{first_name\}/g, firstName)
+    .replace(/\{middle_name\}/g, middleName)
+    .replace(/\{last_name\}/g, lastName);
+  const personalizedBody = (campaign.body_html || "")
+    .replace(/\{first_name\}/g, firstName)
+    .replace(/\{middle_name\}/g, middleName)
+    .replace(/\{last_name\}/g, lastName);
+
+  const emailPayload: any = {
+    to: recipient.email_or_phone,
+    subject: personalizedSubject,
+    body: personalizedBody,
+    body_type: "html",
+    use_template: false,
+  };
+
+  if (campaign.attachments && campaign.attachments.length > 0) {
+    emailPayload.attachments = campaign.attachments;
+  }
+
+  const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+    body: JSON.stringify(emailPayload),
+  });
+
+  if (emailResponse.ok) {
+    return { success: true };
+  } else {
+    const errData = await emailResponse.json().catch(() => ({}));
+    return { success: false, error: (errData.error || "Email send failed").substring(0, 500) };
+  }
+}
+
 /**
  * Process one batch of a campaign, respecting the hourly_rate limit.
- * Sends at most floor(hourly_rate * CRON_INTERVAL_MINUTES / 60) emails per cycle.
- * Returns the number of emails attempted this cycle.
- * The cron calls this repeatedly across cycles until all recipients are processed.
+ * Sends emails concurrently (CONCURRENCY at a time) to maximize throughput
+ * while staying within the per-cycle quota derived from the hourly rate.
  */
 async function processEmailCampaignBatch(
   supabaseUrl: string,
@@ -346,6 +393,7 @@ async function processEmailCampaignBatch(
     .update({ last_batch_sent_at: new Date().toISOString() })
     .eq("id", campaign.id);
 
+  // Fetch a batch of pending recipients — include user names to avoid per-recipient lookups
   const { data: batch, error } = await supabase
     .from("bulk_campaign_recipients")
     .select("id, user_id, email_or_phone")
@@ -356,7 +404,6 @@ async function processEmailCampaignBatch(
     .limit(perCycle);
 
   if (error || !batch || batch.length === 0) {
-    // No more pending recipients — mark campaign as completed
     await supabase.from("bulk_email_campaigns")
       .update({
         status: "completed",
@@ -367,63 +414,61 @@ async function processEmailCampaignBatch(
     return 0;
   }
 
-  let sentThisCycle = 0;
-  let failedThisCycle = 0;
+  // Pre-fetch all user names in a single query instead of one-per-recipient
+  const userIds = [...new Set(batch.map((r: any) => r.user_id))];
+  const { data: users } = await supabase
+    .from("users")
+    .select("id, first_name, middle_name, last_name")
+    .in("id", userIds);
 
-  for (const recipient of batch) {
-    try {
-      const { data: user } = await supabase
-        .from("users")
-        .select("first_name, middle_name, last_name")
-        .eq("id", recipient.user_id)
-        .maybeSingle();
-
-      const firstName = user?.first_name || "";
-      const middleName = user?.middle_name || "";
-      const lastName = user?.last_name || "";
-
-      let personalizedSubject = (campaign.subject || "").replace(/\{first_name\}/g, firstName).replace(/\{middle_name\}/g, middleName).replace(/\{last_name\}/g, lastName);
-      let personalizedBody = (campaign.body_html || "").replace(/\{first_name\}/g, firstName).replace(/\{middle_name\}/g, middleName).replace(/\{last_name\}/g, lastName);
-
-      const emailPayload: any = {
-        to: recipient.email_or_phone,
-        subject: personalizedSubject,
-        body: personalizedBody,
-        body_type: "html",
-        use_template: false,
-      };
-
-      if (campaign.attachments && campaign.attachments.length > 0) {
-        emailPayload.attachments = campaign.attachments;
-      }
-
-      const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
-        body: JSON.stringify(emailPayload),
-      });
-
-      if (emailResponse.ok) {
-        sentThisCycle++;
-        await supabase.from("bulk_campaign_recipients")
-          .update({ status: "sent", sent_at: new Date().toISOString() })
-          .eq("id", recipient.id);
-      } else {
-        failedThisCycle++;
-        const errData = await emailResponse.json().catch(() => ({}));
-        await supabase.from("bulk_campaign_recipients")
-          .update({ status: "failed", error_message: (errData.error || "Email send failed").substring(0, 500) })
-          .eq("id", recipient.id);
-      }
-    } catch (err) {
-      failedThisCycle++;
-      await supabase.from("bulk_campaign_recipients")
-        .update({ status: "failed", error_message: (err instanceof Error ? err.message : "Unknown error").substring(0, 500) })
-        .eq("id", recipient.id);
-    }
+  const userMap = new Map<string, { first_name: string; middle_name: string; last_name: string }>();
+  for (const u of (users || [])) {
+    userMap.set(u.id, {
+      first_name: u.first_name || "",
+      middle_name: u.middle_name || "",
+      last_name: u.last_name || "",
+    });
   }
 
-  // Count actual sent/failed from the database to avoid stale accumulation
+  // Enrich batch with user names
+  const enrichedBatch = batch.map((r: any) => {
+    const names = userMap.get(r.user_id) || { first_name: "", middle_name: "", last_name: "" };
+    return { ...r, ...names };
+  });
+
+  // Send emails concurrently in chunks of CONCURRENCY
+  const results: { id: string; success: boolean; error?: string }[] = [];
+  for (let i = 0; i < enrichedBatch.length; i += CONCURRENCY) {
+    const chunk = enrichedBatch.slice(i, i + CONCURRENCY);
+    const chunkResults = await Promise.all(
+      chunk.map(async (recipient) => {
+        const result = await sendSingleEmail(supabaseUrl, supabaseKey, recipient, campaign);
+        return { id: recipient.id, ...result };
+      })
+    );
+    results.push(...chunkResults);
+  }
+
+  // Batch-update recipient statuses: collect sent and failed IDs, update in bulk
+  const sentIds = results.filter((r) => r.success).map((r) => r.id);
+  const failedResults = results.filter((r) => !r.success);
+  const nowIso = new Date().toISOString();
+
+  if (sentIds.length > 0) {
+    await supabase
+      .from("bulk_campaign_recipients")
+      .update({ status: "sent", sent_at: nowIso })
+      .in("id", sentIds);
+  }
+
+  for (const fr of failedResults) {
+    await supabase
+      .from("bulk_campaign_recipients")
+      .update({ status: "failed", error_message: (fr.error || "Email send failed").substring(0, 500) })
+      .eq("id", fr.id);
+  }
+
+  // Update campaign counters
   const { count: actualSent } = await supabase
     .from("bulk_campaign_recipients")
     .select("id", { count: "exact", head: true })
@@ -456,5 +501,5 @@ async function processEmailCampaignBatch(
     })
     .eq("id", campaign.id);
 
-  return sentThisCycle + failedThisCycle;
+  return results.length;
 }

@@ -175,8 +175,9 @@ serveAdmin(async (req: Request) => {
 
     const { data: tokens, error: tokErr } = await supabase
       .from("mobile_push_tokens")
-      .select("user_id, push_token, platform")
-      .eq("is_active", true);
+      .select("user_id, push_token, platform, created_at")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
 
     if (tokErr || !tokens || tokens.length === 0) {
       return new Response(
@@ -185,9 +186,15 @@ serveAdmin(async (req: Request) => {
       );
     }
 
-    const eligibleTokens = tokens.filter(
-      (t: any) => !alreadyPushedUserIds.has(t.user_id)
-    );
+    // Deduplicate: keep only the newest active token per user (one device = one notification)
+    const seenUserIds = new Set<string>();
+    const eligibleTokens: any[] = [];
+    for (const t of tokens) {
+      if (alreadyPushedUserIds.has(t.user_id)) continue;
+      if (seenUserIds.has(t.user_id)) continue;
+      seenUserIds.add(t.user_id);
+      eligibleTokens.push(t);
+    }
 
     if (eligibleTokens.length === 0) {
       return new Response(

@@ -355,13 +355,18 @@ async function processSmsCampaignBatch(
     return 0;
   }
 
-  // Pre-fetch all user names in a single query
+  // Pre-fetch user names in chunked queries (URL length limits)
   const userIds = [...new Set(batch.map((r: any) => r.user_id))];
-  const { data: users } = await supabase
-    .from("users")
-    .select("id, first_name, middle_name, last_name")
-    .in("id", userIds);
-  const userMap = new Map((users || []).map((u: any) => [u.id, u]));
+  const userMap = new Map<string, any>();
+  const SMS_ID_CHUNK = 50;
+  for (let i = 0; i < userIds.length; i += SMS_ID_CHUNK) {
+    const chunk = userIds.slice(i, i + SMS_ID_CHUNK);
+    const { data: usersChunk } = await supabase
+      .from("users")
+      .select("id, first_name, middle_name, last_name")
+      .in("id", chunk);
+    for (const u of (usersChunk || [])) userMap.set(u.id, u);
+  }
 
   const sendSingleSms = async (recipient: any): Promise<{ ok: boolean; id: string; error?: string }> => {
     const user = userMap.get(recipient.user_id);
@@ -407,25 +412,25 @@ async function processSmsCampaignBatch(
     }
   }
 
-  // Batch update sent recipients
+  // Batch update sent recipients in chunks
   const sentAt = new Date().toISOString();
-  if (sentIds.length > 0) {
+  for (let i = 0; i < sentIds.length; i += SMS_ID_CHUNK) {
     await supabase.from("bulk_campaign_recipients")
       .update({ status: "sent", sent_at: sentAt })
-      .in("id", sentIds);
+      .in("id", sentIds.slice(i, i + SMS_ID_CHUNK));
   }
-  // Batch update failed recipients
-  if (failedIds.length > 0) {
+  // Batch update failed recipients in chunks
+  for (let i = 0; i < failedIds.length; i += SMS_ID_CHUNK) {
     await supabase.from("bulk_campaign_recipients")
       .update({ status: "failed", error_message: "SMS send failed" })
-      .in("id", failedIds);
-    // Update individual error messages where available
-    for (const id of failedIds) {
-      if (errorMessages[id] && errorMessages[id] !== "SMS send failed") {
-        await supabase.from("bulk_campaign_recipients")
-          .update({ error_message: errorMessages[id] })
-          .eq("id", id);
-      }
+      .in("id", failedIds.slice(i, i + SMS_ID_CHUNK));
+  }
+  // Update individual error messages where available
+  for (const id of failedIds) {
+    if (errorMessages[id] && errorMessages[id] !== "SMS send failed") {
+      await supabase.from("bulk_campaign_recipients")
+        .update({ error_message: errorMessages[id] })
+        .eq("id", id);
     }
   }
 

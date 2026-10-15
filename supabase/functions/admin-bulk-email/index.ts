@@ -9,10 +9,10 @@ const corsHeaders = {
 
 const CRON_INTERVAL_MINUTES = 5;
 const MINUTES_PER_HOUR = 60;
-const LOCK_WINDOW_MINUTES = CRON_INTERVAL_MINUTES - 1;
+const LOCK_WINDOW_MINUTES = 2;
 
 // How many emails to send concurrently within a single cron cycle
-const CONCURRENCY = 10;
+const CONCURRENCY = 5;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -269,7 +269,8 @@ Deno.serve(async (req: Request) => {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
+    const msg = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again.", detail: msg.substring(0, 300) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -360,17 +361,21 @@ async function sendSingleEmail(
     emailPayload.attachments = campaign.attachments;
   }
 
-  const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
-    body: JSON.stringify(emailPayload),
-  });
+  try {
+    const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+      body: JSON.stringify(emailPayload),
+    });
 
-  if (emailResponse.ok) {
-    return { success: true };
-  } else {
-    const errData = await emailResponse.json().catch(() => ({}));
-    return { success: false, error: (errData.error || "Email send failed").substring(0, 500) };
+    if (emailResponse.ok) {
+      return { success: true };
+    } else {
+      const errData = await emailResponse.json().catch(() => ({}));
+      return { success: false, error: (errData.error || "Email send failed").substring(0, 500) };
+    }
+  } catch (err) {
+    return { success: false, error: (err instanceof Error ? err.message : "Fetch failed").substring(0, 500) };
   }
 }
 
@@ -391,6 +396,23 @@ async function processEmailCampaignBatch(
   // Set lock timestamp immediately so concurrent cron runs skip this campaign
   await supabase.from("bulk_email_campaigns")
     .update({ last_batch_sent_at: new Date().toISOString() })
+    .eq("id", campaign.id);
+
+  // Sync counters from DB first (in case a previous run timed out before updating them)
+  const { count: syncedSent } = await supabase
+    .from("bulk_campaign_recipients")
+    .select("id", { count: "exact", head: true })
+    .eq("campaign_type", "email")
+    .eq("campaign_id", campaign.id)
+    .eq("status", "sent");
+  const { count: syncedFailed } = await supabase
+    .from("bulk_campaign_recipients")
+    .select("id", { count: "exact", head: true })
+    .eq("campaign_type", "email")
+    .eq("campaign_id", campaign.id)
+    .eq("status", "failed");
+  await supabase.from("bulk_email_campaigns")
+    .update({ sent_count: syncedSent || 0, failed_count: syncedFailed || 0 })
     .eq("id", campaign.id);
 
   // Fetch a batch of pending recipients — include user names to avoid per-recipient lookups
@@ -414,20 +436,23 @@ async function processEmailCampaignBatch(
     return 0;
   }
 
-  // Pre-fetch all user names in a single query instead of one-per-recipient
+  // Pre-fetch user names in chunked queries (Supabase REST API has URL length limits)
   const userIds = [...new Set(batch.map((r: any) => r.user_id))];
-  const { data: users } = await supabase
-    .from("users")
-    .select("id, first_name, middle_name, last_name")
-    .in("id", userIds);
-
   const userMap = new Map<string, { first_name: string; middle_name: string; last_name: string }>();
-  for (const u of (users || [])) {
-    userMap.set(u.id, {
-      first_name: u.first_name || "",
-      middle_name: u.middle_name || "",
-      last_name: u.last_name || "",
-    });
+  const ID_CHUNK = 50;
+  for (let i = 0; i < userIds.length; i += ID_CHUNK) {
+    const chunk = userIds.slice(i, i + ID_CHUNK);
+    const { data: usersChunk } = await supabase
+      .from("users")
+      .select("id, first_name, middle_name, last_name")
+      .in("id", chunk);
+    for (const u of (usersChunk || [])) {
+      userMap.set(u.id, {
+        first_name: u.first_name || "",
+        middle_name: u.middle_name || "",
+        last_name: u.last_name || "",
+      });
+    }
   }
 
   // Enrich batch with user names
@@ -454,11 +479,12 @@ async function processEmailCampaignBatch(
   const failedResults = results.filter((r) => !r.success);
   const nowIso = new Date().toISOString();
 
-  if (sentIds.length > 0) {
+  // Batch-update in chunks to avoid URL length limits
+  for (let i = 0; i < sentIds.length; i += ID_CHUNK) {
     await supabase
       .from("bulk_campaign_recipients")
       .update({ status: "sent", sent_at: nowIso })
-      .in("id", sentIds);
+      .in("id", sentIds.slice(i, i + ID_CHUNK));
   }
 
   for (const fr of failedResults) {

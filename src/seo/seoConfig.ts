@@ -65,7 +65,6 @@ export const seoConfig: Record<string, SeoMeta> = {
     ogDescription: "Learn about PayByCard's refund and cancellation policy, including refund eligibility, applicable charges, processing timelines and transaction cancellation conditions.",
     canonical: 'https://paybycard.in/refund-policy',
   },
-  ,
   '/offers': {
     title: 'Promotions & Offers | PayByCard',
     description: "Join PayByCard, complete KYC and earn discount/vouchers under promotional offers.",

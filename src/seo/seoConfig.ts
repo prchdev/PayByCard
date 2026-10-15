@@ -65,6 +65,15 @@ export const seoConfig: Record<string, SeoMeta> = {
     ogDescription: "Learn about PayByCard's refund and cancellation policy, including refund eligibility, applicable charges, processing timelines and transaction cancellation conditions.",
     canonical: 'https://paybycard.in/refund-policy',
   },
+  ,
+  '/refund-policy': {
+    title: 'Refund & Cancellation Policy | PayByCard',
+    description: "Learn about PayByCard's refund and cancellation policy, including refund eligibility, applicable charges, processing timelines and transaction cancellation conditions.",
+    keywords: 'PayByCard refund policy, PayByCard cancellation policy, PayByCard refund, PayByCard payment refund, credit card payment refund',
+    ogTitle: 'Refund & Cancellation Policy | PayByCard',
+    ogDescription: "Learn about PayByCard's refund and cancellation policy, including refund eligibility, applicable charges, processing timelines and transaction cancellation conditions.",
+    canonical: 'https://paybycard.in/refund-policy',
+  }
   '/contact': {
     title: 'Contact PayByCard – Customer Support & Assistance',
     description: 'Contact PayByCard for customer support, payment assistance, transaction queries, refunds, account issues and other service-related enquiries.',

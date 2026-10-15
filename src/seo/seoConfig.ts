@@ -72,7 +72,7 @@ export const seoConfig: Record<string, SeoMeta> = {
     ogTitle: 'Promotions & Offers | PayByCard',
     ogDescription: "Join PayByCard, complete KYC and earn discount/vouchers under promotional offers.",
     canonical: 'https://paybycard.in/refund-policy',
-  }
+  },
   '/contact': {
     title: 'Contact PayByCard – Customer Support & Assistance',
     description: 'Contact PayByCard for customer support, payment assistance, transaction queries, refunds, account issues and other service-related enquiries.',

@@ -276,7 +276,7 @@ Deno.serve(async (req: Request) => {
             campaign_id: campaign.id,
             user_id: t.user_id,
             pushed_at: nowIso,
-            status: "sent",
+            status: "delivered",
             error_message: null,
           };
         });
@@ -287,7 +287,7 @@ Deno.serve(async (req: Request) => {
         await supabase.from("mobile_notification_logs").insert(logRows);
 
         // Create in-app notification rows for tokens that were actually sent
-        const successfulTokens = batch.filter((_: any, idx: number) => logRows[idx].status === "sent");
+        const successfulTokens = batch.filter((_: any, idx: number) => logRows[idx].status === "delivered");
         if (successfulTokens.length > 0) {
           const notifRows = successfulTokens.map((t: any) => ({
             user_id: t.user_id,

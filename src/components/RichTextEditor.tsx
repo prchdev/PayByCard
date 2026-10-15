@@ -18,6 +18,10 @@ import {
   Undo2,
   Redo2,
   Unlink,
+  X,
+  Upload,
+  Loader2,
+  Pencil,
 } from 'lucide-react';
 
 interface RichTextEditorProps {
@@ -35,9 +39,15 @@ const FONT_SIZES = [
   { label: '32px', value: '7' },
 ];
 
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+
 export default function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
+  const [linkModal, setLinkModal] = useState<{ url: string; text: string; isNew: boolean } | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const savedRangeRef = useRef<Range | null>(null);
 
   useEffect(() => {
     if (editorRef.current && value !== editorRef.current.innerHTML) {
@@ -45,9 +55,26 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     }
   }, [value]);
 
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  };
+
+  const restoreSelection = () => {
+    if (savedRangeRef.current && editorRef.current) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedRangeRef.current);
+      }
+    }
+  };
+
   const exec = (command: string, val?: string) => {
-    document.execCommand(command, false, val);
     editorRef.current?.focus();
+    document.execCommand(command, false, val);
     updateActiveFormats();
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML);
@@ -75,13 +102,79 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     updateActiveFormats();
   };
 
-  const handleLink = () => {
-    const selection = window.getSelection();
-    const selectedText = selection?.toString() || '';
-    const url = window.prompt('Enter URL (https://...):', 'https://');
-    if (url) {
-      exec('createLink', url);
-      if (selectedText) {
+  // --- Link handling ---
+
+  const getSelectedLink = (): HTMLAnchorElement | null => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    let node: Node | null = sel.anchorNode;
+    while (node) {
+      if (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).tagName === 'A') {
+        return node as HTMLAnchorElement;
+      }
+      node = node.parentNode;
+    }
+    return null;
+  };
+
+  const openLinkModal = () => {
+    saveSelection();
+    const sel = window.getSelection();
+    const selectedText = sel?.toString() || '';
+    const existingLink = getSelectedLink();
+
+    if (existingLink) {
+      setLinkModal({
+        url: existingLink.getAttribute('href') || 'https://',
+        text: existingLink.textContent || selectedText,
+        isNew: false,
+      });
+    } else {
+      setLinkModal({
+        url: 'https://',
+        text: selectedText,
+        isNew: true,
+      });
+    }
+  };
+
+  const applyLink = () => {
+    if (!linkModal) return;
+    restoreSelection();
+    editorRef.current?.focus();
+
+    const url = linkModal.url.trim();
+    if (!url) {
+      setLinkModal(null);
+      return;
+    }
+
+    const sel = window.getSelection();
+    const existingLink = getSelectedLink();
+
+    if (existingLink) {
+      existingLink.setAttribute('href', url);
+      existingLink.setAttribute('target', '_blank');
+      existingLink.setAttribute('rel', 'noopener noreferrer');
+      if (linkModal.text && linkModal.text !== existingLink.textContent) {
+        existingLink.textContent = linkModal.text;
+      }
+    } else if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      if (linkModal.text && linkModal.text !== sel.toString()) {
+        range.deleteContents();
+        const anchor = document.createElement('a');
+        anchor.setAttribute('href', url);
+        anchor.setAttribute('target', '_blank');
+        anchor.setAttribute('rel', 'noopener noreferrer');
+        anchor.textContent = linkModal.text;
+        range.insertNode(anchor);
+        range.setStartAfter(anchor);
+        range.setEndAfter(anchor);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        exec('createLink', url);
         const links = editorRef.current?.querySelectorAll('a');
         links?.forEach((link) => {
           if (link.getAttribute('href') === url) {
@@ -91,17 +184,44 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         });
       }
     }
+
+    if (editorRef.current) {
+      onChange(editorRef.current.innerHTML);
+    }
+    setLinkModal(null);
   };
 
   const handleUnlink = () => {
     exec('unlink');
   };
 
-  const handleImage = () => {
-    const url = window.prompt('Enter image URL (https://...):', 'https://');
-    if (url) {
-      exec('insertImage', url);
+  // --- Image handling (base64 upload + URL) ---
+
+  const openImagePicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    if (!file.type.startsWith('image/')) {
+      return;
     }
+    if (file.size > MAX_IMAGE_SIZE) {
+      return;
+    }
+
+    setImageUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      exec('insertImage', dataUrl);
+      setImageUploading(false);
+    };
+    reader.onerror = () => setImageUploading(false);
+    reader.readAsDataURL(file);
   };
 
   const handleFontSize = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -120,6 +240,14 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
 
   return (
     <div className="border-2 border-gray-300 rounded-xl overflow-hidden focus-within:border-[#8c76f0] focus-within:ring-4 focus-within:ring-purple-50 transition-all">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageFile}
+        className="hidden"
+      />
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-1 p-2 border-b border-gray-200 bg-gray-50">
         <button type="button" onClick={() => exec('undo')} className={btnClass(false)} title="Undo">
@@ -196,14 +324,20 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
 
         <div className="w-px h-6 bg-gray-300 mx-1" />
 
-        <button type="button" onClick={handleLink} className={btnClass(false)} title="Insert Link">
+        <button type="button" onClick={openLinkModal} className={btnClass(false)} title="Insert / Edit Link">
           <LinkIcon className="w-4 h-4" />
         </button>
         <button type="button" onClick={handleUnlink} className={btnClass(false)} title="Remove Link">
           <Unlink className="w-4 h-4" />
         </button>
-        <button type="button" onClick={handleImage} className={btnClass(false)} title="Insert Image">
-          <ImageIcon className="w-4 h-4" />
+        <button
+          type="button"
+          onClick={openImagePicker}
+          disabled={imageUploading}
+          className={btnClass(false) + ' disabled:opacity-50'}
+          title="Upload Image (embedded as base64)"
+        >
+          {imageUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
         </button>
 
         <div className="w-px h-6 bg-gray-300 mx-1" />
@@ -225,6 +359,73 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         data-placeholder={placeholder}
         suppressContentEditableWarning
       />
+
+      {/* Link modal */}
+      {linkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setLinkModal(null)}
+          />
+          <div className="relative bg-white rounded-2xl border-2 border-gray-300 max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
+              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                {linkModal.isNew ? <LinkIcon className="w-5 h-5 text-blue-600" /> : <Pencil className="w-5 h-5 text-blue-600" />}
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {linkModal.isNew ? 'Insert Link' : 'Edit Link'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setLinkModal(null)}
+                className="ml-auto p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Link Text</label>
+                <input
+                  type="text"
+                  value={linkModal.text}
+                  onChange={(e) => setLinkModal({ ...linkModal, text: e.target.value })}
+                  placeholder="Text to display"
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">URL</label>
+                <input
+                  type="url"
+                  value={linkModal.url}
+                  onChange={(e) => setLinkModal({ ...linkModal, url: e.target.value })}
+                  placeholder="https://example.com"
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => setLinkModal(null)}
+                className="px-5 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={applyLink}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors"
+              >
+                <LinkIcon className="w-4 h-4" />
+                {linkModal.isNew ? 'Insert' : 'Update'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

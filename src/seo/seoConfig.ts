@@ -67,7 +67,7 @@ export const seoConfig: Record<string, SeoMeta> = {
   },
   ,
   '/offers': {
-    title: 'Refund & Cancellation Policy | PayByCard',
+    title: 'Promotions & Offers | PayByCard',
     description: "Learn about PayByCard's refund and cancellation policy, including refund eligibility, applicable charges, processing timelines and transaction cancellation conditions.",
     keywords: 'PayByCard refund policy, PayByCard cancellation policy, PayByCard refund, PayByCard payment refund, credit card payment refund',
     ogTitle: 'Refund & Cancellation Policy | PayByCard',

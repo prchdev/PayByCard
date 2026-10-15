@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   Bell, Plus, Save, X, AlertCircle, CheckCircle, Loader2,
   Pencil, Calendar, Clock, Repeat, Image as ImageIcon, SquarePen,
-  Ban, Send,
+  Ban, Send, Zap,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -111,6 +111,9 @@ export default function AdminNotifications() {
   const [searchTerm, setSearchTerm] = useState('');
   const [endingId, setEndingId] = useState<string | null>(null);
   const [confirmEnd, setConfirmEnd] = useState<NotificationCampaign | null>(null);
+  const [sendingPush, setSendingPush] = useState<string | null>(null);
+  const [confirmSendPush, setConfirmSendPush] = useState<NotificationCampaign | null>(null);
+  const [resetPushLogs, setResetPushLogs] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -294,6 +297,45 @@ export default function AdminNotifications() {
       });
     } finally {
       setEndingId(null);
+    }
+  };
+
+  const handleSendPushNow = async () => {
+    if (!confirmSendPush) return;
+    setSendingPush(confirmSendPush.id);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-send-push-now`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            adminId,
+            campaignId: confirmSendPush.id,
+            resetLogs: resetPushLogs,
+          }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to send push notifications');
+
+      setMessage({
+        type: 'success',
+        text: `Push sent: ${data.sent} delivered, ${data.failed} failed out of ${data.totalEligible} eligible`,
+      });
+      setConfirmSendPush(null);
+      setResetPushLogs(false);
+      fetchCampaigns();
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Failed to send push notifications',
+      });
+    } finally {
+      setSendingPush(null);
     }
   };
 
@@ -868,6 +910,20 @@ export default function AdminNotifications() {
                                 </button>
                                 {c.status === 'active' && (
                                   <button
+                                    onClick={() => setConfirmSendPush(c)}
+                                    disabled={sendingPush === c.id}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                                  >
+                                    {sendingPush === c.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Zap className="w-4 h-4" />
+                                    )}
+                                    Send Now
+                                  </button>
+                                )}
+                                {c.status === 'active' && (
+                                  <button
                                     onClick={() => setConfirmEnd(c)}
                                     disabled={endingId === c.id}
                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
@@ -898,6 +954,70 @@ export default function AdminNotifications() {
               <p className="text-xs text-gray-500">
                 {campaigns.filter((c) => c.status === 'active').length} active
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Send push now confirmation modal */}
+        {confirmSendPush && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => { setConfirmSendPush(null); setResetPushLogs(false); }}
+            />
+            <div className="relative bg-white rounded-2xl border-2 border-gray-300 max-w-md w-full p-6 shadow-2xl">
+              <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
+                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Send Push Now?</h3>
+              </div>
+              <div className="py-4 space-y-4">
+                <p className="text-sm text-gray-600">
+                  This will immediately send push notifications for{' '}
+                  <span className="font-semibold text-gray-900">"{confirmSendPush.campaign_name}"</span>{' '}
+                  to all users with active push tokens.
+                </p>
+                {confirmSendPush.frequency === 'once' && (
+                  <label className="flex items-start gap-3 p-3 border-2 border-gray-200 rounded-xl hover:border-blue-300 transition-colors cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={resetPushLogs}
+                      onChange={(e) => setResetPushLogs(e.target.checked)}
+                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Reset and resend to all</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Clear previous delivery records so all users receive this notification again, even if they already got it
+                      </p>
+                    </div>
+                  </label>
+                )}
+                <p className="text-xs text-gray-400">
+                  The scheduled cron job will also continue sending during the campaign's push time window.
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => { setConfirmSendPush(null); setResetPushLogs(false); }}
+                  className="px-5 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendPushNow}
+                  disabled={sendingPush === confirmSendPush.id}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+                >
+                  {sendingPush === confirmSendPush.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Zap className="w-4 h-4" />
+                  )}
+                  Send Now
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -78,8 +78,8 @@ function getStatusBadge(offer: Offer): { label: string; className: string } {
   }
   if (today > end) {
     return {
-      label: 'Expired',
-      className: 'bg-gray-50 text-gray-500 border-gray-200',
+      label: 'Ended',
+      className: 'bg-gray-100 text-gray-500 border-gray-300',
     };
   }
   return {

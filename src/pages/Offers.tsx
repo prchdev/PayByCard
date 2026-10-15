@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Tag, Calendar, ArrowLeft, Loader2, Sparkles } from 'lucide-react';
+import { Tag, Calendar, ArrowLeft, Loader2, Sparkles, CheckCircle2, Clock4 } from 'lucide-react';
 import { sanitizeHtml } from '../utils/htmlSanitize';
 import { useSeoMeta } from '../seo/useSeoMeta';
 
@@ -55,6 +55,16 @@ export default function Offers() {
       year: 'numeric',
     });
 
+  const getOfferStatus = (offer: Offer): { label: string; className: string; icon: typeof CheckCircle2 } => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(offer.end_date);
+    if (today > end) {
+      return { label: 'Ended', className: 'bg-white/90 text-gray-600 border-gray-200', icon: Clock4 };
+    }
+    return { label: 'Active', className: 'bg-white/90 text-green-700 border-green-200', icon: CheckCircle2 };
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center pt-20">
@@ -77,11 +87,23 @@ export default function Offers() {
 
           <article className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-[#8c76f0] to-purple-600 px-8 py-6">
-              <div className="flex items-center gap-2 text-white/80 text-sm mb-2">
-                <Calendar className="w-4 h-4" />
-                <span>
-                  {formatDate(selectedOffer.start_date)} — {formatDate(selectedOffer.end_date)}
-                </span>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-white/80 text-sm">
+                  <Calendar className="w-4 h-4" />
+                  <span>
+                    {formatDate(selectedOffer.start_date)} — {formatDate(selectedOffer.end_date)}
+                  </span>
+                </div>
+                {(() => {
+                  const status = getOfferStatus(selectedOffer);
+                  const StatusIcon = status.icon;
+                  return (
+                    <span className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full border ${status.className}`}>
+                      <StatusIcon className="w-3.5 h-3.5" />
+                      {status.label}
+                    </span>
+                  );
+                })()}
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-white">{selectedOffer.offer_name}</h1>
             </div>
@@ -149,13 +171,24 @@ export default function Offers() {
               >
                 <div className="relative bg-gradient-to-br from-[#8c76f0] to-purple-600 px-6 py-5">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-500" />
+                  {(() => {
+                    const status = getOfferStatus(offer);
+                    const StatusIcon = status.icon;
+                    return (
+                      <div className="absolute top-3 right-3 z-10">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border ${status.className}`}>
+                          <StatusIcon className="w-3.5 h-3.5" />
+                          {status.label}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <div className="relative flex items-start justify-between">
-                    <div className="flex-1">
+                    <div className="flex-1 pr-20">
                       <h3 className="text-lg font-bold text-white leading-snug">
                         {offer.offer_name}
                       </h3>
                     </div>
-                    <Tag className="w-5 h-5 text-white/70 flex-shrink-0 mt-0.5" />
                   </div>
                 </div>
 

@@ -313,3 +313,12 @@ verify_jwt = false
 
 [functions.update-user-permissions]
 verify_jwt = false
+
+[functions.admin-get-offers]
+verify_jwt = false
+
+[functions.admin-save-offer]
+verify_jwt = false
+
+[functions.get-active-offers]
+verify_jwt = false

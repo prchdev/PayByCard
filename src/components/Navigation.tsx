@@ -16,6 +16,7 @@ export default function Navigation({ currentPage, onNavigate }: NavigationProps)
     { name: 'About Us', page: 'about' },
     { name: 'Terms of Service', page: 'terms' },
     { name: 'Privacy Policy', page: 'privacy' },
+    { name: 'Offers', page: 'offers' },
     { name: 'Contact', page: 'contact' },
   ];
 

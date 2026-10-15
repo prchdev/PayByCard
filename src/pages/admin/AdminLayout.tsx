@@ -99,6 +99,7 @@ const MENU_SECTIONS: MenuSection[] = [
       { key: 'bulk-email', name: 'Bulk Email', path: '/admin/bulk-email', icon: 'Mail' },
       { key: 'bulk-sms', name: 'Bulk SMS', path: '/admin/bulk-sms', icon: 'MessageSquare' },
       { key: 'mobile-notifications', name: 'Mobile Notifications', path: '/admin/mobile-notifications', icon: 'Smartphone' },
+      { key: 'offers', name: 'Offers', path: '/admin/offers', icon: 'Tag' },
     ],
   },
   {

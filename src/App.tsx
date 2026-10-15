@@ -66,6 +66,8 @@ import VendorManagement from './pages/admin/VendorManagement';
 import Invoicing from './pages/admin/Invoicing';
 import DatabaseBackup from './pages/admin/DatabaseBackup';
 import PaymentGatewaySettlement from './pages/admin/PaymentGatewaySettlement';
+import AdminOffers from './pages/admin/AdminOffers';
+import Offers from './pages/Offers';
 function MainLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -95,6 +97,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     if (path === '/refund-policy') return 'refund';
     if (path === '/fraud-reporting') return 'fraud';
     if (path === '/faq') return 'faq';
+    if (path === '/offers') return 'offers';
     return '';
   };
 
@@ -128,6 +131,7 @@ function App() {
           <Route path="/refund-policy" element={<MainLayout><RefundPolicy /></MainLayout>} />
           <Route path="/contact" element={<MainLayout><Contact /></MainLayout>} />
           <Route path="/fraud-reporting" element={<MainLayout><FraudReporting /></MainLayout>} />
+          <Route path="/offers" element={<MainLayout><Offers /></MainLayout>} />
           <Route path="/register" element={<MainLayout><Register /></MainLayout>} />
           <Route path="/login" element={<MainLayout><Login /></MainLayout>} />
           <Route path="/verify-otp" element={<MainLayout><VerifyOTP /></MainLayout>} />
@@ -171,6 +175,7 @@ function App() {
           <Route path="/admin/invoicing" element={<Invoicing />} />
           <Route path="/admin/database-backup" element={<DatabaseBackup />} />
           <Route path="/admin/gateway-settlement" element={<PaymentGatewaySettlement />} />
+          <Route path="/admin/offers" element={<AdminOffers />} />
           <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

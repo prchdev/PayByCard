@@ -457,12 +457,13 @@ async function sendKycRequestEmails(supabase: any, payment: any): Promise<boolea
     // Fetch sender name from users table
     const { data: senderUser } = await supabase
       .from("users")
-      .select("first_name, last_name, middle_name")
+      .select("first_name, last_name, middle_name, email")
       .eq("id", payment.user_id)
       .maybeSingle();
     const senderName = senderUser
       ? [senderUser.first_name, senderUser.middle_name, senderUser.last_name].filter(Boolean).join(" ").trim()
       : "Sender";
+    const senderEmail = senderUser?.email || undefined;
 
     const categoryName = payment.category_details?.category_name ||
       payment.selected_payment_option?.card_type || "Payment";
@@ -541,7 +542,7 @@ async function sendKycRequestEmails(supabase: any, payment: any): Promise<boolea
         "Complete KYC Verification",
         onboardingLink,
         undefined, undefined, undefined,
-        senderUser?.email,
+        senderEmail,
       );
     }
 

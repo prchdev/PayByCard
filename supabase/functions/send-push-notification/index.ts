@@ -168,13 +168,10 @@ Deno.serve(async (req: Request) => {
 
       if (tokErr || !tokens || tokens.length === 0) continue;
 
-      // Deduplicate: keep only the newest active token per user (one device = one notification)
-      const seenUserIds = new Set<string>();
+      // Send to all active tokens (users may have multiple devices)
       const eligibleTokens: any[] = [];
       for (const t of tokens) {
         if (alreadyPushedUserIds.has(t.user_id)) continue;
-        if (seenUserIds.has(t.user_id)) continue;
-        seenUserIds.add(t.user_id);
         eligibleTokens.push(t);
       }
 

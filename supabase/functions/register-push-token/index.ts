@@ -64,14 +64,8 @@ Deno.serve(withUserSession(async (req: Request) => {
       );
     }
 
-    // Deactivate all other active tokens for this user before registering the new one.
-    // A single device should only have one active push token at a time.
-    await supabase
-      .from("mobile_push_tokens")
-      .update({ is_active: false, updated_at: new Date().toISOString() })
-      .eq("user_id", user_id)
-      .eq("is_active", true)
-      .neq("push_token", push_token.trim());
+    // Reactivate this token if it was previously deactivated (e.g. app reinstall or token refresh).
+    // Do NOT deactivate other tokens for the same user — they may belong to additional devices.
 
     // Upsert: if token already exists for this user, update; otherwise insert
     const { error } = await supabase

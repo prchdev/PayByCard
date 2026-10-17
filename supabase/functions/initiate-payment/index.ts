@@ -45,6 +45,8 @@ Deno.serve(withUserSession(async (req: Request) => {
       beneficiaryDetails,
       categoryDetails,
       paymentOptionDetails,
+      couponId,
+      couponCode,
     } = await req.json();
 
     // ── Authenticate: verify userId exists in public.users ───────────────────
@@ -106,6 +108,66 @@ Deno.serve(withUserSession(async (req: Request) => {
     const parsedGst = parseFloat(chargesData.gst || 0);
     const parsedDiscount = parseFloat(chargesData.discount || 0);
     const parsedTotal = parsedAmount + parsedCharges + parsedGst;
+
+    // ── Coupon validation and discount (server-side) ───────────────────────────
+    let couponDiscountAmount = 0;
+    let validatedCouponId: string | null = null;
+    let validatedCouponCode: string | null = null;
+
+    if (couponCode && typeof couponCode === "string" && couponCode.trim()) {
+      const couponRes = await fetch(`${supabaseUrl}/functions/v1/validate-coupon`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId,
+          couponCode: couponCode.trim(),
+          totalAmount: parsedTotal,
+        }),
+      });
+      if (couponRes.ok) {
+        const couponData = await couponRes.json();
+        if (couponData.valid) {
+          couponDiscountAmount = parseFloat(couponData.discountAmount || 0);
+          validatedCouponId = couponData.couponId;
+          validatedCouponCode = couponData.couponCode;
+        }
+      }
+    } else if (couponId) {
+      // If only couponId is passed (no code), look it up
+      const { data: couponRow } = await supabase
+        .from("coupons")
+        .select("id, coupon_code, is_active, is_deleted, start_date, end_date, minimum_total, discount_type, discount_value, maximum_discount_value, per_account_limit, applicable_to, total_usage_limit")
+        .eq("id", couponId)
+        .eq("is_deleted", false)
+        .maybeSingle();
+      if (couponRow && couponRow.is_active) {
+        const couponRes = await fetch(`${supabaseUrl}/functions/v1/validate-coupon`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId,
+            couponCode: couponRow.coupon_code,
+            totalAmount: parsedTotal,
+          }),
+        });
+        if (couponRes.ok) {
+          const couponData = await couponRes.json();
+          if (couponData.valid) {
+            couponDiscountAmount = parseFloat(couponData.discountAmount || 0);
+            validatedCouponId = couponData.couponId;
+            validatedCouponCode = couponData.couponCode;
+          }
+        }
+      }
+    }
+
+    const finalTotal = Math.max(0, parsedTotal - couponDiscountAmount);
 
     // ── Duplicate payment guard ───────────────────────────────────────────────
     // Detects double-submit within 30 s: same user + beneficiary + amount.
@@ -234,7 +296,9 @@ Deno.serve(withUserSession(async (req: Request) => {
       charges: parsedCharges,
       gst: parsedGst,
       discount: parsedDiscount,
-      total_amount: parsedTotal,
+      coupon_code: validatedCouponCode,
+      coupon_discount_amount: couponDiscountAmount,
+      total_amount: finalTotal,
       card_type: cardType,
       gateway_name: gatewaySettings.gateway_name,
       environment: optionEnvironment,
@@ -264,7 +328,10 @@ Deno.serve(withUserSession(async (req: Request) => {
         charges: parsedCharges,
         gst: parsedGst,
         discount: parsedDiscount,
-        total_amount: parsedTotal,
+        total_amount: finalTotal,
+        coupon_id: validatedCouponId,
+        coupon_code: validatedCouponCode,
+        coupon_discount_amount: couponDiscountAmount,
         payment_reference: paymentReference,
         bill_file_url: billFileUrl || null,
         invoice_status: billFileUrl ? "pending_verification" : "not_required",

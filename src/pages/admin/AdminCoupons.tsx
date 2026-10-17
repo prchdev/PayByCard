@@ -28,6 +28,7 @@ interface Coupon {
   minimum_total: number;
   discount_type: 'flat' | 'percentage';
   discount_value: number;
+  maximum_discount_value: number | null;
   per_account_limit: number;
   applicable_to: 'first_transaction' | 'non_first_transaction' | 'all';
   total_usage_limit: number | null;
@@ -46,6 +47,7 @@ interface CouponFormData {
   minimum_total: string;
   discount_type: 'flat' | 'percentage';
   discount_value: string;
+  maximum_discount_value: string;
   per_account_limit: string;
   applicable_to: 'first_transaction' | 'non_first_transaction' | 'all';
   total_usage_limit: string;
@@ -59,6 +61,7 @@ const EMPTY_FORM: CouponFormData = {
   minimum_total: '',
   discount_type: 'flat',
   discount_value: '',
+  maximum_discount_value: '',
   per_account_limit: '1',
   applicable_to: 'all',
   total_usage_limit: '',
@@ -201,6 +204,7 @@ export default function AdminCoupons() {
             per_account_limit: Number(formData.per_account_limit) || 1,
             applicable_to: formData.applicable_to,
             total_usage_limit: formData.total_usage_limit ? Number(formData.total_usage_limit) : null,
+            maximum_discount_value: formData.maximum_discount_value ? Number(formData.maximum_discount_value) : null,
             start_date: formData.start_date,
             end_date: formData.end_date,
             is_active: formData.is_active,
@@ -234,6 +238,7 @@ export default function AdminCoupons() {
       minimum_total: String(coupon.minimum_total ?? ''),
       discount_type: coupon.discount_type,
       discount_value: String(coupon.discount_value),
+      maximum_discount_value: coupon.maximum_discount_value != null ? String(coupon.maximum_discount_value) : '',
       per_account_limit: String(coupon.per_account_limit),
       applicable_to: coupon.applicable_to,
       total_usage_limit: coupon.total_usage_limit != null ? String(coupon.total_usage_limit) : '',
@@ -503,6 +508,33 @@ export default function AdminCoupons() {
               </div>
 
               <div>
+                <label htmlFor="maximum_discount_value" className="block text-sm font-medium text-gray-700 mb-2">
+                  Maximum Discount Value <span className="text-gray-400 text-xs">(for percentage type)</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <IndianRupee className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="number"
+                    id="maximum_discount_value"
+                    value={formData.maximum_discount_value}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, maximum_discount_value: e.target.value }))
+                    }
+                    className="w-full pl-12 pr-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
+                    placeholder="No cap"
+                    min="0"
+                    step="0.01"
+                    disabled={formData.discount_type !== 'percentage'}
+                  />
+                </div>
+                {formData.discount_type !== 'percentage' && (
+                  <p className="text-xs text-gray-400 mt-1">Only applicable for percentage discounts</p>
+                )}
+              </div>
+
+              <div>
                 <label htmlFor="per_account_limit" className="block text-sm font-medium text-gray-700 mb-2">
                   Per Account Limit <span className="text-gray-400 text-xs">(no. of times)</span>
                 </label>
@@ -672,6 +704,7 @@ export default function AdminCoupons() {
                   <SortableTh label="Code" sortKey="code" sortConfig={sortConfig} onSort={handleSort} className="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" />
                   <SortableTh label="Type" sortKey="type" sortConfig={sortConfig} onSort={handleSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
                   <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Min Total</th>
+                  <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Max Discount</th>
                   <th className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Applicable To</th>
                   <SortableTh label="Usage" sortKey="usage" sortConfig={sortConfig} onSort={handleSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
                   <SortableTh label="Start Date" sortKey="start" sortConfig={sortConfig} onSort={handleSort} className="text-center px-4 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider" align="center" />
@@ -683,7 +716,7 @@ export default function AdminCoupons() {
               <tbody className="divide-y divide-gray-100">
                 {filteredCoupons.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center">
+                    <td colSpan={10} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center">
                         <Ticket className="w-10 h-10 text-gray-300 mb-3" />
                         <p className="text-gray-500 font-medium">No coupons found</p>
@@ -707,7 +740,7 @@ export default function AdminCoupons() {
                           </p>
                           <p className="text-xs text-gray-400 mt-0.5">
                             {coupon.discount_type === 'percentage'
-                              ? `${coupon.discount_value}% off`
+                              ? `${coupon.discount_value}% off${coupon.maximum_discount_value != null ? ` (max ₹${coupon.maximum_discount_value})` : ''}`
                               : `Rs. ${coupon.discount_value} off`}
                           </p>
                         </td>
@@ -727,6 +760,11 @@ export default function AdminCoupons() {
                         <td className="px-4 py-4 text-center">
                           <span className="text-sm text-gray-600">
                             {coupon.minimum_total > 0 ? `Rs. ${coupon.minimum_total}` : 'None'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <span className="text-sm text-gray-600">
+                            {coupon.maximum_discount_value != null ? `Rs. ${coupon.maximum_discount_value}` : '--'}
                           </span>
                         </td>
                         <td className="px-4 py-4 text-center">

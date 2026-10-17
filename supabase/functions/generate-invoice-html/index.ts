@@ -108,6 +108,8 @@ function buildHtml(
   const baseAmt = parseFloat(String(payment.amount || 0));
   const charges = parseFloat(String(payment.charges || 0));
   const gst = parseFloat(String(payment.gst || 0));
+  const couponDiscount = parseFloat(String(payment.coupon_discount_amount || 0));
+  const couponCode = payment.coupon_code || null;
   const cgst = gst / 2;
   const sgst = gst / 2;
   const igst = gst;
@@ -343,6 +345,14 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
           <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#fff;">TOTAL CHARGED</td>
           <td style="padding:10px 8px;text-align:right;font-size:16px;font-weight:800;color:#fff;">&#8377;${fmt(totalCharged)}</td>
         </tr>
+        ${couponCode && couponDiscount > 0 ? `<tr style="background:#ecfdf5;">
+          <td style="padding:8px 8px;font-size:12px;font-weight:700;color:#065f46;border-top:1px solid #a7f3d0;">Coupon Discount (${escHtml(couponCode)})</td>
+          <td style="padding:8px 8px;text-align:right;font-size:12px;font-weight:700;color:#065f46;border-top:1px solid #a7f3d0;">&#8377;${fmt(couponDiscount)}</td>
+        </tr>
+        <tr style="background:#0f172a;">
+          <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#fff;">NET AMOUNT PAID</td>
+          <td style="padding:10px 8px;text-align:right;font-size:16px;font-weight:800;color:#fff;">&#8377;${fmt(totalCharged - couponDiscount)}</td>
+        </tr>` : ""}
         ${isRefund ? `<tr style="background:#fff7ed;">
           <td style="padding:8px 8px;font-size:12px;font-weight:700;color:#9a3412;border-top:1px solid #fed7aa;">Refund Amount</td>
           <td style="padding:8px 8px;text-align:right;font-size:12px;font-weight:700;color:#9a3412;border-top:1px solid #fed7aa;">&#8377;${fmt(baseAmt)}</td>

@@ -697,6 +697,16 @@ serveUser(async (req: Request) => {
         metadata: gatewayResponse || {},
       });
 
+      // Record coupon usage when payment is successful
+      if (isGatewaySuccess && fullPayment?.coupon_id && (resolvedStatus === "completed" || resolvedStatus === "settlement_pending" || resolvedStatus === "kyc_pending")) {
+        await supabase.from("coupon_usages").insert({
+          coupon_id: fullPayment.coupon_id,
+          user_id: userId,
+          payment_id: paymentId,
+          discount_amount: parseFloat(fullPayment.coupon_discount_amount || 0),
+        });
+      }
+
       if (isGatewaySuccess && fullPayment) {
         const isVerifiedMerchant = fullPayment.beneficiary_details?.is_verified_merchant === true;
         const kycRequired = fullPayment.category_details?.receiver_kyc_required === true ||

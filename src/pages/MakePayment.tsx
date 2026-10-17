@@ -11,7 +11,8 @@ import {
   X,
   AlertCircle,
   CreditCard,
-  Loader2
+  Loader2,
+  Ticket,
 } from 'lucide-react';
 import DashboardNavigation from '../components/DashboardNavigation';
 import DashboardSidebar from '../components/DashboardSidebar';
@@ -279,6 +280,15 @@ export default function MakePayment() {
     paymentId?: string;
     gatewayResponse?: any;
   } | null>(null);
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    couponId: string;
+    couponCode: string;
+    discountAmount: number;
+    newTotal: number;
+  } | null>(null);
+  const [couponStatus, setCouponStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
 
 
   useEffect(() => {
@@ -881,6 +891,63 @@ export default function MakePayment() {
     }
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) {
+      setCouponStatus({ type: 'error', message: 'Please enter a coupon code' });
+      return;
+    }
+    if (!chargesDetails?.totalAmount) {
+      setCouponStatus({ type: 'error', message: 'Calculate charges first' });
+      return;
+    }
+
+    setValidatingCoupon(true);
+    setCouponStatus({ type: null, message: '' });
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validate-coupon`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            couponCode: couponInput.trim(),
+            totalAmount: parseFloat(chargesDetails.totalAmount),
+          }),
+        }
+      );
+      const data = await response.json();
+
+      if (data.valid) {
+        setAppliedCoupon({
+          couponId: data.couponId,
+          couponCode: data.couponCode,
+          discountAmount: data.discountAmount,
+          newTotal: data.newTotal,
+        });
+        setCouponStatus({ type: 'success', message: `Coupon applied! You save ₹${data.discountAmount.toFixed(2)}` });
+      } else {
+        setAppliedCoupon(null);
+        setCouponStatus({ type: 'error', message: data.error || 'Invalid coupon' });
+      }
+    } catch {
+      setCouponStatus({ type: 'error', message: 'Failed to validate coupon. Please try again.' });
+      setAppliedCoupon(null);
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponInput('');
+    setAppliedCoupon(null);
+    setCouponStatus({ type: null, message: '' });
+  };
+
   const handleMakePayment = async () => {
     setProcessing(true);
     setMessage(null);
@@ -975,6 +1042,8 @@ export default function MakePayment() {
             payoutMode: selectedGateway?.payout_mode || 'payment_split',
             receiverKycRequired: selectedCategory?.receiver_kyc_required || false,
             refundAfterHours: selectedCategory?.refund_after_hours || 0,
+            couponId: appliedCoupon?.couponId || null,
+            couponCode: appliedCoupon?.couponCode || null,
           }),
         }
       );
@@ -2229,6 +2298,79 @@ export default function MakePayment() {
                         </div>
                       </div>
 
+                      {/* Apply Coupon */}
+                      <div className="mt-4">
+                        <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          <Ticket className="w-4 h-4 text-[#8c76f0]" />
+                          Apply Coupon Code
+                        </h4>
+                        {!appliedCoupon ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={couponInput}
+                              onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                              placeholder="Enter coupon code"
+                              className="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all uppercase tracking-wider font-mono text-sm"
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyCoupon(); } }}
+                            />
+                            <button
+                              onClick={handleApplyCoupon}
+                              disabled={validatingCoupon}
+                              className="flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                            >
+                              {validatingCoupon ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                'Apply'
+                              )}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between bg-green-50 border-2 border-green-300 rounded-xl p-3">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="w-5 h-5 text-green-600" />
+                              <div>
+                                <p className="text-sm font-semibold text-green-900 font-mono">{appliedCoupon.couponCode}</p>
+                                <p className="text-xs text-green-700">You save ₹{appliedCoupon.discountAmount.toFixed(2)}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={handleRemoveCoupon}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                        {couponStatus.type === 'error' && (
+                          <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            {couponStatus.message}
+                          </p>
+                        )}
+                        {couponStatus.type === 'success' && !appliedCoupon && (
+                          <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            {couponStatus.message}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Coupon Discount + Updated Total */}
+                      {appliedCoupon && (
+                        <div className="mt-3 space-y-2">
+                          <div className="flex justify-between items-center bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+                            <span className="text-sm font-medium text-green-800">Coupon Discount</span>
+                            <span className="text-sm font-bold text-green-700">-₹{appliedCoupon.discountAmount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between items-center border-t-2 border-[#8c76f0] pt-2">
+                            <span className="text-base font-bold text-gray-900">Total After Discount</span>
+                            <span className="text-xl font-bold text-[#8c76f0]">₹{appliedCoupon.newTotal.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Gateway charges note */}
                     </div>
 
@@ -2410,6 +2552,7 @@ export default function MakePayment() {
                           setBillFile(null);
                           setBillFileUrl('');
                           setChargesDetails(null);
+                          handleRemoveCoupon();
                         }}
                         className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border-2 border-[#8c76f0] text-[#8c76f0] rounded-xl font-medium hover:bg-purple-50 transition-colors"
                       >

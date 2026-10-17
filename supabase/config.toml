@@ -326,6 +326,9 @@ verify_jwt = false
 [functions.admin-save-coupon]
 verify_jwt = false
 
+[functions.validate-coupon]
+verify_jwt = false
+
 [functions.get-active-offers]
 verify_jwt = false
 

@@ -232,6 +232,8 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   const sgst     = gst / 2;
   const igst     = gst;
   const total    = parseFloat(String(d.total_amount || baseAmt));
+  const couponDiscount = parseFloat(String(d.coupon_discount_amount || 0));
+  const couponCode = d.coupon_code || null;
 
   // Determine if payer is in Maharashtra for SGST vs IGST
   const payerStateRaw = d.business_kyc_verified
@@ -278,6 +280,20 @@ async function buildInvoicePdf(d: Record<string, any>): Promise<Uint8Array> {
   T("TOTAL CHARGED", ML + 8, y + 16, 11, bld, WHITE);
   T(totalStr, RX - TW(totalStr, 13, bld) - 8, y + 16, 13, bld, WHITE);
   y += 22;
+
+  if (couponCode && couponDiscount > 0) {
+    const discStr = `Rs. ${fmtAmt(couponDiscount)}`;
+    R(ML, y, CW, 16, rgb(0.929, 0.992, 0.953));
+    T(`Coupon Discount (${trunc(couponCode, 20)})`, ML + 8, y + 12, 9, bld, rgb(0.025, 0.373, 0.275));
+    T(discStr, RX - TW(discStr, 9, bld) - 8, y + 12, 9, bld, rgb(0.025, 0.373, 0.275));
+    y += 16;
+
+    const netStr = `Rs. ${fmtAmt(totalCharged - couponDiscount)}`;
+    R(ML, y, CW, 22, TOT_BG);
+    T("NET AMOUNT PAID", ML + 8, y + 16, 11, bld, WHITE);
+    T(netStr, RX - TW(netStr, 13, bld) - 8, y + 16, 13, bld, WHITE);
+    y += 22;
+  }
 
   if (isRefund) {
     const refStr = `Rs. ${fmtAmt(baseAmt)}`;
@@ -456,6 +472,8 @@ serveUser(async (req: Request) => {
       charges:      payment.charges || 0,
       gst:          payment.gst     || 0,
       total_amount: payment.total_amount || payment.amount,
+      coupon_code:             payment.coupon_code || null,
+      coupon_discount_amount:  payment.coupon_discount_amount || 0,
       // Payout
       payout_status:           payout?.status          || null,
       gateway_ref:             payment.gateway_transaction_id || payment.payment_reference || null,

@@ -18,7 +18,7 @@ serveAdmin(async (req: Request) => {
     const body = await req.json();
     const { adminId, id, coupon_code, minimum_total, discount_type, discount_value,
             per_account_limit, applicable_to, total_usage_limit,
-            start_date, end_date, is_active, action } = body;
+            start_date, end_date, is_active, action, maximum_discount_value } = body;
 
     if (!adminId) {
       return new Response(
@@ -156,6 +156,8 @@ serveAdmin(async (req: Request) => {
     const perAccount = Number(per_account_limit) || 1;
     const totalLimit = total_usage_limit != null ? Number(total_usage_limit) : null;
     const active = is_active !== false;
+    const maxDisc = maximum_discount_value != null && maximum_discount_value !== ''
+      ? Number(maximum_discount_value) : null;
 
     // Check uniqueness of coupon code
     let checkQuery = supabase
@@ -187,6 +189,7 @@ serveAdmin(async (req: Request) => {
           per_account_limit: perAccount,
           applicable_to,
           total_usage_limit: totalLimit,
+          maximum_discount_value: maxDisc,
           start_date,
           end_date,
           is_active: active,
@@ -220,6 +223,7 @@ serveAdmin(async (req: Request) => {
         per_account_limit: perAccount,
         applicable_to,
         total_usage_limit: totalLimit,
+        maximum_discount_value: maxDisc,
         start_date,
         end_date,
         is_active: active,

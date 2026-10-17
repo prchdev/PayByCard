@@ -1085,9 +1085,13 @@ export default function MakePayment() {
       }
     } catch (error) {
       console.error('Error initiating payment:', error);
+      const errMsg = error instanceof Error ? error.message : 'Failed to initiate payment';
+      const displayMsg = errMsg === 'Failed to fetch'
+        ? 'Unable to connect to the payment server. Please check your internet connection and try again.'
+        : errMsg;
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Failed to initiate payment',
+        text: displayMsg,
       });
       setProcessing(false);
     } finally {

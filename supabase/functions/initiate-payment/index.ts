@@ -13,7 +13,7 @@ const MIN_AMOUNT = 1;
 const MAX_STR = 500;
 
 function err(msg: string, status = 400) {
-  return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
+  return new Response(JSON.stringify({ error: msg }), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
@@ -114,36 +114,8 @@ Deno.serve(withUserSession(async (req: Request) => {
     let validatedCouponId: string | null = null;
     let validatedCouponCode: string | null = null;
 
-    if (couponCode && typeof couponCode === "string" && couponCode.trim()) {
-      const couponRes = await fetch(`${supabaseUrl}/functions/v1/validate-coupon`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${supabaseKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId,
-          couponCode: couponCode.trim(),
-          totalAmount: parsedTotal,
-        }),
-      });
-      if (couponRes.ok) {
-        const couponData = await couponRes.json();
-        if (couponData.valid) {
-          couponDiscountAmount = parseFloat(couponData.discountAmount || 0);
-          validatedCouponId = couponData.couponId;
-          validatedCouponCode = couponData.couponCode;
-        }
-      }
-    } else if (couponId) {
-      // If only couponId is passed (no code), look it up
-      const { data: couponRow } = await supabase
-        .from("coupons")
-        .select("id, coupon_code, is_active, is_deleted, start_date, end_date, minimum_total, discount_type, discount_value, maximum_discount_value, per_account_limit, applicable_to, total_usage_limit")
-        .eq("id", couponId)
-        .eq("is_deleted", false)
-        .maybeSingle();
-      if (couponRow && couponRow.is_active) {
+    try {
+      if (couponCode && typeof couponCode === "string" && couponCode.trim()) {
         const couponRes = await fetch(`${supabaseUrl}/functions/v1/validate-coupon`, {
           method: "POST",
           headers: {
@@ -152,7 +124,7 @@ Deno.serve(withUserSession(async (req: Request) => {
           },
           body: JSON.stringify({
             userId,
-            couponCode: couponRow.coupon_code,
+            couponCode: couponCode.trim(),
             totalAmount: parsedTotal,
           }),
         });
@@ -164,7 +136,38 @@ Deno.serve(withUserSession(async (req: Request) => {
             validatedCouponCode = couponData.couponCode;
           }
         }
+      } else if (couponId) {
+        const { data: couponRow } = await supabase
+          .from("coupons")
+          .select("id, coupon_code, is_active, is_deleted, start_date, end_date, minimum_total, discount_type, discount_value, maximum_discount_value, per_account_limit, applicable_to, total_usage_limit")
+          .eq("id", couponId)
+          .eq("is_deleted", false)
+          .maybeSingle();
+        if (couponRow && couponRow.is_active) {
+          const couponRes = await fetch(`${supabaseUrl}/functions/v1/validate-coupon`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${supabaseKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId,
+              couponCode: couponRow.coupon_code,
+              totalAmount: parsedTotal,
+            }),
+          });
+          if (couponRes.ok) {
+            const couponData = await couponRes.json();
+            if (couponData.valid) {
+              couponDiscountAmount = parseFloat(couponData.discountAmount || 0);
+              validatedCouponId = couponData.couponId;
+              validatedCouponCode = couponData.couponCode;
+            }
+          }
+        }
       }
+    } catch (couponError) {
+      console.error("Coupon validation failed (non-fatal):", couponError);
     }
 
     const finalTotal = Math.max(0, parsedTotal - couponDiscountAmount);

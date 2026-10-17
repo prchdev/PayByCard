@@ -50,9 +50,16 @@ Deno.serve(async (req: Request) => {
       .eq("is_deleted", false)
       .maybeSingle();
 
-    if (error || !coupon) {
+    if (error) {
+      console.error("validate-coupon DB error:", error);
       return new Response(
-        JSON.stringify({ valid: false, error: "Invalid coupon code" }),
+        JSON.stringify({ valid: false, error: "Unable to verify coupon. Please try again." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!coupon) {
+      return new Response(
+        JSON.stringify({ valid: false, error: "Invalid coupon code. Please check and try again." }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

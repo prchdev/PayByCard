@@ -2298,11 +2298,12 @@ export default function MakePayment() {
                         </div>
                       </div>
 
-                      {/* Apply Coupon */}
+                      {/* Apply Coupon (Optional) */}
                       <div className="mt-4">
                         <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
                           <Ticket className="w-4 h-4 text-[#8c76f0]" />
                           Apply Coupon Code
+                          <span className="text-xs font-normal text-gray-400">(Optional)</span>
                         </h4>
                         {!appliedCoupon ? (
                           <div>

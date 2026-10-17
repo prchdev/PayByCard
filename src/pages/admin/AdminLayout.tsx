@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X, Lock, Shield, Home, FileCheck, Users, Mail, MessageSquare, CreditCard, IndianRupee, LayoutDashboard, DollarSign, Tag, Settings, Wallet, AlertTriangle, Undo2, BarChart2, UserSearch, ScanFace, ShieldCheck, Bell, Send, Smartphone, Building2, ReceiptText, Database, Landmark } from 'lucide-react';
+import { LogOut, Menu, X, Lock, Shield, Home, FileCheck, Users, Mail, MessageSquare, CreditCard, IndianRupee, LayoutDashboard, DollarSign, Tag, Settings, Wallet, AlertTriangle, Undo2, BarChart2, UserSearch, ScanFace, ShieldCheck, Bell, Send, Smartphone, Building2, ReceiptText, Database, Landmark, Ticket } from 'lucide-react';
 import Footer from '../../components/Footer';
 import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import SessionTimeoutModal from '../../components/SessionTimeoutModal';
@@ -46,6 +46,7 @@ const ICON_MAP: Record<string, any> = {
   ReceiptText,
   Database,
   Landmark,
+  Ticket,
 };
 
 interface MenuSection {
@@ -100,6 +101,7 @@ const MENU_SECTIONS: MenuSection[] = [
       { key: 'bulk-sms', name: 'Bulk SMS', path: '/admin/bulk-sms', icon: 'MessageSquare' },
       { key: 'mobile-notifications', name: 'Mobile Notifications', path: '/admin/mobile-notifications', icon: 'Smartphone' },
       { key: 'offers', name: 'Offers', path: '/admin/offers', icon: 'Tag' },
+      { key: 'coupons', name: 'Coupons', path: '/admin/coupons', icon: 'Ticket' },
     ],
   },
   {

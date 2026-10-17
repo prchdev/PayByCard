@@ -67,6 +67,7 @@ import Invoicing from './pages/admin/Invoicing';
 import DatabaseBackup from './pages/admin/DatabaseBackup';
 import PaymentGatewaySettlement from './pages/admin/PaymentGatewaySettlement';
 import AdminOffers from './pages/admin/AdminOffers';
+import AdminCoupons from './pages/admin/AdminCoupons';
 import Offers from './pages/Offers';
 function MainLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -176,6 +177,7 @@ function App() {
           <Route path="/admin/database-backup" element={<DatabaseBackup />} />
           <Route path="/admin/gateway-settlement" element={<PaymentGatewaySettlement />} />
           <Route path="/admin/offers" element={<AdminOffers />} />
+          <Route path="/admin/coupons" element={<AdminCoupons />} />
           <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

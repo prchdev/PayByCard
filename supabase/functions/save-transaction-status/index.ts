@@ -274,6 +274,7 @@ async function sendTransactionEmails(supabase: any, payment: any, paymentStatus:
         ${receiptHtml}
         <p style="margin-top:16px;"><strong>Sent to:</strong> ${receiverName}${beneficiaryDetails.bank_name ? ` &mdash; ${beneficiaryDetails.bank_name}` : ""}</p>
         ${attachInvoice ? `<p style="color:#6b7280;font-size:13px;margin-top:8px;">Invoice copy is attached to this email.</p>` : ""}
+        ${paymentStatus === "kyc_pending" ? `<p style="color:#6b7280;font-size:13px;margin-top:12px;">Merchant KYC collection is carried out in accordance with applicable RBI guidelines. We maintain the confidentiality of merchant information and <strong>do not share it with the Income Tax Department</strong> or any other government agency, except where disclosure is required by applicable law or a lawful order.</p>` : ""}
         <p style="color:#6b7280;font-size:13px;margin-top:12px;">Please keep this for your records. Contact our support team for any queries.</p>
       `;
       await sendEmail(
@@ -533,6 +534,7 @@ async function sendKycRequestEmails(supabase: any, payment: any): Promise<boolea
         <p>Click the button below to complete your KYC verification and receive your payment.</p>
         <p style="color:#6b7280;font-size:13px;margin-top:8px;">Or copy this link: <a href="${onboardingLink}" style="color:#2563eb;">${onboardingLink}</a></p>
         ${refundNote}
+        <p style="color:#6b7280;font-size:13px;margin-top:16px;">Merchant KYC collection is carried out in accordance with applicable RBI guidelines. We maintain the confidentiality of merchant information and <strong>do not share it with the Income Tax Department</strong> or any other government agency, except where disclosure is required by applicable law or a lawful order.</p>
         <p style="color:#6b7280;font-size:13px;margin-top:20px;">If you have already submitted your KYC, please wait for verification. Contact our support team if you need assistance.</p>
       `;
       await sendEmail(

@@ -2368,6 +2368,9 @@ export default function MakePayment() {
                           Once verified, the payout will be processed automatically.
                           {selectedCategory?.refund_after_hours ? ` If KYC is not completed within ${selectedCategory.refund_after_hours} hours, the payment will be refunded.` : ''}
                         </p>
+                        <p className="text-xs text-amber-600 mt-2">
+                          Merchant KYC collection is carried out in accordance with applicable RBI guidelines. We maintain the confidentiality of merchant information and do not share it with the Income Tax Department or any other government agency, except where disclosure is required by applicable law or a lawful order.
+                        </p>
                       </div>
                     )}
                     {isSuccess && !isKycPending && (

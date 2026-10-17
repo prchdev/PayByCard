@@ -2305,55 +2305,78 @@ export default function MakePayment() {
                           Apply Coupon Code
                         </h4>
                         {!appliedCoupon ? (
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={couponInput}
-                              onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                              placeholder="Enter coupon code"
-                              className="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all uppercase tracking-wider font-mono text-sm"
-                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyCoupon(); } }}
-                            />
-                            <button
-                              onClick={handleApplyCoupon}
-                              disabled={validatingCoupon}
-                              className="flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-                            >
-                              {validatingCoupon ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                'Apply'
-                              )}
-                            </button>
+                          <div>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={couponInput}
+                                onChange={(e) => {
+                                  setCouponInput(e.target.value.toUpperCase());
+                                  if (couponStatus.type !== null) setCouponStatus({ type: null, message: '' });
+                                }}
+                                placeholder="Enter coupon code"
+                                className={`flex-1 px-4 py-2.5 border-2 rounded-xl focus:ring-4 focus:ring-purple-50 outline-none transition-all uppercase tracking-wider font-mono text-sm ${
+                                  couponStatus.type === 'error'
+                                    ? 'border-red-400 focus:border-red-400'
+                                    : 'border-gray-300 focus:border-[#8c76f0]'
+                                }`}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyCoupon(); } }}
+                              />
+                              <button
+                                onClick={handleApplyCoupon}
+                                disabled={validatingCoupon || !couponInput.trim()}
+                                className="flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {validatingCoupon ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Checking...
+                                  </>
+                                ) : (
+                                  'Apply'
+                                )}
+                              </button>
+                            </div>
+                            {couponStatus.type === 'error' && (
+                              <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="text-sm font-medium text-red-800">Coupon could not be applied</p>
+                                  <p className="text-xs text-red-600 mt-0.5">{couponStatus.message}</p>
+                                </div>
+                              </div>
+                            )}
+                            {couponStatus.type === null && !couponInput.trim() && (
+                              <p className="text-xs text-gray-400 mt-1.5">
+                                Have a coupon code? Enter it above to get a discount on your payment.
+                              </p>
+                            )}
+                            {validatingCoupon && (
+                              <p className="text-xs text-[#8c76f0] mt-1.5 flex items-center gap-1">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Verifying coupon...
+                              </p>
+                            )}
                           </div>
                         ) : (
-                          <div className="flex items-center justify-between bg-green-50 border-2 border-green-300 rounded-xl p-3">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle className="w-5 h-5 text-green-600" />
-                              <div>
-                                <p className="text-sm font-semibold text-green-900 font-mono">{appliedCoupon.couponCode}</p>
-                                <p className="text-xs text-green-700">You save ₹{appliedCoupon.discountAmount.toFixed(2)}</p>
+                          <div className="bg-green-50 border-2 border-green-300 rounded-xl p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="w-5 h-5 text-green-600" />
+                                <div>
+                                  <p className="text-sm font-semibold text-green-900 font-mono">{appliedCoupon.couponCode}</p>
+                                  <p className="text-xs text-green-700">You save ₹{appliedCoupon.discountAmount.toFixed(2)} on this payment</p>
+                                </div>
                               </div>
+                              <button
+                                onClick={handleRemoveCoupon}
+                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Remove coupon"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
                             </div>
-                            <button
-                              onClick={handleRemoveCoupon}
-                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
                           </div>
-                        )}
-                        {couponStatus.type === 'error' && (
-                          <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
-                            <AlertCircle className="w-3.5 h-3.5" />
-                            {couponStatus.message}
-                          </p>
-                        )}
-                        {couponStatus.type === 'success' && !appliedCoupon && (
-                          <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            {couponStatus.message}
-                          </p>
                         )}
                       </div>
 

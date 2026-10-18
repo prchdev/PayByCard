@@ -83,7 +83,8 @@ serveUser(async (req: Request) => {
     if (full_name.trim().length < 2 || full_name.length > 100) {
       return new Response(JSON.stringify({ error: 'Account holder name must be 2–100 characters' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    if (bank_account.length < 6 || bank_account.length > 20 || !/^\d+$/.test(bank_account)) {
+    const cleanAccount = String(bank_account).replace(/[\s-]/g, '');
+    if (cleanAccount.length < 6 || cleanAccount.length > 20 || !/^\d+$/.test(cleanAccount)) {
       return new Response(JSON.stringify({ error: 'Bank account number must be 6–20 digits' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     if (bank_name.length < 2 || bank_name.length > 100) {
@@ -148,10 +149,9 @@ serveUser(async (req: Request) => {
       );
     }
 
-    const accountDigits = bank_account.replace(/[\s-]/g, '');
-    if (/^\d{15,16}$/.test(accountDigits)) {
-      const first = accountDigits[0];
-      const len = accountDigits.length;
+    if (/^\d{15,16}$/.test(cleanAccount)) {
+      const first = cleanAccount[0];
+      const len = cleanAccount.length;
       if (first === '4' || (first === '5' && len === 16) || (first === '6' && len === 16)) {
         return new Response(
           JSON.stringify({
@@ -269,7 +269,7 @@ serveUser(async (req: Request) => {
       .from('beneficiaries')
       .select('id')
       .eq('user_id', userId)
-      .eq('bank_account', bank_account)
+      .eq('bank_account', cleanAccount)
       .eq('ifsc', ifscUpper)
       .maybeSingle();
 
@@ -304,7 +304,7 @@ serveUser(async (req: Request) => {
       .insert([{
         user_id: userId,
         full_name,
-        bank_account,
+        bank_account: cleanAccount,
         ifsc: ifscUpper,
         bank_name,
         branch_name,

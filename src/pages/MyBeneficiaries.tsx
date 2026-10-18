@@ -873,7 +873,7 @@ export default function MyBeneficiaries() {
                           required
                           maxLength={20}
                           value={formData.bank_account}
-                          onChange={(e) => setFormData({ ...formData, bank_account: e.target.value.replace(/[^A-Za-z0-9\- ]/g, '') })}
+                          onChange={(e) => setFormData({ ...formData, bank_account: e.target.value.replace(/[^A-Za-z0-9\- ]/g, '').trim() })}
                           className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 focus:outline-none transition-all bg-white font-mono"
                           placeholder="Enter account number"
                         />

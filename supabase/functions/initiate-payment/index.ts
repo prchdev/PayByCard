@@ -12,6 +12,13 @@ const MAX_AMOUNT = 1_000_000;
 const MIN_AMOUNT = 1;
 const MAX_STR = 500;
 
+function base64Encode(str: string): string {
+  const bytes = new TextEncoder().encode(str);
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
+}
+
 function err(msg: string, status = 400) {
   return new Response(JSON.stringify({ error: msg }), {
     status,
@@ -500,7 +507,7 @@ async function createGatewayPaymentConfig(
       }
 
       // Create Razorpay order
-      const authString = btoa(`${keyId}:${keySecret}`);
+      const authString = base64Encode(`${keyId}:${keySecret}`);
       const orderData: any = {
         amount: Math.round(payment.total_amount * 100),
         currency: "INR",
@@ -861,7 +868,7 @@ async function createGatewayPaymentConfig(
         };
       }
 
-      const payloadBase64 = btoa(JSON.stringify(payload));
+      const payloadBase64 = base64Encode(JSON.stringify(payload));
       const xVerify = await generatePhonePeChecksum(payloadBase64, "/pg/v1/pay", saltKey);
 
       const initiateResponse = await fetch(`${phonepeBaseUrl}/pg/v1/pay`, {

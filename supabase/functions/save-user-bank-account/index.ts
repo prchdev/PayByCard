@@ -56,7 +56,7 @@ serveUser(async (req: Request) => {
     }
 
     // ── Format validation ──────────────────────────────────────────────────────
-    const acctNum = String(bank_account_number).trim();
+    const acctNum = String(bank_account_number).replace(/[\s-]/g, '');
     if (!/^[A-Za-z0-9]{6,20}$/.test(acctNum)) {
       return new Response(
         JSON.stringify({ error: "Account number must be 6–20 alphanumeric characters" }),
@@ -141,7 +141,7 @@ serveUser(async (req: Request) => {
       .from("user_bank_accounts")
       .select("id")
       .eq("user_id", userId)
-      .eq("bank_account_number", bank_account_number)
+      .eq("bank_account_number", acctNum)
       .eq("ifsc_code", ifscUpper)
       .maybeSingle();
 
@@ -164,7 +164,7 @@ serveUser(async (req: Request) => {
       .insert([
         {
           user_id: userId,
-          bank_account_number,
+          bank_account_number: acctNum,
           ifsc_code: ifscUpper,
           bank_name,
           branch_name,

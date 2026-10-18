@@ -244,8 +244,9 @@ export default function MyBeneficiaries() {
     if (!/^[A-Za-z0-9\- ]+$/.test(formData.bank_account)) {
       setError('Account Number may only contain letters, numbers, -, and spaces.'); return;
     }
-    if (formData.bank_account.length > 20) {
-      setError('Account Number must not exceed 20 characters.'); return;
+    const cleanBeneficiaryAccount = formData.bank_account.replace(/[\s-]/g, '');
+    if (cleanBeneficiaryAccount.length < 6 || cleanBeneficiaryAccount.length > 20) {
+      setError('Account Number must be 6–20 alphanumeric characters.'); return;
     }
 
     if (!formData.bank_name || !formData.branch_name) {

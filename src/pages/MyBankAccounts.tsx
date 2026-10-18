@@ -258,8 +258,9 @@ export default function MyBankAccounts() {
       setError('Account Number may only contain letters, numbers, -, and spaces.');
       return;
     }
-    if (formData.bank_account_number.length > 20) {
-      setError('Account Number must not exceed 20 characters.');
+    const cleanBankAccount = formData.bank_account_number.replace(/[\s-]/g, '');
+    if (cleanBankAccount.length < 6 || cleanBankAccount.length > 20) {
+      setError('Account Number must be 6–20 alphanumeric characters.');
       return;
     }
 

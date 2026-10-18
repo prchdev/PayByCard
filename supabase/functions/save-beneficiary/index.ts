@@ -84,8 +84,8 @@ serveUser(async (req: Request) => {
       return new Response(JSON.stringify({ error: 'Account holder name must be 2–100 characters' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const cleanAccount = String(bank_account).replace(/[\s-]/g, '');
-    if (cleanAccount.length < 6 || cleanAccount.length > 20 || !/^\d+$/.test(cleanAccount)) {
-      return new Response(JSON.stringify({ error: 'Bank account number must be 6–20 digits' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (cleanAccount.length < 6 || cleanAccount.length > 20 || !/^[A-Za-z0-9]+$/.test(cleanAccount)) {
+      return new Response(JSON.stringify({ error: 'Bank account number must be 6–20 alphanumeric characters' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     if (bank_name.length < 2 || bank_name.length > 100) {
       return new Response(JSON.stringify({ error: 'Bank name must be 2–100 characters' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

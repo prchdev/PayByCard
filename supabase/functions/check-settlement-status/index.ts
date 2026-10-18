@@ -57,15 +57,70 @@ async function checkRazorpay(
   gateway: any,
   env: string,
   gatewayTransactionId: string,
+  paymentReference?: string,
 ): Promise<{ gatewayStatus: string; shouldRefund: boolean }> {
   if (!gatewayTransactionId) return { gatewayStatus: "no_tx_id", shouldRefund: false };
   const { apiKey, apiSecret } = getCredentials(gateway, env);
   if (!apiKey || !apiSecret) return { gatewayStatus: "check_failed", shouldRefund: false };
 
+  const auth = `Basic ${btoa(`${apiKey}:${apiSecret}`)}`;
+  const headers = { Authorization: auth };
+  const base = "https://api.razorpay.com/v1";
+
+  // Resolve an Order ID (order_xxx) into a Payment ID (pay_xxx). The /payments
+  // endpoint only accepts payment ids, so fetching it with an order id 404s and
+  // produces a false "check_failed" result. Orders that were paid have at least
+  // one captured/authorized payment under /orders/{id}/payments.
+  let paymentId = gatewayTransactionId;
+  if (gatewayTransactionId.startsWith("order_")) {
+    try {
+      const pmtRes = await fetch(`${base}/orders/${gatewayTransactionId}/payments`, { headers });
+      if (!pmtRes.ok) return { gatewayStatus: "check_failed", shouldRefund: false };
+      const pmtData = await pmtRes.json();
+      const payments: any[] = pmtData.items || [];
+      const captured = payments.find((p: any) => p.status === "captured");
+      const authorized = payments.find((p: any) => p.status === "authorized");
+      const latest = captured || authorized || payments[0];
+      if (!latest) return { gatewayStatus: "not_captured", shouldRefund: false };
+      paymentId = latest.id;
+    } catch {
+      return { gatewayStatus: "check_failed", shouldRefund: false };
+    }
+  }
+
+  // Fallback: if we still don't have a pay_ id, search orders by receipt
+  if (!paymentId.startsWith("pay_") && paymentReference) {
+    try {
+      const orderRes = await fetch(
+        `${base}/orders?receipt=${encodeURIComponent(paymentReference)}&count=5`,
+        { headers },
+      );
+      if (orderRes.ok) {
+        const orderData = await orderRes.json();
+        const orders: any[] = orderData.items || [];
+        if (orders.length > 0) {
+          const pmtRes = await fetch(`${base}/orders/${orders[0].id}/payments`, { headers });
+          if (pmtRes.ok) {
+            const pmtData = await pmtRes.json();
+            const payments: any[] = pmtData.items || [];
+            const captured = payments.find((p: any) => p.status === "captured");
+            const authorized = payments.find((p: any) => p.status === "authorized");
+            const latest = captured || authorized || payments[0];
+            if (latest) paymentId = latest.id;
+          }
+        }
+      }
+    } catch {
+      // ignore — fall through to the /payments call below
+    }
+  }
+
+  if (!paymentId.startsWith("pay_")) {
+    return { gatewayStatus: "not_captured", shouldRefund: false };
+  }
+
   try {
-    const res = await fetch(`https://api.razorpay.com/v1/payments/${gatewayTransactionId}`, {
-      headers: { "Authorization": `Basic ${btoa(`${apiKey}:${apiSecret}`)}` },
-    });
+    const res = await fetch(`${base}/payments/${paymentId}`, { headers });
     if (!res.ok) return { gatewayStatus: "check_failed", shouldRefund: false };
 
     const data = await res.json();
@@ -150,7 +205,7 @@ async function checkGateway(
   const name = (gateway.gateway_name ?? "").toLowerCase();
 
   if (name.includes("razorpay")) {
-    return checkRazorpay(gateway, env, payment.gateway_transaction_id);
+    return checkRazorpay(gateway, env, payment.gateway_transaction_id, payment.payment_reference);
   }
   if (name.includes("cashfree")) {
     return checkCashfree(gateway, env, payment.payment_reference);

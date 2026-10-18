@@ -102,11 +102,14 @@ async function checkRazorPayStatus(payment: any, gateway: any, isTest: boolean) 
       };
     }
 
-    // "created" — no payment attempt yet
+    // "created" — order exists but no payment was attempted. The user opened
+    // checkout and closed it without paying. Razorpay does NOT send a webhook
+    // for this. Treat it as cancelled so it is resolved immediately instead
+    // of waiting for the 30-minute force-fail timeout.
     return {
-      status: "pending" as const,
+      status: "cancelled" as const,
       transaction_id: orderId,
-      gateway_response: { order },
+      gateway_response: { order, reason: "Checkout closed by user without payment attempt" },
     };
   }
 
@@ -289,6 +292,11 @@ const STATUS_EMAIL_CONFIG: Record<string, { senderSubject: string; senderTitle: 
   failed: {
     senderSubject: "Payment Failed",
     senderTitle: "Your payment could not be processed. No amount has been debited.",
+    receiverSubject: "", receiverTitle: "", sendToReceiver: false,
+  },
+  cancelled: {
+    senderSubject: "Payment Cancelled",
+    senderTitle: "Your payment was cancelled. No amount has been debited.",
     receiverSubject: "", receiverTitle: "", sendToReceiver: false,
   },
 };
@@ -898,29 +906,34 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
-        if (gatewayResult.status === "failed") {
+        if (gatewayResult.status === "failed" || gatewayResult.status === "cancelled") {
+          const isCancelled = gatewayResult.status === "cancelled";
           await supabase.from("payments").update({
-            status: "failed",
-            failure_reason: "Payment not completed at gateway — timed out.",
+            status: isCancelled ? "cancelled" : "failed",
+            failure_reason: isCancelled
+              ? "Payment cancelled by user — checkout closed without completing payment."
+              : "Payment not completed at gateway — timed out.",
             gateway_response: gatewayResult.gateway_response,
             updated_at: new Date().toISOString(),
           }).eq("id", payment.id);
 
           await supabase.from("payment_logs").insert({
             payment_id: payment.id,
-            status: "failed",
-            message: "Payment marked failed by stale-payment poller after gateway poll.",
+            status: isCancelled ? "cancelled" : "failed",
+            message: isCancelled
+              ? "Payment marked cancelled by stale-payment poller — order created with 0 attempts."
+              : "Payment marked failed by stale-payment poller after gateway poll.",
             metadata: gatewayResult.gateway_response,
           });
 
           EdgeRuntime.waitUntil(
             (async () => {
               const { data: enriched } = await supabase.from("payments").select("*").eq("id", payment.id).maybeSingle();
-              await sendTransactionEmails(supabase, enriched || payment, "failed");
+              await sendTransactionEmails(supabase, enriched || payment, isCancelled ? "cancelled" : "failed");
             })()
           );
 
-          results.push({ id: payment.id, reference: payment.payment_reference, action: "marked_failed", newStatus: "failed" });
+          results.push({ id: payment.id, reference: payment.payment_reference, action: isCancelled ? "marked_cancelled" : "marked_failed", newStatus: isCancelled ? "cancelled" : "failed" });
           continue;
         }
 

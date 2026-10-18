@@ -70,10 +70,15 @@ async function checkRazorPayStatus(payment: any, gateway: any, isTestMode: boole
       };
     }
 
+    // "created" — order exists but no payment was attempted. The user opened
+    // checkout and closed it without paying. Razorpay does NOT send a webhook
+    // for this, so the only way to detect it is this status check. Treat it as
+    // cancelled so the payment is resolved immediately instead of staying
+    // pending until the 30-minute force-fail in poll-stale-payments.
     return {
-      status: "pending" as const,
+      status: "cancelled" as const,
       transaction_id: orderId,
-      gateway_response: { order },
+      gateway_response: { order, reason: "Checkout closed by user without payment attempt" },
     };
   }
 
@@ -308,6 +313,31 @@ serveUser(async (req: Request) => {
                 gatewayName: gateway?.gateway_name,
               }),
             });
+          } else if (statusResult.status === "failed" || statusResult.status === "cancelled") {
+            // Delegate failed/cancelled to save-transaction-status for consistent
+            // recording (transaction_status table, emails, logs) — same as completed.
+            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+            await fetch(`${supabaseUrl}/functions/v1/save-transaction-status`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${serviceKey}`,
+              },
+              body: JSON.stringify({
+                userId: payment.user_id,
+                paymentId,
+                transactionReference: payment.payment_reference,
+                status: statusResult.status,
+                amount: payment.total_amount || payment.amount,
+                gatewayResponse: statusResult.gateway_response,
+                gatewayTransactionId: statusResult.transaction_id || payment.gateway_transaction_id,
+                gatewayName: gateway?.gateway_name,
+                errorMessage: statusResult.status === "cancelled"
+                  ? "Payment cancelled by user"
+                  : undefined,
+              }),
+            });
           } else {
             const updateData: any = {
               status: statusResult.status,
@@ -324,7 +354,7 @@ serveUser(async (req: Request) => {
             await supabase.from("payment_logs").insert({
               payment_id: paymentId,
               status: statusResult.status,
-              message: `Payment status updated to ${statusResult.status} via poll`,
+              message: `Payment status updated to ${statusResult.status} via status check`,
               metadata: statusResult.gateway_response,
             });
           }

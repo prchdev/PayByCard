@@ -59,6 +59,7 @@ export default function AdminKycVerification() {
   const [selectedEntry, setSelectedEntry] = useState<KycUserEntry | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [clearKycLoading, setClearKycLoading] = useState(false);
 
   useEffect(() => {
     if (!adminId) {
@@ -85,6 +86,7 @@ export default function AdminKycVerification() {
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
+          'x-pbc-admin-session': sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || '',
         },
         body: JSON.stringify({ adminId, userId, action, reason }),
       }
@@ -94,6 +96,29 @@ export default function AdminKycVerification() {
     if (!response.ok) throw new Error(data.error || 'Action failed');
 
     await fetchList(statusFilter);
+  };
+
+  const handleClearKyc = async (userId: string) => {
+    setClearKycLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-clear-kyc`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'x-pbc-admin-session': sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || '',
+          },
+          body: JSON.stringify({ adminId, userId }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to clear KYC');
+      await fetchList(statusFilter);
+    } finally {
+      setClearKycLoading(false);
+    }
   };
 
   const filtered = entries.filter((e) => {
@@ -439,6 +464,7 @@ export default function AdminKycVerification() {
           onClose={() => setSelectedEntry(null)}
           onReview={handleReview}
           onAccountAction={handleAccountAction}
+          onClearKyc={handleClearKyc}
           canEdit={canEdit}
         />
       )}

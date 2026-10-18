@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { X, CheckCircle, XCircle, ZoomIn, Percent, ShieldOff, Shield, Lock, Unlock, Loader2, Save, FileCode, Download } from 'lucide-react';
+import { X, CheckCircle, XCircle, ZoomIn, Percent, ShieldOff, Shield, Lock, Unlock, Loader2, Save, FileCode, Download, Trash2 } from 'lucide-react';
 import { KycUserEntry, KycStatus } from './types';
 import KycStatusBadge from './KycStatusBadge';
 
@@ -60,6 +60,7 @@ interface ReviewModalProps {
   onClose: () => void;
   onReview: (recordId: string, table: string, action: 'verified' | 'rejected', reason?: string, surgeCharge?: number) => Promise<void>;
   onAccountAction?: (userId: string, action: string, reason?: string) => Promise<void>;
+  onClearKyc?: (userId: string) => Promise<void>;
   canEdit?: boolean;
 }
 
@@ -381,7 +382,7 @@ function SectionReview({ title, recordId, table, status, rejectionReason, onRevi
   );
 }
 
-export default function ReviewModal({ entry, onClose, onReview, onAccountAction, canEdit = true }: ReviewModalProps) {
+export default function ReviewModal({ entry, onClose, onReview, onAccountAction, onClearKyc, canEdit = true }: ReviewModalProps) {
   const { user, pan, address, business } = entry;
   const surgeChargeRef = useRef<number>(business?.business_category_surge_charge ?? 0);
   const [surgeChargeInput, setSurgeChargeInput] = useState<string>(
@@ -395,6 +396,10 @@ export default function ReviewModal({ entry, onClose, onReview, onAccountAction,
   const [accountActionError, setAccountActionError] = useState<string | null>(null);
   const [showReasonInput, setShowReasonInput] = useState<string | null>(null);
   const [actionReason, setActionReason] = useState('');
+  const [clearKycLoading, setClearKycLoading] = useState(false);
+  const [clearKycError, setClearKycError] = useState<string | null>(null);
+  const [clearKycConfirm, setClearKycConfirm] = useState(false);
+  const [clearKycDone, setClearKycDone] = useState(false);
 
   const hasBusinessDocs = business && (business.incorporation_certificate_url || business.company_pan_photo_url || business.gst_certificate_url || business.loa_url);
 
@@ -454,6 +459,25 @@ export default function ReviewModal({ entry, onClose, onReview, onAccountAction,
       setAccountActionError(err instanceof Error ? err.message : 'Action failed');
     } finally {
       setAccountActionLoading(null);
+    }
+  };
+
+  const handleClearKyc = async () => {
+    if (!clearKycConfirm) {
+      setClearKycConfirm(true);
+      return;
+    }
+    if (!onClearKyc) return;
+    setClearKycLoading(true);
+    setClearKycError(null);
+    try {
+      await onClearKyc(user.id);
+      setClearKycDone(true);
+      setClearKycConfirm(false);
+    } catch (err) {
+      setClearKycError(err instanceof Error ? err.message : 'Failed to clear KYC');
+    } finally {
+      setClearKycLoading(false);
     }
   };
 
@@ -802,6 +826,61 @@ export default function ReviewModal({ entry, onClose, onReview, onAccountAction,
                 <p className="text-xs text-slate-500 mt-2">
                   Disabled accounts cannot login. Restricted accounts cannot add beneficiaries, bank accounts, or make payments.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {onClearKyc && (pan || address || business) && (
+            <div className="border border-red-200 rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 bg-red-50 border-b border-red-200">
+                <span className="font-semibold text-red-700 text-sm">KYC Management</span>
+              </div>
+              <div className="p-4 space-y-3">
+                {clearKycError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
+                    {clearKycError}
+                  </div>
+                )}
+
+                {clearKycDone ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700">
+                    KYC cleared successfully. The user must re-submit KYC.
+                  </div>
+                ) : (
+                  <>
+                    {clearKycConfirm && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
+                        This will permanently delete all KYC records and uploaded documents for this user, and reset their KYC status to pending. The user will need to re-submit KYC from scratch. Are you sure?
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        disabled={clearKycLoading || !canEdit}
+                        onClick={handleClearKyc}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {clearKycLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                        {clearKycLoading ? 'Clearing...' : clearKycConfirm ? 'Confirm Clear KYC' : 'Clear KYC'}
+                      </button>
+                      {clearKycConfirm && (
+                        <button
+                          onClick={() => setClearKycConfirm(false)}
+                          disabled={clearKycLoading}
+                          className="px-4 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Removes all KYC submissions and documents. The user must re-submit PAN, address proof, and business docs (if any).
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           )}

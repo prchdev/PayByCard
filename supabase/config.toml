@@ -1,6 +1,9 @@
 [functions.admin-review-kyc]
 verify_jwt = false
 
+[functions.admin-clear-kyc]
+verify_jwt = false
+
 [functions.admin-review-merchant-kyc]
 verify_jwt = false
 

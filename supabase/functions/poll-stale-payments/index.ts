@@ -38,7 +38,7 @@ const MIN_POLL_INTERVAL_MS = 4 * 60 * 1000;
 // Only pick up payments older than 5 minutes
 const STALE_THRESHOLD_MS = 5 * 60 * 1000;
 // Force-fail payments that remain unresolved for longer than this — user abandoned payment.
-const FORCE_FAIL_AFTER_MS = 30 * 60 * 1000; // 30 minutes
+const FORCE_FAIL_AFTER_MS = 10 * 60 * 1000; // 10 minutes
 
 // ─── Gateway status checkers ──────────────────────────────────────────────────
 
@@ -900,7 +900,7 @@ Deno.serve(async (req: Request) => {
             await supabase.from("payment_logs").insert({
               payment_id: payment.id,
               status: "poll_pending",
-              message: `Poll attempt ${(payment.poll_count || 0) + 1}: gateway reported ${gatewayResult.status}. Age: ${Math.round(ageMs / 60000)}min. Will force-fail after 30min.`,
+              message: `Poll attempt ${(payment.poll_count || 0) + 1}: gateway reported ${gatewayResult.status}. Age: ${Math.round(ageMs / 60000)}min. Will force-fail after 10min.`,
               metadata: gatewayResult.gateway_response,
             });
             results.push({ id: payment.id, reference: payment.payment_reference, action: "still_pending", newStatus: gatewayResult.status });

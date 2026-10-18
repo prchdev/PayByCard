@@ -469,7 +469,7 @@ async function createGatewayPaymentConfig(
 ): Promise<any> {
   const gatewayName = gatewaySettings.gateway_name.toLowerCase();
   const isTestMode = environment === "test";
-  const callbackUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-gateway-webhook`;
+  const callbackUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-gateway-webhook?gateway=${encodeURIComponent(gatewayName)}`;
 
   const config = {
     gateway: gatewaySettings.gateway_name,
@@ -533,6 +533,11 @@ async function createGatewayPaymentConfig(
       }
 
       const orderResult = await orderResponse.json();
+
+      await supabase
+        .from("payments")
+        .update({ gateway_transaction_id: orderResult.id })
+        .eq("id", payment.id);
 
       const options: any = {
         key: keyId,
@@ -809,7 +814,7 @@ async function createGatewayPaymentConfig(
 
       const merchantOrderId = payment.payment_reference;
       const amountInPaise = Math.round(payment.total_amount * 100);
-      const redirectUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-gateway-webhook?gateway=phonepe`;
+      const redirectUrl = callbackUrl;
       const callbackUrlFull = callbackUrl;
 
       // Look up per-payment-option PhonePe configuration

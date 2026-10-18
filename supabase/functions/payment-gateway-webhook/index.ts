@@ -4,40 +4,67 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
-function triggerAutoPayout(supabaseUrl: string, supabaseKey: string, paymentId: string) {
-  const call = fetch(`${supabaseUrl}/functions/v1/auto-payout`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
-    body: JSON.stringify({ payment_id: paymentId }),
-  }).catch((e) => console.error("Auto payout trigger failed:", e));
-
-  try {
-    EdgeRuntime.waitUntil(call);
-  } catch (_) {
-    // EdgeRuntime.waitUntil not available — promise already running
-  }
-}
-
 /**
- * Compute the resolved payment status after a gateway confirms the payment as PAID.
- * Same logic as save-transaction-status so all code paths stay consistent.
+ * Delegate the actual status recording to save-transaction-status so that
+ * emails, SMS, KYC handling, coupon usage, payout triggers, and the
+ * transaction_status table are all handled consistently — exactly as they
+ * are when the client or poll-stale-payments reports the same payment.
+ *
+ * Idempotency: if the payment is already in a terminal state (completed,
+ * settlement_pending, kyc_pending, failed, cancelled, refunded), skip the
+ * call to avoid double-processing duplicate webhook deliveries.
  */
-function resolvePaymentStatus(payment: any): string {
-  const isVerifiedMerchant = payment.beneficiary_details?.is_verified_merchant === true;
-  const kycRequired =
-    payment.category_details?.receiver_kyc_required === true ||
-    payment.selected_payment_option?.receiver_kyc_required === true;
-  const isEligibleForPayout = isVerifiedMerchant || !kycRequired;
-  const payoutMode = payment.payment_gateway_settings?.payout_mode || "manual";
-  const splitConfigured = payment.split_configured === true;
+async function recordPaymentStatus(
+  supabaseUrl: string,
+  supabaseKey: string,
+  supabase: any,
+  payment: any,
+  status: "completed" | "failed",
+  gatewayTransactionId: string | null,
+  gatewayResponse: any,
+  failureReason?: string | null,
+): Promise<{ status: string; skipped: boolean }> {
+  const terminalStates = new Set([
+    "completed", "settlement_pending", "kyc_pending",
+    "failed", "cancelled", "refunded", "refund_pending",
+  ]);
 
-  if (!isEligibleForPayout) return "kyc_pending";
-  if (payoutMode === "payment_split" && splitConfigured) return "completed";
-  return "settlement_pending";
+  if (terminalStates.has(payment.status)) {
+    // Already processed — log and skip
+    await supabase.from("payment_logs").insert({
+      payment_id: payment.id,
+      status: payment.status,
+      message: `Webhook duplicate skipped (already ${payment.status})`,
+      metadata: { gateway_response: gatewayResponse },
+    }).catch(() => {});
+    return { status: payment.status, skipped: true };
+  }
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/save-transaction-status`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${supabaseKey}`,
+    },
+    body: JSON.stringify({
+      userId: payment.user_id,
+      paymentId: payment.id,
+      transactionReference: payment.payment_reference,
+      status,
+      amount: payment.total_amount || payment.amount,
+      gatewayResponse,
+      gatewayTransactionId,
+      gatewayName: payment.payment_gateway_settings?.gateway_name,
+      errorMessage: failureReason || undefined,
+    }),
+  });
+
+  const result = await response.json().catch(() => ({}));
+  return { status: result.transactionStatus?.status || status, skipped: false };
 }
 
 function verifyCashFreeSignature(payload: string, signature: string, timestamp: string, clientSecret: string): boolean {
@@ -81,42 +108,39 @@ async function handleCashFreeWebhook(req: Request, supabase: any, supabaseUrl: s
   }
 
   const orderStatus = data.data.order.order_status;
-  let status = "pending";
-  let failureReason = null;
+  const cfPaymentId = data.data.payment?.cf_payment_id || payment.gateway_transaction_id;
 
   if (orderStatus === "PAID") {
-    status = resolvePaymentStatus(payment);
-  } else if (orderStatus === "FAILED" || orderStatus === "CANCELLED") {
-    status = "failed";
-    failureReason = data.data.payment?.payment_message || "Payment failed";
-  } else {
-    // ACTIVE or other transient states — do not overwrite current DB status
-    return { success: true, status: "ignored", message: `Order status ${orderStatus} ignored` };
+    const result = await recordPaymentStatus(
+      supabaseUrl, supabaseKey, supabase, payment,
+      "completed", cfPaymentId, data,
+    );
+    await supabase.from("payment_logs").insert({
+      payment_id: payment.id,
+      status: result.status,
+      message: `CashFree webhook: ${orderStatus} → ${result.status}${result.skipped ? " (skipped duplicate)" : ""}`,
+      metadata: data,
+    });
+    return { success: true, status: result.status, skipped: result.skipped };
   }
 
-  const updateData: any = {
-    status,
-    gateway_response: data,
-    gateway_transaction_id: data.data.payment?.cf_payment_id || payment.gateway_transaction_id,
-    updated_at: new Date().toISOString(),
-  };
-  if (status === "completed") updateData.completed_at = new Date().toISOString();
-  if (status === "failed") updateData.failure_reason = failureReason;
-
-  await supabase.from("payments").update(updateData).eq("id", payment.id);
-  await supabase.from("payment_logs").insert({
-    payment_id: payment.id,
-    status,
-    message: `Webhook received: ${orderStatus} → resolved to ${status}`,
-    metadata: data,
-  });
-
-  // Trigger auto-payout only for settlement_pending (payout mode payments)
-  if (status === "settlement_pending") {
-    triggerAutoPayout(supabaseUrl, supabaseKey, payment.id);
+  if (orderStatus === "FAILED" || orderStatus === "CANCELLED") {
+    const failureReason = data.data.payment?.payment_message || "Payment failed";
+    const result = await recordPaymentStatus(
+      supabaseUrl, supabaseKey, supabase, payment,
+      "failed", cfPaymentId, data, failureReason,
+    );
+    await supabase.from("payment_logs").insert({
+      payment_id: payment.id,
+      status: result.status,
+      message: `CashFree webhook: ${orderStatus} → ${result.status}${result.skipped ? " (skipped duplicate)" : ""}`,
+      metadata: data,
+    });
+    return { success: true, status: result.status, skipped: result.skipped };
   }
 
-  return { success: true, status };
+  // ACTIVE or other transient states — do not overwrite current DB status
+  return { success: true, status: "ignored", message: `Order status ${orderStatus} ignored` };
 }
 
 async function handleRazorPayWebhook(req: Request, supabase: any, supabaseUrl: string, supabaseKey: string) {
@@ -148,40 +172,36 @@ async function handleRazorPayWebhook(req: Request, supabase: any, supabaseUrl: s
   if (signature.length !== expectedSignature.length) throw new Error("Invalid Razorpay webhook signature");
   if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) throw new Error("Invalid Razorpay webhook signature");
 
-  let status = "pending";
-  let failureReason = null;
-
   if (paymentEntity.status === "captured") {
-    status = resolvePaymentStatus(payment);
-  } else if (paymentEntity.status === "failed") {
-    status = "failed";
-    failureReason = paymentEntity.error_description || "Payment failed";
-  } else {
-    return { success: true, status: "ignored", message: `Payment status ${paymentEntity.status} ignored` };
+    const result = await recordPaymentStatus(
+      supabaseUrl, supabaseKey, supabase, payment,
+      "completed", paymentEntity.id, data,
+    );
+    await supabase.from("payment_logs").insert({
+      payment_id: payment.id,
+      status: result.status,
+      message: `Razorpay webhook: ${paymentEntity.status} → ${result.status}${result.skipped ? " (skipped duplicate)" : ""}`,
+      metadata: data,
+    });
+    return { success: true, status: result.status, skipped: result.skipped };
   }
 
-  const updateData: any = {
-    status,
-    gateway_response: data,
-    gateway_transaction_id: paymentEntity.id,
-    updated_at: new Date().toISOString(),
-  };
-  if (status === "completed") updateData.completed_at = new Date().toISOString();
-  if (status === "failed") updateData.failure_reason = failureReason;
-
-  await supabase.from("payments").update(updateData).eq("id", payment.id);
-  await supabase.from("payment_logs").insert({
-    payment_id: payment.id,
-    status,
-    message: `Webhook received: ${paymentEntity.status} → resolved to ${status}`,
-    metadata: data,
-  });
-
-  if (status === "settlement_pending") {
-    triggerAutoPayout(supabaseUrl, supabaseKey, payment.id);
+  if (paymentEntity.status === "failed") {
+    const failureReason = paymentEntity.error_description || "Payment failed";
+    const result = await recordPaymentStatus(
+      supabaseUrl, supabaseKey, supabase, payment,
+      "failed", paymentEntity.id, data, failureReason,
+    );
+    await supabase.from("payment_logs").insert({
+      payment_id: payment.id,
+      status: result.status,
+      message: `Razorpay webhook: ${paymentEntity.status} → ${result.status}${result.skipped ? " (skipped duplicate)" : ""}`,
+      metadata: data,
+    });
+    return { success: true, status: result.status, skipped: result.skipped };
   }
 
-  return { success: true, status };
+  return { success: true, status: "ignored", message: `Payment status ${paymentEntity.status} ignored` };
 }
 
 async function handlePayUWebhook(req: Request, supabase: any, supabaseUrl: string, supabaseKey: string) {
@@ -206,40 +226,36 @@ async function handlePayUWebhook(req: Request, supabase: any, supabaseUrl: strin
 
   if (!verifyPayUHash(payload, salt)) throw new Error("Invalid hash");
 
-  let status = "pending";
-  let failureReason = null;
-
   if (payload.status === "success") {
-    status = resolvePaymentStatus(payment);
-  } else if (payload.status === "failure") {
-    status = "failed";
-    failureReason = payload.error_Message || "Payment failed";
-  } else {
-    return { success: true, status: "ignored", message: `Payment status ${payload.status} ignored` };
+    const result = await recordPaymentStatus(
+      supabaseUrl, supabaseKey, supabase, payment,
+      "completed", payload.mihpayid, payload,
+    );
+    await supabase.from("payment_logs").insert({
+      payment_id: payment.id,
+      status: result.status,
+      message: `PayU webhook: ${payload.status} → ${result.status}${result.skipped ? " (skipped duplicate)" : ""}`,
+      metadata: payload,
+    });
+    return { success: true, status: result.status, skipped: result.skipped };
   }
 
-  const updateData: any = {
-    status,
-    gateway_response: payload,
-    gateway_transaction_id: payload.mihpayid,
-    updated_at: new Date().toISOString(),
-  };
-  if (status === "completed") updateData.completed_at = new Date().toISOString();
-  if (status === "failed") updateData.failure_reason = failureReason;
-
-  await supabase.from("payments").update(updateData).eq("id", payment.id);
-  await supabase.from("payment_logs").insert({
-    payment_id: payment.id,
-    status,
-    message: `Webhook received: ${payload.status} → resolved to ${status}`,
-    metadata: payload,
-  });
-
-  if (status === "settlement_pending") {
-    triggerAutoPayout(supabaseUrl, supabaseKey, payment.id);
+  if (payload.status === "failure") {
+    const failureReason = payload.error_Message || "Payment failed";
+    const result = await recordPaymentStatus(
+      supabaseUrl, supabaseKey, supabase, payment,
+      "failed", payload.mihpayid, payload, failureReason,
+    );
+    await supabase.from("payment_logs").insert({
+      payment_id: payment.id,
+      status: result.status,
+      message: `PayU webhook: ${payload.status} → ${result.status}${result.skipped ? " (skipped duplicate)" : ""}`,
+      metadata: payload,
+    });
+    return { success: true, status: result.status, skipped: result.skipped };
   }
 
-  return { success: true, status };
+  return { success: true, status: "ignored", message: `Payment status ${payload.status} ignored` };
 }
 
 async function handlePhonePeWebhook(req: Request, supabase: any, supabaseUrl: string, supabaseKey: string) {
@@ -282,40 +298,38 @@ async function handlePhonePeWebhook(req: Request, supabase: any, supabaseUrl: st
   }
 
   const state = (payload.state || payload.code || "").toUpperCase();
-  let status = "pending";
-  let failureReason = null;
+  const phonepeTxId = payload.transactionId || payload.providerReferenceId || payment.gateway_transaction_id;
 
   if (state === "PAYMENT_SUCCESS" || state === "COMPLETED") {
-    status = resolvePaymentStatus(payment);
-  } else if (state === "PAYMENT_ERROR" || state === "FAILED" || state === "PAYMENT_DECLINED") {
-    status = "failed";
-    failureReason = payload.message || payload.errorDescription || "Payment failed";
-  } else {
-    return { success: true, status: "ignored", message: `Payment state ${state} ignored` };
+    const result = await recordPaymentStatus(
+      supabaseUrl, supabaseKey, supabase, payment,
+      "completed", phonepeTxId, payload,
+    );
+    await supabase.from("payment_logs").insert({
+      payment_id: payment.id,
+      status: result.status,
+      message: `PhonePe webhook: ${state} → ${result.status}${result.skipped ? " (skipped duplicate)" : ""}`,
+      metadata: payload,
+    });
+    return { success: true, status: result.status, skipped: result.skipped };
   }
 
-  const updateData: any = {
-    status,
-    gateway_response: payload,
-    gateway_transaction_id: payload.transactionId || payload.providerReferenceId || payment.gateway_transaction_id,
-    updated_at: new Date().toISOString(),
-  };
-  if (status === "completed") updateData.completed_at = new Date().toISOString();
-  if (status === "failed") updateData.failure_reason = failureReason;
-
-  await supabase.from("payments").update(updateData).eq("id", payment.id);
-  await supabase.from("payment_logs").insert({
-    payment_id: payment.id,
-    status,
-    message: `Webhook received: ${state} → resolved to ${status}`,
-    metadata: payload,
-  });
-
-  if (status === "settlement_pending") {
-    triggerAutoPayout(supabaseUrl, supabaseKey, payment.id);
+  if (state === "PAYMENT_ERROR" || state === "FAILED" || state === "PAYMENT_DECLINED") {
+    const failureReason = payload.message || payload.errorDescription || "Payment failed";
+    const result = await recordPaymentStatus(
+      supabaseUrl, supabaseKey, supabase, payment,
+      "failed", phonepeTxId, payload, failureReason,
+    );
+    await supabase.from("payment_logs").insert({
+      payment_id: payment.id,
+      status: result.status,
+      message: `PhonePe webhook: ${state} → ${result.status}${result.skipped ? " (skipped duplicate)" : ""}`,
+      metadata: payload,
+    });
+    return { success: true, status: result.status, skipped: result.skipped };
   }
 
-  return { success: true, status };
+  return { success: true, status: "ignored", message: `Payment state ${state} ignored` };
 }
 
 async function handleGenericWebhook(_req: Request, _supabase: any) {
@@ -325,6 +339,16 @@ async function handleGenericWebhook(_req: Request, _supabase: any) {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
+  }
+
+  // Browser redirect (GET): some gateways redirect the user's browser back to
+  // the callback URL after payment. The actual status recording is handled by
+  // the server-to-server POST webhook (above) and/or the client calling
+  // check-payment-status after the redirect. Return a minimal HTML page so the
+  // browser doesn't see an error.
+  if (req.method === "GET") {
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payment Processing</title><style>body{font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f9fafb;color:#111827}.card{text-align:center;padding:2rem;background:white;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.1);max-width:400px}.spinner{width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:#2563eb;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}@keyframes spin{to{transform:rotate(360deg)}}p{margin:.5rem 0;color:#6b7280}</style></head><body><div class="card"><div class="spinner"></div><h2>Payment Processing</h2><p>Please wait while we confirm your payment status.</p><p>You can close this window and return to the app.</p></div><script>try{window.close()}catch(e){}</script></body></html>`;
+    return new Response(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders } });
   }
 
   try {

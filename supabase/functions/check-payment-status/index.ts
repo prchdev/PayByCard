@@ -37,43 +37,73 @@ async function checkRazorPayStatus(payment: any, gateway: any, isTestMode: boole
   const baseUrl = "https://api.razorpay.com/v1";
   const keyId = isTestMode ? gateway.test_api_key : gateway.production_api_key;
   const keySecret = isTestMode ? gateway.test_api_secret : gateway.production_api_secret;
-  const authString = btoa(`${keyId}:${keySecret}`);
+  const auth = btoa(`${keyId}:${keySecret}`);
+  const headers = { Authorization: `Basic ${auth}` };
 
-  // If we have a gateway order id, check order payments
-  if (payment.gateway_transaction_id) {
-    const response = await fetch(`${baseUrl}/payments/${payment.gateway_transaction_id}`, {
-      method: "GET",
-      headers: { "Authorization": `Basic ${authString}` },
-    });
-    const result = await response.json();
-    const status = result.status === "captured" ? "completed"
-      : result.status === "authorized" ? "processing"
-      : result.status === "failed" ? "failed"
-      : "pending";
-    return { status, transaction_id: result.id, gateway_response: result };
-  }
+  async function resolveOrder(orderId: string) {
+    const orderRes = await fetch(`${baseUrl}/orders/${orderId}`, { headers });
+    const order = await orderRes.json();
 
-  // Try to find payment by order reference
-  const response = await fetch(
-    `${baseUrl}/payments?count=10&notes[payment_reference]=${payment.payment_reference}`,
-    {
-      method: "GET",
-      headers: { "Authorization": `Basic ${authString}` },
+    if (order.status === "paid") {
+      const pmtRes = await fetch(`${baseUrl}/orders/${orderId}/payments`, { headers });
+      const pmtData = await pmtRes.json();
+      const payments: any[] = pmtData.items || [];
+      const captured = payments.find((p: any) => p.status === "captured");
+      const authorized = payments.find((p: any) => p.status === "authorized");
+      const latest = captured || authorized || payments[0];
+      return {
+        status: "completed" as const,
+        transaction_id: latest?.id ?? orderId,
+        gateway_response: { order, payment: latest ?? null },
+      };
     }
-  );
-  const result = await response.json();
-  const items = result.items || [];
 
-  if (items.length > 0) {
-    const latest = items[0];
-    const status = latest.status === "captured" ? "completed"
-      : latest.status === "authorized" ? "processing"
-      : latest.status === "failed" ? "failed"
-      : "pending";
-    return { status, transaction_id: latest.id, gateway_response: latest };
+    if (order.status === "attempted") {
+      const pmtRes = await fetch(`${baseUrl}/orders/${orderId}/payments`, { headers });
+      const pmtData = await pmtRes.json();
+      const payments: any[] = pmtData.items || [];
+      const allFailed = payments.length > 0 && payments.every((p: any) => p.status === "failed");
+      return {
+        status: (allFailed ? "failed" : "processing") as "failed" | "processing",
+        transaction_id: orderId,
+        gateway_response: { order, payments },
+      };
+    }
+
+    return {
+      status: "pending" as const,
+      transaction_id: orderId,
+      gateway_response: { order },
+    };
   }
 
-  return { status: "pending", transaction_id: null, gateway_response: {} };
+  if (payment.gateway_transaction_id?.startsWith("order_")) {
+    return resolveOrder(payment.gateway_transaction_id);
+  }
+
+  if (payment.gateway_transaction_id?.startsWith("pay_")) {
+    const res = await fetch(`${baseUrl}/payments/${payment.gateway_transaction_id}`, { headers });
+    const data = await res.json();
+    const status =
+      data.status === "captured" ? "completed" :
+      data.status === "authorized" ? "processing" :
+      data.status === "failed" ? "failed" :
+      "pending";
+    return { status, transaction_id: data.id ?? null, gateway_response: data };
+  }
+
+  const res = await fetch(
+    `${baseUrl}/orders?receipt=${encodeURIComponent(payment.payment_reference)}&count=5`,
+    { headers }
+  );
+  const data = await res.json();
+  const orders: any[] = data.items || [];
+
+  if (orders.length === 0) {
+    return { status: "pending" as const, transaction_id: null, gateway_response: {} };
+  }
+
+  return resolveOrder(orders[0].id);
 }
 
 async function checkPayUStatus(payment: any, gateway: any, isTestMode: boolean) {

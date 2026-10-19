@@ -22,7 +22,8 @@ Deno.serve(async (req: Request) => {
       .from('payment_options')
       .select('*')
       .eq('is_enabled', true)
-      .order('category_name');
+      .order('display_order', { ascending: true })
+      .order('category_name', { ascending: true });
 
     if (optionsError) {
       return new Response(

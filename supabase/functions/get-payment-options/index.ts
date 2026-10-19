@@ -50,6 +50,7 @@ serveAdmin(async (req: Request) => {
       const { data: categories, error: categoriesError } = await supabase
         .from("payment_options")
         .select("*, settlement_time")
+        .order("display_order", { ascending: true })
         .order("category_name", { ascending: true });
 
       if (categoriesError) {
@@ -74,6 +75,7 @@ serveAdmin(async (req: Request) => {
         .from("payment_options")
         .select("*")
         .eq("is_enabled", true)
+        .order("display_order", { ascending: true })
         .order("category_name", { ascending: true });
 
       if (categoriesError) {

@@ -13,6 +13,8 @@ import {
   ChevronUp,
   Tag,
   Settings2,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -29,6 +31,7 @@ interface PaymentCategory {
   settlement_time: string;
   gateway_id: string | null;
   environment: string;
+  display_order: number;
 }
 
 interface GatewayOption {
@@ -202,9 +205,28 @@ export default function PaymentCharges() {
     );
   };
 
-  const filtered = categories.filter((c) =>
-    c.category_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const moveCategory = (id: string, direction: 'up' | 'down') => {
+    setCategories((prev) => {
+      const sorted = [...prev].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+      const index = sorted.findIndex((c) => c.id === id);
+      if (index === -1) return prev;
+      const swapIndex = direction === 'up' ? index - 1 : index + 1;
+      if (swapIndex < 0 || swapIndex >= sorted.length) return prev;
+      const current = sorted[index];
+      const target = sorted[swapIndex];
+      const currentOrder = current.display_order ?? 0;
+      const targetOrder = target.display_order ?? 0;
+      return prev.map((c) => {
+        if (c.id === current.id) return { ...c, display_order: targetOrder };
+        if (c.id === target.id) return { ...c, display_order: currentOrder };
+        return c;
+      });
+    });
+  };
+
+  const filtered = categories
+    .filter((c) => c.category_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
 
   if (permLoading) return null;
 
@@ -230,23 +252,26 @@ export default function PaymentCharges() {
             </p>
           </div>
           {canEdit && (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5" />
-                  Save All Changes
-                </>
-              )}
-            </button>
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    Save All Changes
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-gray-400">Use ↑/↓ to reorder, then Save</p>
+            </div>
           )}
         </div>
 
@@ -287,7 +312,7 @@ export default function PaymentCharges() {
         {/* List */}
         <div className="bg-white rounded-2xl border-2 border-gray-300 overflow-hidden">
           {/* Table header */}
-          <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 px-6 py-3 bg-gradient-to-r from-purple-50 to-violet-50 border-b-2 border-gray-200">
+          <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr_auto_auto] gap-4 px-6 py-3 bg-gradient-to-r from-purple-50 to-violet-50 border-b-2 border-gray-200">
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</span>
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Charges %</span>
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">GST %</span>
@@ -295,6 +320,7 @@ export default function PaymentCharges() {
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Gateway</span>
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Environment</span>
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Status</span>
+            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Order</span>
             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Details</span>
           </div>
 
@@ -311,7 +337,7 @@ export default function PaymentCharges() {
                 return (
                   <div key={cat.id} className="transition-colors hover:bg-gray-50">
                     {/* Summary row */}
-                    <div className="grid grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center px-6 py-4">
+                    <div className="grid grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr_auto_auto] gap-4 items-center px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg flex items-center justify-center flex-shrink-0">
                           <CreditCard className="w-4 h-4 text-[#8c76f0]" />
@@ -374,6 +400,34 @@ export default function PaymentCharges() {
                         )}
                       </div>
 
+                      <div className="hidden md:flex justify-center items-center gap-1">
+                        <span className="inline-flex items-center justify-center w-8 h-7 bg-gray-50 text-gray-700 text-xs font-semibold rounded-md border border-gray-200">
+                          {cat.display_order ?? 0}
+                        </span>
+                        {canEdit && (
+                          <div className="flex flex-col">
+                            <button
+                              type="button"
+                              onClick={() => moveCategory(cat.id, 'up')}
+                              disabled={saving}
+                              title="Move up"
+                              className="text-gray-400 hover:text-[#8c76f0] hover:bg-purple-50 rounded leading-none p-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveCategory(cat.id, 'down')}
+                              disabled={saving}
+                              title="Move down"
+                              className="text-gray-400 hover:text-[#8c76f0] hover:bg-purple-50 rounded leading-none p-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       {canEdit && (
                         <div className="col-span-1 md:col-span-1 flex justify-end md:justify-center">
                           <button
@@ -428,8 +482,8 @@ export default function PaymentCharges() {
                             </label>
                           </div>
 
-                          {/* Charges + GST + Settlement */}
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                          {/* Charges + GST + Settlement + Display Order */}
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
                                 <Percent className="w-4 h-4" /> Charges (%)
@@ -476,6 +530,22 @@ export default function PaymentCharges() {
                                   <ChevronDown className="w-4 h-4 text-gray-400" />
                                 </div>
                               </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                                <Settings2 className="w-4 h-4" /> Display Order
+                              </label>
+                              <input
+                                type="number"
+                                step="1"
+                                min="0"
+                                value={cat.display_order ?? 0}
+                                onChange={(e) => updateCategory(cat.id, 'display_order', parseInt(e.target.value, 10) || 0)}
+                                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all bg-white"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                Lower numbers appear first in the payment option list
+                              </p>
                             </div>
                           </div>
 

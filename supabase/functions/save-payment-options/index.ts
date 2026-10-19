@@ -20,6 +20,7 @@ interface PaymentCategoryUpdate {
   settlement_time?: string;
   gateway_id?: string | null;
   environment?: string;
+  display_order?: number;
   created_at?: string;
   updated_at?: string;
   updated_by_admin_id?: string;
@@ -102,6 +103,7 @@ serveAdmin(async (req: Request) => {
             settlement_time: category.settlement_time || 'instant',
             gateway_id: category.gateway_id || null,
             environment: envValue,
+            display_order: category.display_order !== undefined ? Number(category.display_order) || 0 : undefined,
             updated_by_admin_id: admin_id,
             updated_by_ip: clientIp,
             updated_at: new Date().toISOString(),

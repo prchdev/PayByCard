@@ -1,7 +1,7 @@
 import {
   CreditCard, Shield, Building2, TrendingUp, Lock, FileCheck, Clock, CheckCircle,
   Landmark, ArrowRight, Banknote, RefreshCw, UserCheck, Briefcase, Home as HomeIcon,
-  Zap, GraduationCap, Bus, Users
+  Zap, GraduationCap, Bus, Users, ShieldCheck, Scale, FileCheck2
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -31,6 +31,68 @@ function PaymentCategoriesSection() {
                   <category.icon className="w-7 h-7 text-[#8c76f0] flex-shrink-0" />
                 </div>
                 <p className="text-gray-900 font-semibold text-sm leading-snug">{category.name}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WhyTrustPayByCardSection() {
+  const trustPoints = [
+    {
+      icon: Building2,
+      title: 'Registered Company',
+      description: 'PayByCard Technologies Private Limited is an Indian company incorporated and registered with the Ministry of Corporate Affairs (MCA).',
+      meta: 'CIN: U62099MH2025PTC462923',
+    },
+    {
+      icon: ShieldCheck,
+      title: 'RBI Regulatory Alignment',
+      description: 'Our payment operations are structured with reference to applicable Reserve Bank of India (RBI) regulatory requirements, including the Master Direction on Regulation of Payment Aggregators, 2025, as applicable to our business model.',
+    },
+    {
+      icon: Scale,
+      title: 'Independent Legal Review',
+      description: 'Our operational procedures have been reviewed by an independent financial regulatory advisory firm, which has issued a legal opinion assessing our payment model against applicable RBI regulatory requirements.',
+    },
+    {
+      icon: FileCheck2,
+      title: 'Quarterly CA-Audited Nodal Account',
+      description: 'Transactions are processed through our designated nodal account. An independent Chartered Accountant firm conducts quarterly audits to review transaction records, fund flows and reconciliation.',
+    },
+  ];
+
+  return (
+    <section className="py-20 px-4 bg-gradient-to-b from-transparent via-purple-50/40 to-transparent">
+      <div className="max-w-7xl mx-auto">
+        <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-900 mb-4">
+          Why Trust <span className="text-[#8c76f0]">PayByCard</span>?
+        </h2>
+        <p className="text-center text-gray-600 text-xl mb-16 max-w-3xl mx-auto">
+          Built on transparency, regulatory diligence, data security and accountability.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {trustPoints.map((point, index) => (
+            <div
+              key={point.title}
+              className="group relative bg-white rounded-2xl p-6 border-2 border-gray-200 hover:border-[#8c76f0] transition-all duration-500 hover:scale-105 shadow-lg hover:shadow-xl flex flex-col"
+              style={{ animationDelay: `${index * 100}ms` }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-50/0 to-violet-50/0 group-hover:from-purple-50/40 group-hover:to-violet-50/40 rounded-2xl transition-all duration-500" />
+              <div className="relative flex flex-col h-full">
+                <div className="relative flex-shrink-0 w-14 h-14 rounded-2xl bg-gray-50 border-2 border-gray-200 group-hover:border-[#8c76f0] group-hover:bg-purple-50 flex items-center justify-center transition-all duration-300 mb-5">
+                  <point.icon className="w-7 h-7 text-gray-400 group-hover:text-[#8c76f0] transition-colors duration-300" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-3">{point.title}</h3>
+                <p className="text-sm text-gray-600 leading-relaxed flex-1">{point.description}</p>
+                {point.meta && (
+                  <p className="mt-4 text-xs font-semibold text-[#8c76f0] bg-purple-50/60 border border-[#8c76f0]/20 rounded-lg px-3 py-2">
+                    {point.meta}
+                  </p>
+                )}
               </div>
             </div>
           ))}
@@ -483,6 +545,8 @@ export default function Home() {
       </section>
 
       <HowItWorksSection />
+
+      <WhyTrustPayByCardSection />
 
       <PaymentCategoriesSection />
 

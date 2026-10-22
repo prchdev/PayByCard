@@ -395,7 +395,7 @@
     },
     "get-user-stats": {
       "hasChanged": false,
-      "hash": "1a915ac558817951b30762051316d6c309b861f27c416e94a39d9cebcb27bf2973f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+      "hash": "90bfab1e33b936ad7c873821aba76a1e9eaba105c628000e95638018ec6db27473f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
     },
     "get-user-transactions": {
       "hasChanged": false,

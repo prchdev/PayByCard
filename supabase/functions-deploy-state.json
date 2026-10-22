@@ -600,6 +600,10 @@
     "waf-validate": {
       "hasChanged": false,
       "hash": "78d21943b3213525f4d2f6ab768cc10144e1bb96f60cab01efce391730ff80ec73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-delete-user": {
+      "hasChanged": false,
+      "hash": "3f8958403c4d27cd6e052b744af45ad105af419de9692548fbdd7fc9d05bbb9a73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
     }
   }
 }

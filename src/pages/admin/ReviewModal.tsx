@@ -61,6 +61,7 @@ interface ReviewModalProps {
   onReview: (recordId: string, table: string, action: 'verified' | 'rejected', reason?: string, surgeCharge?: number) => Promise<void>;
   onAccountAction?: (userId: string, action: string, reason?: string) => Promise<void>;
   onClearKyc?: (userId: string) => Promise<void>;
+  onDeleteUser?: (userId: string) => Promise<void>;
   canEdit?: boolean;
 }
 
@@ -382,7 +383,7 @@ function SectionReview({ title, recordId, table, status, rejectionReason, onRevi
   );
 }
 
-export default function ReviewModal({ entry, onClose, onReview, onAccountAction, onClearKyc, canEdit = true }: ReviewModalProps) {
+export default function ReviewModal({ entry, onClose, onReview, onAccountAction, onClearKyc, onDeleteUser, canEdit = true }: ReviewModalProps) {
   const { user, pan, address, business } = entry;
   const surgeChargeRef = useRef<number>(business?.business_category_surge_charge ?? 0);
   const [surgeChargeInput, setSurgeChargeInput] = useState<string>(
@@ -400,6 +401,10 @@ export default function ReviewModal({ entry, onClose, onReview, onAccountAction,
   const [clearKycError, setClearKycError] = useState<string | null>(null);
   const [clearKycConfirm, setClearKycConfirm] = useState(false);
   const [clearKycDone, setClearKycDone] = useState(false);
+  const [deleteUserLoading, setDeleteUserLoading] = useState(false);
+  const [deleteUserError, setDeleteUserError] = useState<string | null>(null);
+  const [deleteUserConfirm, setDeleteUserConfirm] = useState(false);
+  const [deleteUserDone, setDeleteUserDone] = useState(false);
 
   const hasBusinessDocs = business && (business.incorporation_certificate_url || business.company_pan_photo_url || business.gst_certificate_url || business.loa_url);
 
@@ -478,6 +483,25 @@ export default function ReviewModal({ entry, onClose, onReview, onAccountAction,
       setClearKycError(err instanceof Error ? err.message : 'Failed to clear KYC');
     } finally {
       setClearKycLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUserConfirm) {
+      setDeleteUserConfirm(true);
+      return;
+    }
+    if (!onDeleteUser) return;
+    setDeleteUserLoading(true);
+    setDeleteUserError(null);
+    try {
+      await onDeleteUser(user.id);
+      setDeleteUserDone(true);
+      setDeleteUserConfirm(false);
+    } catch (err) {
+      setDeleteUserError(err instanceof Error ? err.message : 'Failed to delete account');
+    } finally {
+      setDeleteUserLoading(false);
     }
   };
 
@@ -826,6 +850,65 @@ export default function ReviewModal({ entry, onClose, onReview, onAccountAction,
                 <p className="text-xs text-slate-500 mt-2">
                   Disabled accounts cannot login. Restricted accounts cannot add beneficiaries, bank accounts, or make payments.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Account */}
+          {onDeleteUser && !deleteUserDone && (
+            <div className="border border-red-300 rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 bg-red-50 border-b border-red-300">
+                <span className="font-semibold text-red-700 text-sm">Danger Zone — Delete Account</span>
+              </div>
+              <div className="p-4 space-y-3">
+                {deleteUserError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
+                    {deleteUserError}
+                  </div>
+                )}
+
+                {deleteUserConfirm && (
+                  <div className="bg-red-50 border border-red-300 rounded-lg px-3 py-2.5 text-sm text-red-800">
+                    <p className="font-semibold mb-1">This action is irreversible.</p>
+                    <p>This will permanently delete the user account and all associated data: KYC details, transactions, beneficiaries, bank accounts, support tickets, payouts, and uploaded documents. The user will no longer be able to log in.</p>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    disabled={deleteUserLoading || !canEdit}
+                    onClick={handleDeleteUser}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-red-700 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {deleteUserLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                    {deleteUserLoading ? 'Deleting...' : deleteUserConfirm ? 'Confirm Delete Account' : 'Delete Account'}
+                  </button>
+                  {deleteUserConfirm && (
+                    <button
+                      onClick={() => setDeleteUserConfirm(false)}
+                      disabled={deleteUserLoading}
+                      className="px-4 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Permanently removes the user and all their data from the system.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {onDeleteUser && deleteUserDone && (
+            <div className="border border-green-300 rounded-xl overflow-hidden">
+              <div className="p-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700">
+                  Account deleted successfully. Closing...
+                </div>
               </div>
             </div>
           )}

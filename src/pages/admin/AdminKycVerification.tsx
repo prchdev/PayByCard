@@ -60,6 +60,7 @@ export default function AdminKycVerification() {
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
   const [clearKycLoading, setClearKycLoading] = useState(false);
+  const [deleteUserLoading, setDeleteUserLoading] = useState(false);
 
   useEffect(() => {
     if (!adminId) {
@@ -96,6 +97,29 @@ export default function AdminKycVerification() {
     if (!response.ok) throw new Error(data.error || 'Action failed');
 
     await fetchList(statusFilter);
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    setDeleteUserLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-delete-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'x-pbc-admin-session': sessionStorage.getItem('pbc_admin_session') || localStorage.getItem('pbc_admin_session') || '',
+          },
+          body: JSON.stringify({ adminId, userId }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to delete account');
+      await fetchList(statusFilter);
+    } finally {
+      setDeleteUserLoading(false);
+    }
   };
 
   const handleClearKyc = async (userId: string) => {
@@ -473,6 +497,7 @@ export default function AdminKycVerification() {
           onReview={handleReview}
           onAccountAction={handleAccountAction}
           onClearKyc={handleClearKyc}
+          onDeleteUser={handleDeleteUser}
           canEdit={canEdit}
         />
       )}

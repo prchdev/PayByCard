@@ -353,6 +353,10 @@
       "hasChanged": false,
       "hash": "b9c93e44cefef731b3cdff6b4106d787b2f3a442aeb15ca43ce972b8ccc5c68573f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
     },
+    "get-referral-info": {
+      "hasChanged": false,
+      "hash": "6d810ac8c707a8274d8e4bf824628ad3d93012246ed80812c19aeb1b444c09fb73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
     "get-role-permissions": {
       "hasChanged": false,
       "hash": "3fe10e960afef969dde02d8c1480d5e4279b2501e64650d82e6ecf286d4ab87173f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
@@ -403,7 +407,7 @@
     },
     "login-user": {
       "hasChanged": false,
-      "hash": "00e416a5299ebff75b975c7ea8883daa07c97581f5d8f996578bdc74c81f8d5d73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+      "hash": "0e24d9806b78a9abbce0d50abe90df30dacd17ec5687bbaea7a04c42eb29cc1873f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
     },
     "merchant-digilocker-kyc": {
       "hasChanged": false,
@@ -571,7 +575,7 @@
     },
     "user-forgot-password": {
       "hasChanged": false,
-      "hash": "914093fdf5e661f4749c2ee9d4f5d1b5eae88195e10f4941c0c63015798b4a7f73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+      "hash": "c6cdb3f50f61ef00f256c725c3958b101a351b5ae92f18ed97816623da06023773f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
     },
     "user-reset-password": {
       "hasChanged": false,
@@ -596,10 +600,6 @@
     "waf-validate": {
       "hasChanged": false,
       "hash": "78d21943b3213525f4d2f6ab768cc10144e1bb96f60cab01efce391730ff80ec73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
-    },
-    "get-referral-info": {
-      "hasChanged": false,
-      "hash": "6d810ac8c707a8274d8e4bf824628ad3d93012246ed80812c19aeb1b444c09fb73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
     }
   }
 }

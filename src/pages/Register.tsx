@@ -182,9 +182,12 @@ export default function Register() {
         }
       });
     } catch (error) {
-      setErrors({
-        general: error instanceof Error ? error.message : 'Registration failed. Please try again.'
-      });
+      const msg = error instanceof Error ? error.message : 'Registration failed. Please try again.';
+      setErrors({ general: msg });
+      if (/referral/i.test(msg)) {
+        setFormData((prev) => ({ ...prev, referralCode: '' }));
+        try { sessionStorage.removeItem('referralCode'); } catch (_) {}
+      }
     } finally {
       setIsSubmitting(false);
     }

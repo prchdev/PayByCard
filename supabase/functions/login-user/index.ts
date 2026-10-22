@@ -67,7 +67,7 @@ Deno.serve(async (req: Request) => {
 
     if (userError || !user) {
       return new Response(
-        JSON.stringify({ error: GENERIC_LOGIN_FAILURE }),
+        JSON.stringify({ error: 'Email Id is not registered. Please sign up to create an account.' }),
         {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

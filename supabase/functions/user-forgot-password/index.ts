@@ -41,15 +41,11 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (!user) {
-      // Answer identically whether or not the address is registered, so this form
-      // cannot be used to discover which email addresses have accounts.
       return new Response(
         JSON.stringify({
-          success: true,
-          message: "OTPs sent to your email and mobile number",
-          maskedMobile: null,
+          error: 'Email Id is not registered. Please check your email address or sign up to create an account.',
         }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

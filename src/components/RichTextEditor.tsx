@@ -202,35 +202,37 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     if (!editor) return;
 
     editor.focus();
+
     const sel = window.getSelection();
     let range: Range;
 
     if (savedRangeRef.current && editor.contains(savedRangeRef.current.commonAncestorContainer)) {
-      range = savedRangeRef.current;
-      sel?.removeAllRanges();
-      sel?.addRange(range);
-    } else if (sel && sel.rangeCount > 0) {
-      range = sel.getRangeAt(0);
+      range = savedRangeRef.current.cloneRange();
     } else {
       range = document.createRange();
       range.selectNodeContents(editor);
       range.collapse(false);
-      sel?.removeAllRanges();
-      sel?.addRange(range);
     }
 
-    range.deleteContents();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
     const img = document.createElement('img');
     img.src = dataUrl;
     img.style.maxWidth = '100%';
     img.style.height = 'auto';
     img.style.borderRadius = '8px';
     img.style.margin = '8px 0';
+
     range.insertNode(img);
-    range.setStartAfter(img);
-    range.setEndAfter(img);
+
+    const afterRange = document.createRange();
+    afterRange.setStartAfter(img);
+    afterRange.collapse(true);
     sel?.removeAllRanges();
-    sel?.addRange(range);
+    sel?.addRange(afterRange);
+
+    savedRangeRef.current = afterRange.cloneRange();
 
     onChange(editor.innerHTML);
   };
@@ -269,12 +271,13 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     const items = e.clipboardData?.items;
     if (!items) return;
 
-    for (const item of items) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       if (item.type.startsWith('image/')) {
         e.preventDefault();
         const file = item.getAsFile();
-        if (!file) return;
-        if (file.size > MAX_IMAGE_SIZE) return;
+        if (!file || file.size > MAX_IMAGE_SIZE) return;
+        saveSelection();
         setImageUploading(true);
         const reader = new FileReader();
         reader.onload = () => {

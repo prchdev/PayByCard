@@ -49,7 +49,13 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   const [imageUploading, setImageUploading] = useState(false);
   const savedRangeRef = useRef<Range | null>(null);
 
+  const isInternalChange = useRef(false);
+
   useEffect(() => {
+    if (isInternalChange.current) {
+      isInternalChange.current = false;
+      return;
+    }
     if (editorRef.current && value !== editorRef.current.innerHTML) {
       editorRef.current.innerHTML = value || '';
     }
@@ -77,6 +83,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     document.execCommand(command, false, val);
     updateActiveFormats();
     if (editorRef.current) {
+      isInternalChange.current = true;
       onChange(editorRef.current.innerHTML);
     }
   };
@@ -97,6 +104,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
 
   const handleInput = () => {
     if (editorRef.current) {
+      isInternalChange.current = true;
       onChange(editorRef.current.innerHTML);
     }
     updateActiveFormats();
@@ -186,6 +194,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     }
 
     if (editorRef.current) {
+      isInternalChange.current = true;
       onChange(editorRef.current.innerHTML);
     }
     setLinkModal(null);
@@ -203,37 +212,44 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
 
     editor.focus();
 
-    const sel = window.getSelection();
-    let range: Range;
+    let inserted = false;
 
-    if (savedRangeRef.current && editor.contains(savedRangeRef.current.commonAncestorContainer)) {
-      range = savedRangeRef.current.cloneRange();
-    } else {
-      range = document.createRange();
-      range.selectNodeContents(editor);
-      range.collapse(false);
+    try {
+      const sel = window.getSelection();
+      if (savedRangeRef.current && editor.contains(savedRangeRef.current.commonAncestorContainer)) {
+        const range = savedRangeRef.current.cloneRange();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+        img.style.borderRadius = '8px';
+        img.style.margin = '8px 0';
+
+        range.insertNode(img);
+
+        const afterRange = document.createRange();
+        afterRange.setStartAfter(img);
+        afterRange.collapse(true);
+        sel?.removeAllRanges();
+        sel?.addRange(afterRange);
+        savedRangeRef.current = afterRange.cloneRange();
+        inserted = true;
+      }
+    } catch {
+      inserted = false;
     }
 
-    sel?.removeAllRanges();
-    sel?.addRange(range);
+    if (!inserted) {
+      const imgHtml = `<img src="${dataUrl}" style="max-width:100%;height:auto;border-radius:8px;margin:8px 0;" />`;
+      const breakHtml = '<p><br></p>';
+      const current = editor.innerHTML;
+      editor.innerHTML = current + imgHtml + breakHtml;
+    }
 
-    const img = document.createElement('img');
-    img.src = dataUrl;
-    img.style.maxWidth = '100%';
-    img.style.height = 'auto';
-    img.style.borderRadius = '8px';
-    img.style.margin = '8px 0';
-
-    range.insertNode(img);
-
-    const afterRange = document.createRange();
-    afterRange.setStartAfter(img);
-    afterRange.collapse(true);
-    sel?.removeAllRanges();
-    sel?.addRange(afterRange);
-
-    savedRangeRef.current = afterRange.cloneRange();
-
+    isInternalChange.current = true;
     onChange(editor.innerHTML);
   };
 
@@ -260,8 +276,10 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      insertImageAtCursor(dataUrl);
-      setImageUploading(false);
+      setTimeout(() => {
+        insertImageAtCursor(dataUrl);
+        setImageUploading(false);
+      }, 0);
     };
     reader.onerror = () => setImageUploading(false);
     reader.readAsDataURL(file);

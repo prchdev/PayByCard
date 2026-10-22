@@ -51,20 +51,39 @@ export default function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
 
-  // Capture referral code from URL (?ref=CODE) or sessionStorage cache.
-  // Cached so navigation between pages (e.g. Terms modal, login round-trip)
-  // does not lose the referral attribution.
+  // Capture referral code from URL (?ref=CODE) or localStorage cache (7-day expiry).
+  // The referral link points to the public home page; the code is cached so it
+  // is still available when the user later navigates to the Register page.
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const refFromUrl = urlParams.get('ref')?.trim().toUpperCase();
+    const STORAGE_KEY = 'pbc_referral';
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
     if (refFromUrl) {
-      try { sessionStorage.setItem('referralCode', refFromUrl); } catch (_) {}
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ code: refFromUrl, ts: Date.now() }));
+      } catch (_) {}
+      setFormData((prev) => ({ ...prev, referralCode: refFromUrl }));
+      return;
     }
-    let cached: string | null = null;
-    try { cached = sessionStorage.getItem('referralCode'); } catch (_) {}
-    const initial = refFromUrl || cached || '';
-    if (initial) {
-      setFormData((prev) => ({ ...prev, referralCode: initial }));
+
+    // No ref in URL — check localStorage for a cached code that hasn't expired.
+    let cachedCode = '';
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { code: string; ts: number };
+        if (parsed.code && Date.now() - parsed.ts < SEVEN_DAYS_MS) {
+          cachedCode = parsed.code;
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      }
+    } catch (_) {}
+
+    if (cachedCode) {
+      setFormData((prev) => ({ ...prev, referralCode: cachedCode }));
     }
   }, []);
 
@@ -172,7 +191,7 @@ export default function Register() {
       }
 
       // Clear cached referral code on successful registration.
-      try { sessionStorage.removeItem('referralCode'); } catch (_) {}
+      try { localStorage.removeItem('pbc_referral'); } catch (_) {}
 
       navigate('/verify-otp', {
         state: {
@@ -186,7 +205,7 @@ export default function Register() {
       setErrors({ general: msg });
       if (/referral/i.test(msg)) {
         setFormData((prev) => ({ ...prev, referralCode: '' }));
-        try { sessionStorage.removeItem('referralCode'); } catch (_) {}
+        try { localStorage.removeItem('pbc_referral'); } catch (_) {}
       }
     } finally {
       setIsSubmitting(false);

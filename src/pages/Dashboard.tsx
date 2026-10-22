@@ -195,11 +195,16 @@ export default function Dashboard() {
     } catch (_) {}
   };
 
+  const buildReferralMessage = () => {
+    if (!referral?.referralCode) return '';
+    const link = `${window.location.origin}/?ref=${referral.referralCode}`;
+    return `Hi! I'm using PayByCard to manage my rent, tuition fees, vendor payment using credit card effortlessly by transferring money in bank account. Join me using my referral code ${referral.referralCode} and sign up here: ${link}`;
+  };
+
   const handleCopyReferral = async () => {
     if (!referral?.referralCode) return;
-    const link = `${window.location.origin}/register?ref=${referral.referralCode}`;
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(buildReferralMessage());
       setCopiedReferral(true);
       setTimeout(() => setCopiedReferral(false), 2000);
     } catch (_) {}
@@ -207,9 +212,7 @@ export default function Dashboard() {
 
   const handleWhatsAppShare = () => {
     if (!referral?.referralCode) return;
-    const link = `${window.location.origin}/register?ref=${referral.referralCode}`;
-    const msg = `Hi! I'm using PayByCard to manage my payments effortlessly. Join me using my referral code ${referral.referralCode} and sign up here: ${link}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://wa.me/?text=${encodeURIComponent(buildReferralMessage())}`, '_blank', 'noopener,noreferrer');
   };
 
   const { logout } = useAuth();
@@ -365,50 +368,6 @@ export default function Dashboard() {
                   </div>
                 );
               })}
-            </div>
-          )}
-
-          {/* Referral Card */}
-          {referral && (
-            <div className="mb-8 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-2xl p-6 text-white shadow-lg shadow-purple-500/30">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
-                    <Gift className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">Refer & Earn</h3>
-                    <p className="text-sm text-white/90 mt-0.5">Share your referral code with friends.</p>
-                    <div className="flex items-center gap-3 mt-3">
-                      <span className="text-xs text-white/80">Your code</span>
-                      <span className="px-3 py-1.5 bg-white/20 rounded-lg font-mono font-bold tracking-widest text-base backdrop-blur-sm">
-                        {referral.referralCode}
-                      </span>
-                      {referral.totalReferrals > 0 && (
-                        <span className="text-xs text-white/80">
-                          {referral.totalReferrals} joined via your code
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={handleCopyReferral}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white text-[#8c76f0] rounded-xl font-medium text-sm hover:bg-purple-50 transition-colors"
-                  >
-                    {copiedReferral ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copiedReferral ? 'Copied!' : 'Copy Link'}
-                  </button>
-                  <button
-                    onClick={handleWhatsAppShare}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-green-500 text-white rounded-xl font-medium text-sm hover:bg-green-600 transition-colors"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    WhatsApp
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
@@ -611,20 +570,49 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Info Banner */}
-          <div className="mt-8 bg-blue-50 border-2 border-blue-200 rounded-xl px-6 py-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Getting Started</p>
-                <p className="text-sm text-gray-700 mt-1">
-                  Complete your profile setup and add a payment method to start transacting. Need help? Check out our{' '}
-                  <a href="/faq" className="font-medium underline text-blue-600 hover:text-blue-700">FAQ</a> or{' '}
-                  <a href="/contact" className="font-medium underline text-blue-600 hover:text-blue-700">contact support</a>.
-                </p>
+          {/* Referral Card */}
+          {referral && (
+            <div className="mt-8 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-2xl p-6 text-white shadow-lg shadow-purple-500/30">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
+                    <Gift className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Refer & Earn</h3>
+                    <p className="text-sm text-white/90 mt-0.5">Share your referral code with friends.</p>
+                    <div className="flex items-center gap-3 mt-3">
+                      <span className="text-xs text-white/80">Your code</span>
+                      <span className="px-3 py-1.5 bg-white/20 rounded-lg font-mono font-bold tracking-widest text-base backdrop-blur-sm">
+                        {referral.referralCode}
+                      </span>
+                      {referral.totalReferrals > 0 && (
+                        <span className="text-xs text-white/80">
+                          {referral.totalReferrals} joined via your code
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={handleCopyReferral}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white text-[#8c76f0] rounded-xl font-medium text-sm hover:bg-purple-50 transition-colors"
+                  >
+                    {copiedReferral ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copiedReferral ? 'Copied!' : 'Copy'}
+                  </button>
+                  <button
+                    onClick={handleWhatsAppShare}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-green-500 text-white rounded-xl font-medium text-sm hover:bg-green-600 transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </main>
       </div>
 

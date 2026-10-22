@@ -348,6 +348,24 @@ function HowItWorksSection() {
 }
 
 export default function Home() {
+  // Capture referral code from URL (?ref=CODE) and cache it in localStorage
+  // for 7 days so it is available when the user navigates to the Register page.
+  // Opening a link with a different referral code overwrites the cached value
+  // and resets the 7-day timer.
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refFromUrl = urlParams.get('ref')?.trim().toUpperCase();
+    if (!refFromUrl) return;
+    const STORAGE_KEY = 'pbc_referral';
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ code: refFromUrl, ts: Date.now() }));
+    } catch (_) {}
+    // Clean the URL so the param doesn't persist on refresh/share.
+    const cleanUrl = window.location.pathname + window.location.hash;
+    window.history.replaceState({}, '', cleanUrl);
+  }, []);
+
   const VisaLogo = () => (
     <div className="flex items-center justify-center w-full h-full">
       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Visa_Inc._logo_%282021%E2%80%93present%29.svg/1280px-Visa_Inc._logo_%282021%E2%80%93present%29.svg.png" alt="Visa" className="max-h-full max-w-full object-contain" />

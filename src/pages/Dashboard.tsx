@@ -198,10 +198,9 @@ export default function Dashboard() {
   const buildReferralMessage = () => {
     if (!referral?.referralCode) return '';
     const link = `${window.location.origin}/?ref=${referral.referralCode}`;
-    const baseMsg = `Hi! I'm using PayByCard to manage my rent, tuition fees, vendor payment using credit card effortlessly by transferring money in bank account. Join me using my referral code ${referral.referralCode}`;
+    const baseMsg = `Hi! I'm using PayByCard to manage my rent, tuition fees, vendor payment using credit card effortlessly by transferring money in bank account. Join me using my referral code ${referral.referralCode} and sign up here: ${link}`;
     const customMsg = referral.referralMessage?.trim() || '';
-    const customPart = customMsg ? ` ${customMsg}` : '';
-    return `${baseMsg}${customPart} and sign up here: ${link}`;
+    return customMsg ? `${baseMsg}\n${customMsg}` : baseMsg;
   };
 
   const handleCopyReferral = async () => {

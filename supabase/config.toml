@@ -337,3 +337,6 @@ verify_jwt = false
 
 [functions.admin-send-push-now]
 verify_jwt = false
+
+[functions.get-referral-info]
+verify_jwt = false

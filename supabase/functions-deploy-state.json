@@ -1,0 +1,605 @@
+{
+  "projectId": "61023089",
+  "functions": {
+    "add-ticket-reply": {
+      "hasChanged": false,
+      "hash": "4e0d739a5715e7d25eeea6dff19f2608646c16bd01ce73776cc32038e1a7215c73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-add-user": {
+      "hasChanged": false,
+      "hash": "2671e352cd89c28973fdb42835c27eacc9bf3a39754d57b17cda14fc0df886e973f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-bulk-email": {
+      "hasChanged": false,
+      "hash": "195d759e00a1378543cf89ee7e52fa7601bf97019de1fe14ad41628dc42415e473f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-bulk-payout": {
+      "hasChanged": false,
+      "hash": "a71976c007dda85c6a8bcb25d61333c05ba8596239516df8ef4efd79c6bf7b7273f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-bulk-sms": {
+      "hasChanged": false,
+      "hash": "7b7c854f23fadee846c3cd4764c350a2038c493192030034810f87cbda3505bb73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-change-password": {
+      "hasChanged": false,
+      "hash": "aa9827926d1f89ef5c83c04691e90887afcf7784acd8256e868838e1c536554c73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-clear-kyc": {
+      "hasChanged": false,
+      "hash": "8331f649796e453376a2249ee04a1231eab3059b5fdaf0a0ae633807e735d99073f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-create-backup": {
+      "hasChanged": false,
+      "hash": "4383685a781be32633fc4aa38ae2cdb95ee911e13746b9581ec4e8347d05fabd73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-delete-backup": {
+      "hasChanged": false,
+      "hash": "b79d2f7024342537d3c385f1d7deec4ab2f69b2fe1d29e8be4fd25a398a9974073f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-download-backup": {
+      "hasChanged": false,
+      "hash": "b809809bc60a9f818ce9b813453a1d1faf3ba9642e7b4c4fbe59b6579790e7ff73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-download-finance-document": {
+      "hasChanged": false,
+      "hash": "975c774864b7dbba12e84036b0cfccb723371d3c2dbc8b3a74b0573028446cfe73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-end-notification": {
+      "hasChanged": false,
+      "hash": "1d6f57d3e01292e3d6adae3a666b0f885280917db876afeee47c65d3c41f21eb73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-forgot-password": {
+      "hasChanged": false,
+      "hash": "29b07eb905d200fc7773fe455c41e53e1c7a0a46e1f2908ae979777d980505e873f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-gateway-refund": {
+      "hasChanged": false,
+      "hash": "7ea70ac47ea88ebadd1702d08f712c2a9fe3d7a365e4ad23ec627805b33751a373f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-gateway-settlement": {
+      "hasChanged": false,
+      "hash": "524e6099cf2e102e6f5ba6ab10e6e6afd9a491db00ea3cdf570ad46755346c9f73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-all-transactions": {
+      "hasChanged": false,
+      "hash": "156fad7bcc469d64f5397bc74a564af55070d1822850776da5ecff64ff825a3d73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-backup-history": {
+      "hasChanged": false,
+      "hash": "9332e84a4d3a110f1e999b6790a7524b15b80b86859e1b5ae55b7a069c055c0e73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-coupons": {
+      "hasChanged": false,
+      "hash": "e7084a985c8a45828e21be1d3ca4ffb1b5bbc779077374061bb799b5e3de4d3e73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-dashboard-stats": {
+      "hasChanged": false,
+      "hash": "38f629fc91e02170e4360760a5be936d47dcf4e8be3c8cac7eefa3ab9cfaed7473f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-email-settings": {
+      "hasChanged": false,
+      "hash": "0dbd25acb23bc0c610e28f296fd3ace5612323941f700b720d29f7eba084c90573f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-invoices": {
+      "hasChanged": false,
+      "hash": "65456c6a874d8967ff7885211f97d2eac14ab880db585e2f1796e8d8f6b60a0473f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-kyc-list": {
+      "hasChanged": false,
+      "hash": "c0950cff23df236cf2670f9cb2f96dcaaa5593cb41986bfd9769bbcf29d5aa2a73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-master-settings": {
+      "hasChanged": false,
+      "hash": "fa51fe1e2df07c285c5655b63d012c9093c3d478e65cbffacefcad34e50a046e73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-merchant-kyc": {
+      "hasChanged": false,
+      "hash": "253e3e80785f83a2e26dee134ce4ceaf81d20d13adb81b94ca6b23e344c7d9a373f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-notifications": {
+      "hasChanged": false,
+      "hash": "659391a8f727a5dfeacbe7f313e13bc0b8e819b42c03f6078aa0be617e14650073f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-offers": {
+      "hasChanged": false,
+      "hash": "9c7c3dacca9d25eaad9f713e0ab8bcebc7d47eed9c3860728d61a0d608c94aa173f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-payment-categories": {
+      "hasChanged": false,
+      "hash": "aa899671892215dc1aae362199fa0fa13c3a3c7a6fda48efc3fff3bc92574e7e73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-pending-payouts": {
+      "hasChanged": false,
+      "hash": "1a5412ccac501c7ac418880b5d4e39c8e025867e1b07414357231fb3e213d7ec73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-support-tickets": {
+      "hasChanged": false,
+      "hash": "3ccd425153ae300b4bbd1fc9ca73534a6f6a4f3d5cec00090a1cc542533e361b73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-user-summary": {
+      "hasChanged": false,
+      "hash": "d3e6a140c5cfe2eaf899ad949553371f95ed5d6e53340b6977a875c4ae2d468c73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-users": {
+      "hasChanged": false,
+      "hash": "05856f88486e36f30f8108ec405fbd12907e02ee7023aee21bf870d596d8989a73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-get-vendors": {
+      "hasChanged": false,
+      "hash": "3daa5193995c46c2907ca035b758ac8eb0b1124e17be4e2bef737f0c894372d373f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-login": {
+      "hasChanged": false,
+      "hash": "cc78fbd0659ca813192b58b99984fa9e2f7d45c8a0db92cd0e2a33ad71def38473f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-process-manual-payout": {
+      "hasChanged": false,
+      "hash": "94808abb735bf58c7d14ef98b645deb1007823d99e1309311e17cf285cc8609f73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-reset-password": {
+      "hasChanged": false,
+      "hash": "e6ffd4ccf5c1d9bc735a420af454d7749a605153a21ce387bfd3b898abdafabf73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-review-invoice": {
+      "hasChanged": false,
+      "hash": "ccdefdac30f55064e5ac0e168e587e2d96124a644cf8b03dabb1fd05ec82473573f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-review-kyc": {
+      "hasChanged": false,
+      "hash": "1ce1e5a2caf1dffa588cf4f97b1392ec8687873a1f61db052d073d08fe33d60c73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-review-merchant-kyc": {
+      "hasChanged": false,
+      "hash": "fa7483bd855eeadb5ce0ae3fef95f0157e4a2d3c255646df78dc0fb068bad00773f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-save-coupon": {
+      "hasChanged": false,
+      "hash": "0df3d046f1d48269e13ed476496f8f6abd6c890e35aab43541c392a21d6d642f73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-save-email-settings": {
+      "hasChanged": false,
+      "hash": "34cc157cf6e071815bf1909e5ff3c8e24716156a74dcfcba62ef8cb4e97f7ee673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-save-invoice": {
+      "hasChanged": false,
+      "hash": "0bf5ad4311efa3858326e9c5cbeea4364a6586bfea594af91946b8f2d7bc9c2a73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-save-master-settings": {
+      "hasChanged": false,
+      "hash": "572d95738915a4c481a2dfcd2870668aad633496dfedd09c187ef3c14a64ce3a73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-save-notification": {
+      "hasChanged": false,
+      "hash": "bc64aac2a0d278b80b5c00389c6828a7414f4f7de8ca3ff06b0faf9c51c23a2473f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-save-offer": {
+      "hasChanged": false,
+      "hash": "48f90bd9a23ebaa1f534a5f7e328f0e56a8f5575b95f81f59edac2f6f830455073f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-save-payment-category": {
+      "hasChanged": false,
+      "hash": "f39d0bf65810fdc7fbb7c95b01df12c463fa2b276f87c073ca8b2b5771bd9b4273f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-save-surge-charge": {
+      "hasChanged": false,
+      "hash": "f72ecbfe63941a622bd412bcd02fff1f741a789ee4c9987f30487151869ff9cc73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-save-vendor": {
+      "hasChanged": false,
+      "hash": "d48eddae8069e989e49223c5556ad185fa974c17e73c7ef061c9a984838d0cb473f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-send-push-now": {
+      "hasChanged": false,
+      "hash": "09fb4d2d748a53348d8c5d726aba9b28c6f415c64c192f8569fd49e247ca440e73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-toggle-account-status": {
+      "hasChanged": false,
+      "hash": "bd6790385621bd4627bb4be83a93a8fdad2216ce5320ef147193aa96bdfdfcc473f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-toggle-hold": {
+      "hasChanged": false,
+      "hash": "c7d3207acebdbdad249cf6c7ad89e67322099d6988c0f9810c108e542d4467cc73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-toggle-user-status": {
+      "hasChanged": false,
+      "hash": "95dbc0ace468ee765fe1c9eccce96365648b818e7c93dd5e9c10a77d6d35c4b673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-update-ticket-status": {
+      "hasChanged": false,
+      "hash": "20578c4431ca5701b9bc9f5e2cee6f9a71e1040cd8a8ac517722153bd7fba93b73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-update-user": {
+      "hasChanged": false,
+      "hash": "cfacc1c1e312c399535fc302dd3219281332a5515c55fcd6587bccd795c97a5173f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-upload-finance-document": {
+      "hasChanged": false,
+      "hash": "d694b248e7bd8ddf2726881e4d2f2157169374a98d72f2093535db839559b4dc73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-upload-logo": {
+      "hasChanged": false,
+      "hash": "c84d4b9c9d4bec16bf791662a147ef279e854a703ae35291ea9247deb29b176073f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-verify-login-otp": {
+      "hasChanged": false,
+      "hash": "3c4021886e2ac1dfff0d35b6352ec1ddb4bc62580859b1377b473fe19b0cf29f73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "admin-verify-reset-otp": {
+      "hasChanged": false,
+      "hash": "5ac8f6014f587699aaf80d5d3ae7fe4a6d3341784e23113157ac0aba721acfd673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "auto-payout": {
+      "hasChanged": false,
+      "hash": "d54b04e45794e53eb7e6de7ba366de8d877b9052dce7e26c3152f61d8621e97073f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "auto-refund-kyc-expired": {
+      "hasChanged": false,
+      "hash": "e5d696b5b19f82c9ed58530b26365aebb58db44a9540a2f2a1a9047b7e73192173f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "calculate-payment-option-charges": {
+      "hasChanged": false,
+      "hash": "7ab7c182581613ee5c4b7dfd01b157c6fb195688a33edec8b8e1b33a00869dbb73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "change-password": {
+      "hasChanged": false,
+      "hash": "a67da7739e494fc21d79231185a41a081b19bf694669171ac2f0bab29fd81aa973f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "check-beneficiary-monthly-limit": {
+      "hasChanged": false,
+      "hash": "1513ba1c533a24c402917d274ca1fe69642d12c91418e327f2ade8904c66ace673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "check-invoice-verification": {
+      "hasChanged": false,
+      "hash": "41208f8e7bdb275b6edf85fb28dae713bfc5abac339f99520613dd4666824f1273f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "check-kyc-status": {
+      "hasChanged": false,
+      "hash": "1544269fe1420e270c09b162e2131da9b16d1bbf634e7e5fe74d0995123974ab73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "check-payment-status": {
+      "hasChanged": false,
+      "hash": "ddcd8add2000784bc0d1437497f2540b47f75709a7541f542d1ad8d110ed558d73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "check-settlement-status": {
+      "hasChanged": false,
+      "hash": "e04c4cbd55c65f76012e026b99b0e66c98ffecb56d6b96d0dcddb206fb4db9cf73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "create-support-ticket": {
+      "hasChanged": false,
+      "hash": "b3f45728394686a8bc21e041f2b44769fc5ec9857a5c62bf79c80c684d84d83273f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "dashboard-notifications": {
+      "hasChanged": false,
+      "hash": "add3b4c5b70286f270d3ad399dd8943442d5647177c518f49df7f49b8a3050f673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "digilocker-kyc": {
+      "hasChanged": false,
+      "hash": "199cb23be8c542199185e52195f97a98dfd7cef4f6545efa61af8f85164a268073f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "digilocker-redirect": {
+      "hasChanged": false,
+      "hash": "1688ab67aca4e8ccb07479845ef538f4e74b3e77f27be00d7870a64aa44fb45973f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "download-kyc-file": {
+      "hasChanged": false,
+      "hash": "cf952f3a858450edea9897cb81150198482716b34e7700689ea9206181c3038b73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "download-ticket-attachment": {
+      "hasChanged": false,
+      "hash": "b6ffef4d2ff23ec563794ef82ef866533f470171c8ca3f774ae9d129b90ee6d573f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "generate-invoice-html": {
+      "hasChanged": false,
+      "hash": "621f5d027a251689eb204d0c45b30cbe87b2aeb25c3fce744b2497f63724815573f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "generate-invoice-pdf": {
+      "hasChanged": false,
+      "hash": "8efb105aabb17c076109d41b61e8f4f4b7aa90e921f4e04f0df80dec4009f8c673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-active-beneficiaries": {
+      "hasChanged": false,
+      "hash": "8fe8c23481e7b0b6e993e73e156f4cd7c32844d2b1e889db0dc44e535d9afeca73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-active-offers": {
+      "hasChanged": false,
+      "hash": "98fb3b3330b875b94894e2b9c06d13ed300a8d84a88b7579132b119bac49191b73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-beneficiaries": {
+      "hasChanged": false,
+      "hash": "a00d57c9a47794f4c1869240d5ee24cc377a790558470a5e063d68d4a083662b73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-company-settings": {
+      "hasChanged": false,
+      "hash": "f3c736f3f4d182e1842833184b35e8016a94d3b6ed4bc1fa9dd533c972c14e0a73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-gateway-charges": {
+      "hasChanged": false,
+      "hash": "c4840bf44c8a989c84aadcedae1e5fd30f9038ca13b165bf4500dc23b961894d73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-kyc-data": {
+      "hasChanged": false,
+      "hash": "946fb3662b3a0c362a62e24afac91a925b9a653f8c1dae4329235d2d01e91dab73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-kyc-method-settings": {
+      "hasChanged": false,
+      "hash": "31a346bc46a9e5a71bcd0740864c9a32379d814ce7064a47563aa7637015dac173f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-kyc-provider": {
+      "hasChanged": false,
+      "hash": "3ab9e87ec3038ab7b3e0e9a5ef28d409c333fd8ea5b2e71b935c787c8351120773f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-merchant-onboarding": {
+      "hasChanged": false,
+      "hash": "e168d902e70e3a5d7d87e24aed5b0bdea5dad0a2b62d43120000fd75b6bc596c73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-payment-categories-list": {
+      "hasChanged": false,
+      "hash": "d5c2b15663cdc598d16a44b84f6d2a65b0b9b762d722d72979f15de73902339b73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-payment-gateways": {
+      "hasChanged": false,
+      "hash": "8221c45b5543a7eba5dc68a2ad1928062caffd3bcb920a01064403ab18b47e4673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-payment-limits": {
+      "hasChanged": false,
+      "hash": "42c1e8301a8713d95d8548ceb6f09fead52dbfad4b27a965d159450105228b5173f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-payment-options": {
+      "hasChanged": false,
+      "hash": "961416c8eb1232651c6788c7a3a85345ceca96c48169669952471341b391777f73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-payout-settings": {
+      "hasChanged": false,
+      "hash": "b9c93e44cefef731b3cdff6b4106d787b2f3a442aeb15ca43ce972b8ccc5c68573f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-role-permissions": {
+      "hasChanged": false,
+      "hash": "3fe10e960afef969dde02d8c1480d5e4279b2501e64650d82e6ecf286d4ab87173f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-sms-settings": {
+      "hasChanged": false,
+      "hash": "c31b15e7bd73fc68beb2f36a2a96fd38d0f58eb0ed746ed88a5bfb1db5aaa81d73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-support-tickets": {
+      "hasChanged": false,
+      "hash": "a3b7b63efa92c01d0ee9483f9424240d60f91e41c900a5ff1fea919f292a8f8973f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-ticket-details": {
+      "hasChanged": false,
+      "hash": "73b01914dc8ec3376edf1290c0d9aa463bf54a17cba2ee29f0e9a718960f898a73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-user-bank-accounts": {
+      "hasChanged": false,
+      "hash": "589121cc735d20869a49110936c4d1a8fcd2b47fdcc0abc4e1a7fbcba20f0cd273f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-user-permission-overrides": {
+      "hasChanged": false,
+      "hash": "c910f72546d1df1196a36d10c73495e8c5a5fa1eabce82af550a0d5f4511255f73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-user-permissions": {
+      "hasChanged": false,
+      "hash": "2d956f7ee9bd65839582541826d00a24f62f7d46a054361973f7a6d1b26c30b973f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-user-profile-for-bank": {
+      "hasChanged": false,
+      "hash": "1a2dfae9d992f64bbe9b3a4fe9b45dbf353cbbb026c2eda7ef567b12e8f712f673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-user-stats": {
+      "hasChanged": false,
+      "hash": "1a915ac558817951b30762051316d6c309b861f27c416e94a39d9cebcb27bf2973f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-user-transactions": {
+      "hasChanged": false,
+      "hash": "c392c543734d1a675c9cd234a6d2eb2173d49dddb902769f01d48270c76d471773f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "initiate-payment": {
+      "hasChanged": false,
+      "hash": "61392add069246cb887361d0541d5556d386c958cb7f681b1b523171b6f7710673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "log-digilocker-event": {
+      "hasChanged": false,
+      "hash": "f09eebdf2b75f5a595cc1d166f69a352cd1e004b96f8c29de58a4aee7e23b9ce73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "login-user": {
+      "hasChanged": false,
+      "hash": "00e416a5299ebff75b975c7ea8883daa07c97581f5d8f996578bdc74c81f8d5d73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "merchant-digilocker-kyc": {
+      "hasChanged": false,
+      "hash": "b1b4054db2d51b5e15cfc257a5eee1d41f567bd39c373f36cb51debd83a02a7873f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "on-demand-settlement": {
+      "hasChanged": false,
+      "hash": "5a45c4995c18d719d7a1261a895f2b1484457e46cf0489baa5521d1037f6776c73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "payment-gateway-webhook": {
+      "hasChanged": false,
+      "hash": "fb9ffbf5c05f55575b37f0f80727f9605aaa2dc48c1477791b63b673e8a95c7673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "phonepe-payment-configs": {
+      "hasChanged": false,
+      "hash": "b7ec723f5ab65d4b56582b7c9c46c12b6db1811989d7e026afb705a959bbbb1f73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "poll-stale-payments": {
+      "hasChanged": false,
+      "hash": "abfb733ac49f92ba89aba7bd7069e561a95f560fc611b3a875b6dbb53ce2341473f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "process-axis-payout": {
+      "hasChanged": false,
+      "hash": "db73d66f9c32ad970cc6b276451ab5d06472a280776b09926505d3ddf7bf387173f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "process-cashfree-payout": {
+      "hasChanged": false,
+      "hash": "b3decc2f9897dddf691fd896e230df67bac3f533e8654a13a4fb624ee5f85b6a73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "process-ccavenue-payout": {
+      "hasChanged": false,
+      "hash": "02683ce807116bfbc83c67e7711c372c13e9c792f2ab9e785d4f60523184644273f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "process-easebuzz-payout": {
+      "hasChanged": false,
+      "hash": "636bccf4c7ff5e307ab575cd3e3332f2a879f36c1ad6956ec3692cef145e17bd73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "process-enkash-payout": {
+      "hasChanged": false,
+      "hash": "c3d9df5f706d5cb93f933d15f9c493778099387b120be3321856cb0895ad413273f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "process-payu-payout": {
+      "hasChanged": false,
+      "hash": "d486e02689b43b1916916503ce8c0b2e5f86dd1cc59073772a673a8def52b83a73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "process-phonepe-payout": {
+      "hasChanged": false,
+      "hash": "23e740631e3ad0d1633fd618472ee5331a2a8400d432a2920ac28a65198af45473f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "process-razorpay-payout": {
+      "hasChanged": false,
+      "hash": "58016b601be6a602c57c773eebba3ba6747a45f07df7b75b15c53b76eb9ee04473f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "process-zaakpay-payout": {
+      "hasChanged": false,
+      "hash": "7954a08638a0818ac349d0a3d6e3759f6985e26d9a014ddbabdc6a00b915bd3573f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "razorpay-payment-configs": {
+      "hasChanged": false,
+      "hash": "98378744698b6de938331acbb7f854c9839fb1aea439dc3edc311c0820ffc94173f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "register-push-token": {
+      "hasChanged": false,
+      "hash": "ae9746d18453f076adab19659cd7ddfdebd85aea9b026f41d67ce439d242f28173f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "register-user": {
+      "hasChanged": false,
+      "hash": "fc055d01d7e1e60dad42e37a74d222e28d46756bbfb31fe8b5d1e0ec1014340d73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "remove-business-info": {
+      "hasChanged": false,
+      "hash": "1001834392ef7abda2eaa3c6c3f052c7c32c700290b7789ded372c50f004f24573f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "resend-otp": {
+      "hasChanged": false,
+      "hash": "e25bbac6ef50309182e9cb5ed6e2dff277e52e7b368ba8dd9220fa0b785ff15e73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "save-beneficiary": {
+      "hasChanged": false,
+      "hash": "8764a4a13bc95db6efb7960dd8da6dd1ab053a8c61cfc08f38bee7208e1e2e8b73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "save-kyc-data": {
+      "hasChanged": false,
+      "hash": "6f0b4d19f271779a79743bd5d21e8db1e9141b7dfd13c8cbf7a51357ee6fe52373f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "save-kyc-method-settings": {
+      "hasChanged": false,
+      "hash": "5cad00fb5c192ba10ef4d7e82e796248e7778e2e69c71c4e41ea85b0a2b1ce6173f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "save-merchant-onboarding": {
+      "hasChanged": false,
+      "hash": "f9e21ee6885334886f5b6c937f19ef19b21f259974bfd400f63088afbbc5d6cb73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "save-payment-gateways": {
+      "hasChanged": false,
+      "hash": "e657d31107431b3d912945be9a264af5cffb4f8e05c70a3ba4c65311d49d1d0e73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "save-payment-limits": {
+      "hasChanged": false,
+      "hash": "e7e86fb9765fc6d4f8cacb6b499accad47f38de5bc493d24d53fc81a5c423ecd73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "save-payment-options": {
+      "hasChanged": false,
+      "hash": "004ccd8afb936c519471cbb2e2cac8bfa8c538ba8c0f52e607335d2231db714673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "save-payout-settings": {
+      "hasChanged": false,
+      "hash": "e63208fd619ab0f492df7bef8d5bb909476b760841569c67cd7eee29cfdc5f7173f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "save-sms-settings": {
+      "hasChanged": false,
+      "hash": "0f9a29a8e4a65830a0be8ae130e1f38fed8fd880d1eacc5da9de3bc49c146fac73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "save-transaction-status": {
+      "hasChanged": false,
+      "hash": "49f24e13d123fffb581e36a0dbadece5fcb3215829fb0de259be174333da7d5673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "save-user-bank-account": {
+      "hasChanged": false,
+      "hash": "dbf57ab7aa9bd00ccb4422f10bb715ebb027517a282de51bbf3e139e4b4f986973f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "send-email": {
+      "hasChanged": false,
+      "hash": "c5ad72a4a7c1f1062616a9fbce23183ff78fdf5fc0a3b44880c48aabe9cd1eef73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "send-kyc-reminder": {
+      "hasChanged": false,
+      "hash": "63c32fa513a938ff2dff4618280238a5826f3919e89f87fb9baaabf79520942373f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "send-push-notification": {
+      "hasChanged": false,
+      "hash": "ac87b342d1f2db4b6c05882734a663d7c473a6e19ce4ca226afe208b8020beb373f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "send-sms": {
+      "hasChanged": false,
+      "hash": "c7b99ff4a84098491aff5f3649b16cce336d558e65cb47209eea260ddfe63d8b73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "set-default-bank-account": {
+      "hasChanged": false,
+      "hash": "8a4aae9fea0b8ab48319089cb137d5aa1c2ead450f3d0bea11327a50687da68973f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "toggle-beneficiary-status": {
+      "hasChanged": false,
+      "hash": "5363dd0d1931834c07ef79aa7aba70355dff90cee6d8d1414100ae7d7e59b39b73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "update-role-permissions": {
+      "hasChanged": false,
+      "hash": "557e7dc0db907e30cef94ba30c52f2a99c0d9065151a678c6acccd1620320bcc73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "update-user-permissions": {
+      "hasChanged": false,
+      "hash": "f74f7d2a5adaeab2de36fa96a6e558ec02574d037543d735ab9f19e2bb705aea73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "update-user-profile": {
+      "hasChanged": false,
+      "hash": "d9da400021da0aa8dfabaa271c8ffe49e0855676bd1154ac5d60a4ab563b13bc73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "upload-kyc-file": {
+      "hasChanged": false,
+      "hash": "d5a6e050ac6bdaae4ac77f0945556dbbbb54a1d968713712244c419878b54bac73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "upload-ticket-attachment": {
+      "hasChanged": false,
+      "hash": "d8d9d60324ec7a6d0d06fef27c37ada496be909f41a44f6ddeefcf4fec2661f373f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "user-forgot-password": {
+      "hasChanged": false,
+      "hash": "914093fdf5e661f4749c2ee9d4f5d1b5eae88195e10f4941c0c63015798b4a7f73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "user-reset-password": {
+      "hasChanged": false,
+      "hash": "0357826ab9ca3a1bcd7164d3142197e25b2a72c33051c2a2b220b63724693f2b73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "user-verify-reset-otp": {
+      "hasChanged": false,
+      "hash": "ad5ab655f067447b79e73120f923f0de4141a06c67b6de137cd87aa1ba2fefd773f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "validate-coupon": {
+      "hasChanged": false,
+      "hash": "2ed74aa9934883d14baeefc3c42fb5e2d6faf95ee586cb7df8bd4677dc213ed873f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "validate-ifsc": {
+      "hasChanged": false,
+      "hash": "4f23b3825153864a8d985ce6e4616971999f965bf3b81c3ef29ecfff64f23be473f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "verify-otp": {
+      "hasChanged": false,
+      "hash": "709a71d78f6786230883340300668aba75ea02135e609502512f56bee1e00fec73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "waf-validate": {
+      "hasChanged": false,
+      "hash": "78d21943b3213525f4d2f6ab768cc10144e1bb96f60cab01efce391730ff80ec73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    },
+    "get-referral-info": {
+      "hasChanged": false,
+      "hash": "6d810ac8c707a8274d8e4bf824628ad3d93012246ed80812c19aeb1b444c09fb73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+    }
+  }
+}

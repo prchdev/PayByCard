@@ -66,6 +66,23 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
       );
     }
 
+    // Batch-resolve referrer details for every user that has a referred_by value.
+    const referrerIds = Array.from(
+      new Set(users.map((u: any) => u.referred_by).filter(Boolean))
+    ) as string[];
+    let referrerMap: Record<string, { first_name: string | null; middle_name: string | null; last_name: string | null; email: string | null; mobile_number: string | null; full_name: string | null }> = {};
+    if (referrerIds.length > 0) {
+      const { data: referrers } = await supabase
+        .from("users")
+        .select("id, first_name, middle_name, last_name, full_name, email, mobile_number")
+        .in("id", referrerIds);
+      if (referrers) {
+        for (const r of referrers as any[]) {
+          referrerMap[r.id] = r;
+        }
+      }
+    }
+
     const kycData = await Promise.all(
       users.map(async (user) => {
         const [panRes, addressRes, businessRes, merchantRes] = await Promise.all([
@@ -89,6 +106,8 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
           payment_reference = payment?.payment_reference ?? null;
         }
 
+        const referrer = (user as any).referred_by ? referrerMap[(user as any).referred_by] || null : null;
+
         return {
           user,
           pan: panRes.data,
@@ -97,6 +116,11 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
           invoice_status,
           bill_file_url,
           payment_reference,
+          referrer: referrer ? {
+            name: referrer.full_name || [referrer.first_name, referrer.middle_name, referrer.last_name].filter(Boolean).join(' ') || null,
+            email: referrer.email,
+            mobile_number: referrer.mobile_number,
+          } : null,
         };
       })
     );

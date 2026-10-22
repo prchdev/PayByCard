@@ -181,10 +181,13 @@ export default function AdminKycVerification() {
   const handleDownloadCsv = () => {
     const headers = [
       'First Name', 'Middle Name', 'Last Name', 'Email', 'Mobile Number', 'Joined Date',
-      'PAN Number', 'PAN Status', 'Address Proof Type', 'Address Status',
+      'PAN Number', 'PAN Status', 'PAN Verification Date',
+      'Address Proof Type', 'Address Status', 'Address Verification Date',
       'Business Name', 'Business PAN', 'GST Number', 'Business Status',
+      'Referred By Name', 'Referred By Email', 'Referred By Mobile Number',
       'Overall Status',
     ];
+    const fmtDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('en-IN') : '');
     const rows = filtered.map((e) => [
       e.user.first_name,
       e.user.middle_name ?? '',
@@ -194,12 +197,17 @@ export default function AdminKycVerification() {
       new Date(e.user.created_at).toLocaleDateString('en-IN'),
       e.pan?.pan_number ?? '',
       e.pan?.status ?? '',
+      fmtDate(e.pan?.approval_at),
       e.address?.proof_type ?? '',
       e.address?.status ?? '',
+      fmtDate(e.address?.approval_at),
       e.business?.business_name ?? '',
       e.business?.business_pan ?? '',
       e.business?.gst_number ?? '',
       e.business?.status ?? '',
+      e.referrer?.name ?? '',
+      e.referrer?.email ?? '',
+      e.referrer?.mobile_number ?? '',
       getOverallStatus(e),
     ]);
     const dateStr = new Date().toISOString().split('T')[0];

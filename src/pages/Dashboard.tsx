@@ -16,6 +16,10 @@ import {
   Landmark,
   Info,
   AlertTriangle,
+  Gift,
+  Copy,
+  Check,
+  MessageCircle,
 } from 'lucide-react';
 import DashboardNavigation from '../components/DashboardNavigation';
 import DashboardSidebar from '../components/DashboardSidebar';
@@ -78,6 +82,8 @@ export default function Dashboard() {
   const [dashboardNotifications, setDashboardNotifications] = useState<
     { id: string; title: string; message: string; notification_type: string }[]
   >([]);
+  const [referral, setReferral] = useState<{ referralCode: string; totalReferrals: number; referredBy: { name: string | null } | null } | null>(null);
+  const [copiedReferral, setCopiedReferral] = useState(false);
 
   useEffect(() => {
     if (!userId) {
@@ -87,6 +93,7 @@ export default function Dashboard() {
       fetchRecentTransactions();
       fetchStats();
       fetchDashboardNotifications();
+      fetchReferralInfo();
     }
   }, [userId, navigate]);
 
@@ -168,6 +175,41 @@ export default function Dashboard() {
     } finally {
       setLoadingTxns(false);
     }
+  };
+
+  const fetchReferralInfo = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-referral-info`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId }),
+        }
+      );
+      const data = await res.json();
+      if (res.ok && data.referralCode) setReferral(data);
+    } catch (_) {}
+  };
+
+  const handleCopyReferral = async () => {
+    if (!referral?.referralCode) return;
+    const link = `${window.location.origin}/register?ref=${referral.referralCode}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedReferral(true);
+      setTimeout(() => setCopiedReferral(false), 2000);
+    } catch (_) {}
+  };
+
+  const handleWhatsAppShare = () => {
+    if (!referral?.referralCode) return;
+    const link = `${window.location.origin}/register?ref=${referral.referralCode}`;
+    const msg = `Hi! I'm using PayByCard to manage my payments effortlessly. Join me using my referral code ${referral.referralCode} and sign up here: ${link}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
   };
 
   const { logout } = useAuth();
@@ -323,6 +365,50 @@ export default function Dashboard() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Referral Card */}
+          {referral && (
+            <div className="mb-8 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-2xl p-6 text-white shadow-lg shadow-purple-500/30">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
+                    <Gift className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Refer & Earn</h3>
+                    <p className="text-sm text-white/90 mt-0.5">Share your referral code with friends.</p>
+                    <div className="flex items-center gap-3 mt-3">
+                      <span className="text-xs text-white/80">Your code</span>
+                      <span className="px-3 py-1.5 bg-white/20 rounded-lg font-mono font-bold tracking-widest text-base backdrop-blur-sm">
+                        {referral.referralCode}
+                      </span>
+                      {referral.totalReferrals > 0 && (
+                        <span className="text-xs text-white/80">
+                          {referral.totalReferrals} joined via your code
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={handleCopyReferral}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white text-[#8c76f0] rounded-xl font-medium text-sm hover:bg-purple-50 transition-colors"
+                  >
+                    {copiedReferral ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copiedReferral ? 'Copied!' : 'Copy Link'}
+                  </button>
+                  <button
+                    onClick={handleWhatsAppShare}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-green-500 text-white rounded-xl font-medium text-sm hover:bg-green-600 transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

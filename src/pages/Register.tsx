@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff, UserPlus, AlertCircle, X, FileText, Shield } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Eye, EyeOff, UserPlus, AlertCircle, X, FileText, Shield, Gift } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { validatePassword, PASSWORD_REQUIREMENTS } from '../utils/passwordValidation';
 import { capitalizeName } from '../utils/nameFormat';
@@ -14,6 +14,7 @@ interface FormData {
   email: string;
   password: string;
   confirmPassword: string;
+  referralCode: string;
   agreeToTerms: boolean;
 }
 
@@ -41,6 +42,7 @@ export default function Register() {
     email: '',
     password: '',
     confirmPassword: '',
+    referralCode: '',
     agreeToTerms: false,
   });
   const [errors, setErrors] = useState<FormErrors>({});
@@ -48,6 +50,23 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
+
+  // Capture referral code from URL (?ref=CODE) or sessionStorage cache.
+  // Cached so navigation between pages (e.g. Terms modal, login round-trip)
+  // does not lose the referral attribution.
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refFromUrl = urlParams.get('ref')?.trim().toUpperCase();
+    if (refFromUrl) {
+      try { sessionStorage.setItem('referralCode', refFromUrl); } catch (_) {}
+    }
+    let cached: string | null = null;
+    try { cached = sessionStorage.getItem('referralCode'); } catch (_) {}
+    const initial = refFromUrl || cached || '';
+    if (initial) {
+      setFormData((prev) => ({ ...prev, referralCode: initial }));
+    }
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -142,6 +161,7 @@ export default function Register() {
           mobileNumber: `+91${formData.mobileNumber}`,
           email: formData.email,
           password: formData.password,
+          referralCode: formData.referralCode.trim() || undefined,
         }),
       });
 
@@ -150,6 +170,9 @@ export default function Register() {
       if (!response.ok) {
         throw new Error(data.error || 'Registration failed');
       }
+
+      // Clear cached referral code on successful registration.
+      try { sessionStorage.removeItem('referralCode'); } catch (_) {}
 
       navigate('/verify-otp', {
         state: {
@@ -369,6 +392,24 @@ export default function Register() {
                     </li>
                   ))}
                 </ul>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Referral Code <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <div className="relative">
+                  <Gift className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={formData.referralCode}
+                    onChange={(e) => setFormData({ ...formData, referralCode: e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 12) })}
+                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8c76f0] focus:border-transparent transition-all"
+                    placeholder="Enter referral code (optional)"
+                    maxLength={12}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Referred by a friend? Enter their code here.</p>
               </div>
 
               <div>

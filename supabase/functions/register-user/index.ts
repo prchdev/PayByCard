@@ -16,10 +16,23 @@ interface RegisterRequest {
   mobileNumber: string;
   email: string;
   password: string;
+  referralCode?: string;
 }
 
 function generateOTP(): string {
   return (() => { const a = new Uint32Array(1); crypto.getRandomValues(a); return (100000 + (a[0] % 900000)).toString(); })();
+}
+
+const REFERRAL_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function generateReferralCode(): string {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += REFERRAL_ALPHABET[bytes[i] % REFERRAL_ALPHABET.length];
+  }
+  return code;
 }
 
 Deno.serve(async (req: Request) => {
@@ -36,7 +49,7 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const requestData: RegisterRequest = await req.json();
-    const { firstName, middleName, lastName, fullName, mobileNumber, email, password } = requestData;
+    const { firstName, middleName, lastName, fullName, mobileNumber, email, password, referralCode } = requestData;
 
     if (!firstName || !lastName || !mobileNumber || !email || !password) {
       return new Response(
@@ -123,6 +136,51 @@ Deno.serve(async (req: Request) => {
 
     const computedFullName = fullName || [firstName, middleName, lastName].filter(Boolean).join(' ');
 
+    // ── Referral code resolution ────────────────────────────────────────────────
+    // referralCode is optional. If absent/empty, treat as a non-referral registration.
+    // If present, it must match an existing user's referral_code, else we reject.
+    let referredByUserId: string | null = null;
+    const trimmedReferral = (referralCode || '').trim().toUpperCase();
+
+    if (trimmedReferral) {
+      if (trimmedReferral.length < 6 || trimmedReferral.length > 12 || !/^[A-Z0-9]+$/.test(trimmedReferral)) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid referral code format' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const { data: referrer, error: refErr } = await supabase
+        .from('users')
+        .select('id')
+        .eq('referral_code', trimmedReferral)
+        .maybeSingle();
+      if (refErr) {
+        return new Response(
+          JSON.stringify({ error: 'Unable to validate referral code. Please try again.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!referrer) {
+        return new Response(
+          JSON.stringify({ error: 'Referral code not found. Please check and try again, or register without a referral code.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      referredByUserId = referrer.id;
+    }
+
+    // Generate a unique 8-char referral code for the new user (collision-safe loop).
+    let newUserCode = generateReferralCode();
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const { data: collision } = await supabase
+        .from('users')
+        .select('id')
+        .eq('referral_code', newUserCode)
+        .maybeSingle();
+      if (!collision) break;
+      newUserCode = generateReferralCode();
+    }
+
     const { data: newUser, error: userError } = await supabase
       .from('users')
       .insert({
@@ -133,6 +191,8 @@ Deno.serve(async (req: Request) => {
         mobile_number: mobileNumber,
         email: email,
         password_hash: passwordHash,
+        referral_code: newUserCode,
+        referred_by: referredByUserId,
       })
       .select()
       .single();

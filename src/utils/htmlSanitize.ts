@@ -19,7 +19,7 @@ const ALLOWED_ATTRS: Record<string, Set<string>> = {
   li: new Set(['style']),
 };
 
-const ALLOWED_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:']);
+const ALLOWED_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:', 'data:']);
 
 const SAFE_STYLE_PATTERN = /^(color|background-color|font-size|font-weight|font-style|text-align|text-decoration|width|height|margin|padding|line-height|border|border-radius|display):\s*[^;]+;?\s*$/i;
 

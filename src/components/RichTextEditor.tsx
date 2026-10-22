@@ -49,15 +49,23 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   const [imageUploading, setImageUploading] = useState(false);
   const savedRangeRef = useRef<Range | null>(null);
 
-  const isInternalChange = useRef(false);
+  const lastEmittedRef = useRef<string>('');
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (isInternalChange.current) {
-      isInternalChange.current = false;
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    if (!initializedRef.current) {
+      editor.innerHTML = value || '';
+      lastEmittedRef.current = value || '';
+      initializedRef.current = true;
       return;
     }
-    if (editorRef.current && value !== editorRef.current.innerHTML) {
-      editorRef.current.innerHTML = value || '';
+
+    if (value !== lastEmittedRef.current) {
+      editor.innerHTML = value || '';
+      lastEmittedRef.current = value || '';
     }
   }, [value]);
 
@@ -83,8 +91,9 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     document.execCommand(command, false, val);
     updateActiveFormats();
     if (editorRef.current) {
-      isInternalChange.current = true;
-      onChange(editorRef.current.innerHTML);
+      const html = editorRef.current.innerHTML;
+      lastEmittedRef.current = html;
+      onChange(html);
     }
   };
 
@@ -104,8 +113,9 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
 
   const handleInput = () => {
     if (editorRef.current) {
-      isInternalChange.current = true;
-      onChange(editorRef.current.innerHTML);
+      const html = editorRef.current.innerHTML;
+      lastEmittedRef.current = html;
+      onChange(html);
     }
     updateActiveFormats();
   };
@@ -194,8 +204,9 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     }
 
     if (editorRef.current) {
-      isInternalChange.current = true;
-      onChange(editorRef.current.innerHTML);
+      const html = editorRef.current.innerHTML;
+      lastEmittedRef.current = html;
+      onChange(html);
     }
     setLinkModal(null);
   };
@@ -249,8 +260,9 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
       editor.innerHTML = current + imgHtml + breakHtml;
     }
 
-    isInternalChange.current = true;
-    onChange(editor.innerHTML);
+    const html = editor.innerHTML;
+    lastEmittedRef.current = html;
+    onChange(html);
   };
 
   const openImagePicker = () => {

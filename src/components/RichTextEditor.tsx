@@ -198,6 +198,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   // --- Image handling (base64 upload + URL) ---
 
   const openImagePicker = () => {
+    saveSelection();
     fileInputRef.current?.click();
   };
 
@@ -207,9 +208,11 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     e.target.value = '';
 
     if (!file.type.startsWith('image/')) {
+      setImageUploading(false);
       return;
     }
     if (file.size > MAX_IMAGE_SIZE) {
+      setImageUploading(false);
       return;
     }
 
@@ -217,7 +220,12 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      exec('insertImage', dataUrl);
+      restoreSelection();
+      editorRef.current?.focus();
+      document.execCommand('insertImage', false, dataUrl);
+      if (editorRef.current) {
+        onChange(editorRef.current.innerHTML);
+      }
       setImageUploading(false);
     };
     reader.onerror = () => setImageUploading(false);

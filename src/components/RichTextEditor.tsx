@@ -195,7 +195,45 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     exec('unlink');
   };
 
-  // --- Image handling (base64 upload + URL) ---
+  // --- Image handling (base64 upload + paste) ---
+
+  const insertImageAtCursor = (dataUrl: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    editor.focus();
+    const sel = window.getSelection();
+    let range: Range;
+
+    if (savedRangeRef.current && editor.contains(savedRangeRef.current.commonAncestorContainer)) {
+      range = savedRangeRef.current;
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    } else if (sel && sel.rangeCount > 0) {
+      range = sel.getRangeAt(0);
+    } else {
+      range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+
+    range.deleteContents();
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+    img.style.borderRadius = '8px';
+    img.style.margin = '8px 0';
+    range.insertNode(img);
+    range.setStartAfter(img);
+    range.setEndAfter(img);
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    onChange(editor.innerHTML);
+  };
 
   const openImagePicker = () => {
     saveSelection();
@@ -220,16 +258,35 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      restoreSelection();
-      editorRef.current?.focus();
-      document.execCommand('insertImage', false, dataUrl);
-      if (editorRef.current) {
-        onChange(editorRef.current.innerHTML);
-      }
+      insertImageAtCursor(dataUrl);
       setImageUploading(false);
     };
     reader.onerror = () => setImageUploading(false);
     reader.readAsDataURL(file);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) return;
+        if (file.size > MAX_IMAGE_SIZE) return;
+        setImageUploading(true);
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          insertImageAtCursor(dataUrl);
+          setImageUploading(false);
+        };
+        reader.onerror = () => setImageUploading(false);
+        reader.readAsDataURL(file);
+        return;
+      }
+    }
   };
 
   const handleFontSize = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -360,6 +417,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         ref={editorRef}
         contentEditable
         onInput={handleInput}
+        onPaste={handlePaste}
         onMouseUp={updateActiveFormats}
         onKeyUp={updateActiveFormats}
         className="min-h-[300px] max-h-[500px] overflow-y-auto p-4 outline-none prose prose-sm max-w-none focus:outline-none"

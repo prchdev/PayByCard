@@ -37,6 +37,7 @@ serveAdmin(async (req: Request) => {
       android_min_build,
       ios_min_version,
       ios_min_build,
+      referral_message,
     } = await req.json();
 
     if (!adminId) {
@@ -86,6 +87,7 @@ serveAdmin(async (req: Request) => {
       android_min_build: android_min_build || "",
       ios_min_version: ios_min_version || "",
       ios_min_build: ios_min_build || "",
+      referral_message: referral_message ?? null,
       updated_by: adminId,
       updated_at: new Date().toISOString(),
     };

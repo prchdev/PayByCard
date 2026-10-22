@@ -167,7 +167,7 @@
     },
     "admin-save-master-settings": {
       "hasChanged": false,
-      "hash": "572d95738915a4c481a2dfcd2870668aad633496dfedd09c187ef3c14a64ce3a73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+      "hash": "2c8de643185bc035a31b7498e373cca0ad7370bf7f432684cab5f36364e8831773f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
     },
     "admin-save-notification": {
       "hasChanged": false,
@@ -355,7 +355,7 @@
     },
     "get-referral-info": {
       "hasChanged": false,
-      "hash": "6d810ac8c707a8274d8e4bf824628ad3d93012246ed80812c19aeb1b444c09fb73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+      "hash": "076a4972d4a9b99da4b378057fec4640ad0e74f28691850be6b0ee62dfc5bf6873f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
     },
     "get-role-permissions": {
       "hasChanged": false,

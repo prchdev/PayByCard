@@ -82,7 +82,7 @@ export default function Dashboard() {
   const [dashboardNotifications, setDashboardNotifications] = useState<
     { id: string; title: string; message: string; notification_type: string }[]
   >([]);
-  const [referral, setReferral] = useState<{ referralCode: string; totalReferrals: number; referredBy: { name: string | null } | null } | null>(null);
+  const [referral, setReferral] = useState<{ referralCode: string; totalReferrals: number; referredBy: { name: string | null } | null; referralMessage: string | null } | null>(null);
   const [copiedReferral, setCopiedReferral] = useState(false);
 
   useEffect(() => {
@@ -198,7 +198,10 @@ export default function Dashboard() {
   const buildReferralMessage = () => {
     if (!referral?.referralCode) return '';
     const link = `${window.location.origin}/?ref=${referral.referralCode}`;
-    return `Hi! I'm using PayByCard to manage my rent, tuition fees, vendor payment using credit card effortlessly by transferring money in bank account. Join me using my referral code ${referral.referralCode} and sign up here: ${link}`;
+    const baseMsg = `Hi! I'm using PayByCard to manage my rent, tuition fees, vendor payment using credit card effortlessly by transferring money in bank account. Join me using my referral code ${referral.referralCode}`;
+    const customMsg = referral.referralMessage?.trim() || '';
+    const customPart = customMsg ? ` ${customMsg}` : '';
+    return `${baseMsg}${customPart} and sign up here: ${link}`;
   };
 
   const handleCopyReferral = async () => {

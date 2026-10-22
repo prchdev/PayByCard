@@ -17,6 +17,7 @@ import {
   Smartphone,
   Apple,
   Bot,
+  Gift,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -44,6 +45,7 @@ interface MasterSettingsData {
   android_min_build: string;
   ios_min_version: string;
   ios_min_build: string;
+  referral_message: string;
 }
 
 const EMPTY_SETTINGS: MasterSettingsData = {
@@ -68,6 +70,7 @@ const EMPTY_SETTINGS: MasterSettingsData = {
   android_min_build: '',
   ios_min_version: '',
   ios_min_build: '',
+  referral_message: '',
 };
 
 export default function MasterSettings() {
@@ -773,6 +776,39 @@ export default function MasterSettings() {
                   </select>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Referral Message */}
+          <div className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] p-6 transition-all hover:shadow-xl">
+            <div className="flex items-center gap-3 pb-4 mb-6 border-b border-gray-200">
+              <div className="w-10 h-10 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl flex items-center justify-center">
+                <Gift className="w-5 h-5 text-[#8c76f0]" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Referral Message</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Custom message added to referral share text before the referral link. Supports emoji and all symbols.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="referral_message" className="block text-sm font-medium text-gray-700 mb-2">
+                Referral Share Message
+              </label>
+              <textarea
+                id="referral_message"
+                value={settings.referral_message}
+                onChange={(e) => setSettings({ ...settings, referral_message: e.target.value })}
+                rows={3}
+                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all resize-none"
+                placeholder="e.g. Use my code to get started and enjoy exclusive benefits! 🎁"
+                maxLength={500}
+              />
+              <p className="text-xs text-gray-500 mt-1.5">
+                This message appears after the default referral text and before the referral link when users share via Copy or WhatsApp.
+              </p>
             </div>
           </div>
 

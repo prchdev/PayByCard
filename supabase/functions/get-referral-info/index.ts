@@ -54,6 +54,17 @@ Deno.serve(async (req: Request) => {
       .select('id', { count: 'exact', head: true })
       .eq('referred_by', userId);
 
+    // Fetch the admin-configured referral message from master_settings.
+    let referralMessage: string | null = null;
+    const { data: masterSettings } = await supabase
+      .from('master_settings')
+      .select('referral_message')
+      .limit(1)
+      .maybeSingle();
+    if (masterSettings?.referral_message) {
+      referralMessage = masterSettings.referral_message;
+    }
+
     return new Response(
       JSON.stringify({
         referralCode: user.referral_code,
@@ -61,6 +72,7 @@ Deno.serve(async (req: Request) => {
           name: referredBy.full_name || [referredBy.first_name, referredBy.last_name].filter(Boolean).join(' ') || null,
         } : null,
         totalReferrals: countErr ? 0 : (count ?? 0),
+        referralMessage,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

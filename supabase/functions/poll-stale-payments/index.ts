@@ -35,8 +35,6 @@ const SERVICE_ROLE_KEY = () => Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const MAX_POLL_ATTEMPTS = 20;
 // Don't re-poll a payment that was already checked within the last 4 minutes
 const MIN_POLL_INTERVAL_MS = 4 * 60 * 1000;
-// Only pick up payments older than 5 minutes
-const STALE_THRESHOLD_MS = 5 * 60 * 1000;
 // Force-fail payments that remain unresolved for longer than this — user abandoned payment.
 const FORCE_FAIL_AFTER_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -790,7 +788,6 @@ Deno.serve(async (req: Request) => {
 
   try {
     const supabase = createClient(SUPABASE_URL(), SERVICE_ROLE_KEY());
-    const cutoff = new Date(Date.now() - STALE_THRESHOLD_MS).toISOString();
     const rePollBefore = new Date(Date.now() - MIN_POLL_INTERVAL_MS).toISOString();
 
     // Fetch stale unresolved payments
@@ -798,7 +795,6 @@ Deno.serve(async (req: Request) => {
       .from("payments")
       .select("*, payment_gateway_settings(*)")
       .in("status", ["pending", "processing"])
-      .lt("created_at", cutoff)
       .lt("poll_count", MAX_POLL_ATTEMPTS)
       .or(`last_polled_at.is.null,last_polled_at.lt.${rePollBefore}`)
       .order("created_at", { ascending: true })

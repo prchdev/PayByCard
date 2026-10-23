@@ -228,10 +228,6 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // 25-minute cutoff — slightly under the 30-minute cron interval so every
-    // scheduled run always finds fresh eligible payments
-    const cutoff = new Date(Date.now() - 25 * 60 * 1000).toISOString();
-
     const { data: payments, error } = await supabase
       .from("payments")
       .select(
@@ -241,7 +237,6 @@ Deno.serve(async (req: Request) => {
       )
       .in("status", IN_FLIGHT_STATUSES)
       .or(`gateway_settlement_status.is.null,gateway_settlement_status.not.in.(${TERMINAL_STATUSES.join(",")})`)
-      .or(`gateway_settlement_checked_at.is.null,gateway_settlement_checked_at.lt.${cutoff}`)
       .limit(100);
 
     if (error) throw new Error(`Query failed: ${error.message}`);

@@ -128,21 +128,6 @@ Deno.serve(async (req: Request) => {
     if (sErr) throw new Error(`Initiate settings query failed: ${sErr.message}`);
 
     for (const setting of initSettings || []) {
-      // Check trigger interval
-      if (setting.last_settlement_at) {
-        const lastAt = new Date(setting.last_settlement_at);
-        const elapsedMins = (now.getTime() - lastAt.getTime()) / (1000 * 60);
-        if (elapsedMins < setting.settlement_trigger_minutes) {
-          initiateResults.push({
-            gateway: setting.gateway_name,
-            status: "skipped",
-            skipped: true,
-            reason: `Only ${Math.round(elapsedMins)} mins since last settlement (need ${setting.settlement_trigger_minutes})`,
-          });
-          continue;
-        }
-      }
-
       const { data: gateway, error: gErr } = await supabase
         .from("payment_gateway_settings")
         .select("*")

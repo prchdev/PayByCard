@@ -403,7 +403,7 @@
     },
     "initiate-payment": {
       "hasChanged": false,
-      "hash": "718091a373cdbe22ed9a5738c11b822308631b63900e0937df1f62a5d04a8ede73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+      "hash": "ebb6ef85bacd86f92acece1ebe2767641474ea526e42c213a6ec233f65bb4d2673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
     },
     "log-digilocker-event": {
       "hasChanged": false,

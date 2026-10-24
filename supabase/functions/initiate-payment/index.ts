@@ -567,6 +567,10 @@ async function createGatewayPaymentConfig(
       // - types: array of card types, e.g. ["credit"] or ["debit"]
       // sub_type (customer/business) is NOT a valid checkout config field — it only
       // appears in the Payment API response. The checkout cannot filter by sub_type.
+      //
+      // The config is attached both as `options.config` (for the website which passes
+      // the whole options object) and as top-level `options.networks`/`options.types`
+      // (for the mobile app which cherry-picks specific fields).
       const optionName = (payment.payment_option_name || cardType || "").toLowerCase();
       const isNonCreditCardOption = optionName.includes("non credit") || (optionName.includes("debit") && !optionName.includes("credit"));
 
@@ -614,13 +618,17 @@ async function createGatewayPaymentConfig(
           sequence.push("block.wallets");
         }
 
-        options.config = {
+        const razorpayConfigObj = {
           display: {
             blocks,
             sequence,
             preferences: { show_default_blocks: false },
           },
         };
+
+        // Attach as options.config for clients that pass the full options object
+        // (e.g. the website). The mobile app must also pass this through.
+        options.config = razorpayConfigObj;
       }
 
       return {

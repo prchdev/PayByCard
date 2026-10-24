@@ -570,7 +570,6 @@ async function createGatewayPaymentConfig(
 
       let methods = razorpayConfig?.methods || [];
       let cardTypes = razorpayConfig?.card_types || [];
-      let cardSubTypes = razorpayConfig?.card_sub_types || [];
       let networks = (razorpayConfig?.allowed_card_networks || []).map((n: string) => n.toLowerCase());
 
       // Fallback: if no config row exists, restrict based on the option name
@@ -583,29 +582,24 @@ async function createGatewayPaymentConfig(
 
       const hasMethods = methods.length > 0;
       const hasCardTypes = cardTypes.length > 0;
-      const hasCardSubTypes = cardSubTypes.length > 0;
       const hasNetworks = networks.length > 0;
 
-      if (hasMethods || hasCardTypes || hasCardSubTypes || hasNetworks) {
+      if (hasMethods || hasCardTypes || hasNetworks) {
         const blocks: any = {};
         const sequence: string[] = [];
 
         if (methods.includes("card")) {
-          // Create one instrument per card_type so each type/sub_type combo
-          // is enforced independently (e.g. debit/consumer + debit/business).
-          const cardInstruments: any[] = [];
+          // Razorpay card instruments support: method, networks, type.
+          // sub_type is NOT a valid Razorpay checkout field — sending it
+          // causes "no appropriate payment method found" errors.
+          // Create one instrument per card_type (e.g. "credit", "debit").
           const typesToUse = hasCardTypes ? cardTypes : [undefined];
-          const subTypesToUse = hasCardSubTypes ? cardSubTypes : [undefined];
-
-          for (const ct of typesToUse) {
-            for (const cst of subTypesToUse) {
-              const instrument: any = { method: "card" };
-              if (hasNetworks) instrument.networks = networks;
-              if (ct) instrument.type = ct;
-              if (cst) instrument.sub_type = cst;
-              cardInstruments.push(instrument);
-            }
-          }
+          const cardInstruments: any[] = typesToUse.map((ct: string | undefined) => {
+            const instrument: any = { method: "card" };
+            if (hasNetworks) instrument.networks = networks;
+            if (ct) instrument.type = ct;
+            return instrument;
+          });
 
           blocks.cards = { name: "Cards", instruments: cardInstruments };
           sequence.push("block.cards");

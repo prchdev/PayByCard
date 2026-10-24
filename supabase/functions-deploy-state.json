@@ -319,7 +319,7 @@
     },
     "get-gateway-charges": {
       "hasChanged": false,
-      "hash": "c4840bf44c8a989c84aadcedae1e5fd30f9038ca13b165bf4500dc23b961894d73f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+      "hash": "6227349f42502dc9403ce528d12aaf48bc8e76049582eb66c7f23a2210ac507873f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
     },
     "get-kyc-data": {
       "hasChanged": false,
@@ -403,7 +403,7 @@
     },
     "initiate-payment": {
       "hasChanged": false,
-      "hash": "61392add069246cb887361d0541d5556d386c958cb7f681b1b523171b6f7710673f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
+      "hash": "e7d6214c023304b7c20c11251f964d8caa2a2bb628d9745bd888ec6ddc0d580273f5867cc6963dff07ba84833f86b73035f95c2a6559465a5e1bf677af309a6f"
     },
     "log-digilocker-event": {
       "hasChanged": false,

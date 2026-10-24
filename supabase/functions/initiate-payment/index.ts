@@ -561,43 +561,67 @@ async function createGatewayPaymentConfig(
         }
       };
 
-      // Build Razorpay checkout config with instrument-level restrictions
-      // per Razorpay docs: networks, type, sub_type are top-level on the instrument
-      const hasMethods = razorpayConfig?.methods?.length > 0;
-      const hasCardTypes = razorpayConfig?.card_types?.length > 0;
-      const hasCardSubTypes = razorpayConfig?.card_sub_types?.length > 0;
-      const hasNetworks = razorpayConfig?.allowed_card_networks?.length > 0;
+      // Build Razorpay checkout config with instrument-level restrictions.
+      // Razorpay requires lowercase network names: visa, mastercard, rupay, maestro, amex, diners.
+      // When no per-option config row exists, apply a name-based fallback so that
+      // non-credit-card payment options never expose credit cards by default.
+      const optionName = (payment.payment_option_name || cardType || "").toLowerCase();
+      const isNonCreditCardOption = optionName.includes("non credit") || optionName.includes("debit") && !optionName.includes("credit");
+
+      let methods = razorpayConfig?.methods || [];
+      let cardTypes = razorpayConfig?.card_types || [];
+      let cardSubTypes = razorpayConfig?.card_sub_types || [];
+      let networks = (razorpayConfig?.allowed_card_networks || []).map((n: string) => n.toLowerCase());
+
+      // Fallback: if no config row exists, restrict based on the option name
+      if (!razorpayConfig) {
+        if (isNonCreditCardOption) {
+          methods = ["card", "netbanking", "upi"];
+          cardTypes = ["debit"];
+        }
+      }
+
+      const hasMethods = methods.length > 0;
+      const hasCardTypes = cardTypes.length > 0;
+      const hasCardSubTypes = cardSubTypes.length > 0;
+      const hasNetworks = networks.length > 0;
 
       if (hasMethods || hasCardTypes || hasCardSubTypes || hasNetworks) {
         const blocks: any = {};
         const sequence: string[] = [];
 
-        if (razorpayConfig!.methods.includes("card")) {
-          const cardInstrument: any = { method: "card" };
-          if (hasNetworks) {
-            cardInstrument.networks = razorpayConfig!.allowed_card_networks;
+        if (methods.includes("card")) {
+          // Create one instrument per card_type so each type/sub_type combo
+          // is enforced independently (e.g. debit/consumer + debit/business).
+          const cardInstruments: any[] = [];
+          const typesToUse = hasCardTypes ? cardTypes : [undefined];
+          const subTypesToUse = hasCardSubTypes ? cardSubTypes : [undefined];
+
+          for (const ct of typesToUse) {
+            for (const cst of subTypesToUse) {
+              const instrument: any = { method: "card" };
+              if (hasNetworks) instrument.networks = networks;
+              if (ct) instrument.type = ct;
+              if (cst) instrument.sub_type = cst;
+              cardInstruments.push(instrument);
+            }
           }
-          if (hasCardTypes) {
-            cardInstrument.type = razorpayConfig!.card_types[0];
-          }
-          if (hasCardSubTypes) {
-            cardInstrument.sub_type = razorpayConfig!.card_sub_types[0];
-          }
-          blocks.cards = { name: "Cards", instruments: [cardInstrument] };
+
+          blocks.cards = { name: "Cards", instruments: cardInstruments };
           sequence.push("block.cards");
         }
 
-        if (razorpayConfig!.methods.includes("upi")) {
+        if (methods.includes("upi")) {
           blocks.upi = { name: "UPI", instruments: [{ method: "upi" }] };
           sequence.push("block.upi");
         }
 
-        if (razorpayConfig!.methods.includes("netbanking")) {
+        if (methods.includes("netbanking")) {
           blocks.netbanking = { name: "Net Banking", instruments: [{ method: "netbanking" }] };
           sequence.push("block.netbanking");
         }
 
-        if (razorpayConfig!.methods.includes("wallet")) {
+        if (methods.includes("wallet")) {
           blocks.wallets = { name: "Wallets", instruments: [{ method: "wallet" }] };
           sequence.push("block.wallets");
         }

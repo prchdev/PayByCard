@@ -81,6 +81,12 @@ interface PaymentOption {
   terms_and_conditions: string;
   settlement_time: string;
   is_instant_settlement: boolean;
+  razorpay_config?: {
+    methods: string[];
+    allowed_card_networks: string[];
+    card_types: string[];
+    card_sub_types: string[];
+  } | null;
 }
 
 interface ChargesDetails {

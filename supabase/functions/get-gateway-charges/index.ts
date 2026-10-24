@@ -49,6 +49,23 @@ Deno.serve(async (req: Request) => {
       gatewayMap.set(g.id, g);
     }
 
+    // Fetch Razorpay per-option configs so the frontend/mobile app can apply
+    // the same method filtering before opening the checkout modal.
+    const { data: razorpayConfigs } = await supabase
+      .from('razorpay_payment_configs')
+      .select('payment_option_id, methods, allowed_card_networks, card_types, card_sub_types')
+      .eq('is_active', true);
+
+    const razorpayConfigMap = new Map<string, any>();
+    for (const rc of (razorpayConfigs || [])) {
+      razorpayConfigMap.set(rc.payment_option_id, {
+        methods: rc.methods || [],
+        allowed_card_networks: (rc.allowed_card_networks || []).map((n: string) => n.toLowerCase()),
+        card_types: rc.card_types || [],
+        card_sub_types: rc.card_sub_types || [],
+      });
+    }
+
     const formattedOptions = (paymentOptions || [])
       .filter((option: any) => {
         if (!option.gateway_id) return false;
@@ -78,6 +95,7 @@ Deno.serve(async (req: Request) => {
           terms_and_conditions: option.terms_and_conditions || '',
           settlement_time: option.settlement_time || 'instant',
           is_instant_settlement: (option.settlement_time || '').toLowerCase() === 'instant',
+          razorpay_config: razorpayConfigMap.get(option.id) || null,
         };
       });
 

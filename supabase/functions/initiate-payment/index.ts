@@ -562,16 +562,17 @@ async function createGatewayPaymentConfig(
       };
 
       // Build Razorpay checkout config with instrument-level restrictions.
-      // Razorpay requires lowercase network names: visa, mastercard, rupay, maestro, amex, diners.
-      // When no per-option config row exists, apply a name-based fallback so that
-      // non-credit-card payment options never expose credit cards by default.
+      // Per Razorpay docs, the card instrument supports: method, networks, types.
+      // - networks: array of capitalized names, e.g. ["Visa", "MasterCard", "RuPay", "Maestro"]
+      // - types: array of card types, e.g. ["credit"] or ["debit"]
+      // sub_type (customer/business) is NOT a valid checkout config field — it only
+      // appears in the Payment API response. The checkout cannot filter by sub_type.
       const optionName = (payment.payment_option_name || cardType || "").toLowerCase();
-      const isNonCreditCardOption = optionName.includes("non credit") || optionName.includes("debit") && !optionName.includes("credit");
+      const isNonCreditCardOption = optionName.includes("non credit") || (optionName.includes("debit") && !optionName.includes("credit"));
 
       let methods = razorpayConfig?.methods || [];
       let cardTypes = razorpayConfig?.card_types || [];
-      let cardSubTypes = razorpayConfig?.card_sub_types || [];
-      let networks = (razorpayConfig?.allowed_card_networks || []).map((n: string) => n.toLowerCase());
+      let networks = razorpayConfig?.allowed_card_networks || [];
 
       // Fallback: if no config row exists, restrict based on the option name
       if (!razorpayConfig) {
@@ -583,32 +584,18 @@ async function createGatewayPaymentConfig(
 
       const hasMethods = methods.length > 0;
       const hasCardTypes = cardTypes.length > 0;
-      const hasCardSubTypes = cardSubTypes.length > 0;
       const hasNetworks = networks.length > 0;
 
-      if (hasMethods || hasCardTypes || hasCardSubTypes || hasNetworks) {
+      if (hasMethods || hasCardTypes || hasNetworks) {
         const blocks: any = {};
         const sequence: string[] = [];
 
         if (methods.includes("card")) {
-          // Create one instrument per card_type × card_sub_type combination.
-          // Razorpay accepts: method, networks, type, sub_type.
-          // Valid sub_type values are "customer" and "business".
-          const typesToUse = hasCardTypes ? cardTypes : [undefined];
-          const subTypesToUse = hasCardSubTypes ? cardSubTypes : [undefined];
-          const cardInstruments: any[] = [];
+          const cardInstrument: any = { method: "card" };
+          if (hasNetworks) cardInstrument.networks = networks;
+          if (hasCardTypes) cardInstrument.types = cardTypes;
 
-          for (const ct of typesToUse) {
-            for (const cst of subTypesToUse) {
-              const instrument: any = { method: "card" };
-              if (hasNetworks) instrument.networks = networks;
-              if (ct) instrument.type = ct;
-              if (cst) instrument.sub_type = cst;
-              cardInstruments.push(instrument);
-            }
-          }
-
-          blocks.cards = { name: "Cards", instruments: cardInstruments };
+          blocks.cards = { name: "Cards", instruments: [cardInstrument] };
           sequence.push("block.cards");
         }
 

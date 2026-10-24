@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
     for (const rc of (razorpayConfigs || [])) {
       razorpayConfigMap.set(rc.payment_option_id, {
         methods: rc.methods || [],
-        allowed_card_networks: (rc.allowed_card_networks || []).map((n: string) => n.toLowerCase()),
+        allowed_card_networks: rc.allowed_card_networks || [],
         card_types: rc.card_types || [],
         card_sub_types: rc.card_sub_types || [],
       });

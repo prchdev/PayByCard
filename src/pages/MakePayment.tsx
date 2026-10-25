@@ -479,9 +479,7 @@ export default function MakePayment() {
       const result = await response.json();
       if (response.ok) {
         setKycStatus(result);
-        if (result.isVerified) {
-          fetchInitialData();
-        }
+        fetchInitialData();
       }
     } catch (error) {
       console.error('Error checking KYC status:', error);
@@ -1587,63 +1585,7 @@ export default function MakePayment() {
     );
   }
 
-  if (kycStatus && !kycStatus.isVerified) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardNavigation
-          userEmail={userEmail}
-          userId={userId}
-          onLogout={handleLogout}
-          onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        />
 
-        <div className="flex max-w-7xl mx-auto">
-          <DashboardSidebar
-            userId={userId}
-            userEmail={userEmail}
-            currentPage="make-payment"
-            isMobileMenuOpen={isMobileMenuOpen}
-            onClose={() => setIsMobileMenuOpen(false)}
-            onLogout={handleLogout}
-          />
-
-          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
-            <div className="max-w-2xl mx-auto">
-              <div className="bg-white rounded-2xl border-2 border-yellow-300 p-8 text-center">
-                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="w-8 h-8 text-yellow-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">KYC Verification Required</h2>
-                <p className="text-gray-700 mb-6">
-                  {kycStatus.status === 'not_submitted' &&
-                    'Please complete your KYC verification to access payment features. You need to submit your PAN and Address details.'
-                  }
-                  {kycStatus.status === 'incomplete' &&
-                    'Your KYC submission is incomplete. Please complete all required sections to proceed.'
-                  }
-                  {kycStatus.status === 'pending' &&
-                    'Your KYC documents are under review. Please wait for admin approval before making payments.'
-                  }
-                  {kycStatus.status === 'rejected' &&
-                    'Your KYC verification was rejected. Please review the feedback and resubmit your documents.'
-                  }
-                </p>
-                <button
-                  onClick={() => navigate('/kyc-verification', { state: { userId, userEmail } })}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
-                >
-                  Go to KYC Verification
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </main>
-        </div>
-
-        <Footer />
-      </div>
-    );
-  }
 
   if (kycStatus?.isRestricted) {
     return (
@@ -1731,6 +1673,56 @@ export default function MakePayment() {
               <h1 className="text-3xl font-bold text-gray-900">Make Payment</h1>
               <p className="text-gray-600 mt-1">Complete the payment in simple steps</p>
             </div>
+
+            {kycStatus && !kycStatus.isVerified && (
+              <div className="mb-6 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-400 rounded-xl px-6 py-5">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="w-6 h-6 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    {(kycStatus.status === 'not_submitted' || kycStatus.status === 'incomplete') && (
+                      <>
+                        <h3 className="text-lg font-semibold text-amber-900">Complete Your KYC Verification</h3>
+                        <p className="text-sm text-amber-800 mt-1">
+                          Your KYC verification is pending. Please submit your PAN, Address, and Business details to unlock payment features. Payments are disabled until your KYC is approved.
+                        </p>
+                        <button
+                          onClick={() => navigate('/kyc-verification', { state: { userId, userEmail } })}
+                          className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+                        >
+                          Verify KYC
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                    {kycStatus.status === 'pending' && (
+                      <>
+                        <h3 className="text-lg font-semibold text-amber-900">KYC Verification In Progress</h3>
+                        <p className="text-sm text-amber-800 mt-1">
+                          Your KYC documents have been submitted and are currently under review by our compliance team. You will be able to make payments once your verification is approved. This usually takes 1–2 business days.
+                        </p>
+                      </>
+                    )}
+                    {kycStatus.status === 'rejected' && (
+                      <>
+                        <h3 className="text-lg font-semibold text-amber-900">KYC Verification Rejected</h3>
+                        <p className="text-sm text-amber-800 mt-1">
+                          Your KYC submission was rejected. Please review the feedback, update your documents, and resubmit to enable payments.
+                        </p>
+                        <button
+                          onClick={() => navigate('/kyc-verification', { state: { userId, userEmail } })}
+                          className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+                        >
+                          Review & Resubmit
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="mb-6 sm:mb-8">
               <div className="flex items-center justify-between">
@@ -2633,8 +2625,9 @@ export default function MakePayment() {
                   {currentStep === 4 && (
                     <button
                       onClick={handleMakePayment}
-                      disabled={processing}
-                      className="ml-auto flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                      disabled={processing || !kycStatus?.isVerified}
+                      className="ml-auto flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={!kycStatus?.isVerified ? 'Complete KYC verification to enable payments' : undefined}
                     >
                       {processing ? (
                         <>

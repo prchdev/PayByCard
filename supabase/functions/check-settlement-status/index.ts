@@ -285,6 +285,12 @@ Deno.serve(async (req: Request) => {
           ...(shouldRefund && payment.status !== "refunded" && payment.status !== "completed"
             ? { status: "refunded" }
             : {}),
+          // Clear the on-demand settlement inclusion marker when the payment
+          // reaches a terminal settlement state, so it doesn't block future
+          // settlement cycles unnecessarily.
+          ...(["settled", "refunded", "not_applicable"].includes(gatewayStatus)
+            ? { ondemand_settlement_included_at: null }
+            : {}),
         }).eq("id", payment.id);
 
         results.push({

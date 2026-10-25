@@ -187,8 +187,9 @@ export async function getPendingSettlement(
 
 // ─── Razorpay: initiate on-demand settlement ─────────────────────────────────
 // POST /v1/settlements/ondemand with amount (paise) and settle_full_balance.
-// When settle_full_balance=true, Razorpay settles the maximum available amount
-// and the amount parameter is ignored.
+// When settle_full_balance=false, Razorpay settles exactly the specified amount.
+// The amount is the net value (total transaction value minus gateway fees
+// including GST) calculated from settlement_pending payments.
 export async function initiateRazorpaySettlement(
   gateway: any,
   env: string,
@@ -199,15 +200,13 @@ export async function initiateRazorpaySettlement(
 
   try {
     const body: Record<string, any> = {
-      settle_full_balance: true,
+      settle_full_balance: false,
       // Razorpay enforces max 30 chars, alphanumeric + spaces only
       description: "PayByCard settlement",
     };
 
-    // amount is required by the API even when settle_full_balance=true
-    // (Razorpay ignores the value but the field must be present).
-    // Use at least 100 paise (₹1) to satisfy the minimum validation.
-    body.amount = amount > 0 ? Math.round(amount * 100) : 100;
+    // Amount in paise — Razorpay requires at least 100 paise (₹1).
+    body.amount = Math.max(Math.round(amount * 100), 100);
 
     const res = await fetch("https://api.razorpay.com/v1/settlements/ondemand", {
       method: "POST",

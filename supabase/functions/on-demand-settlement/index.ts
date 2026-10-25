@@ -2,7 +2,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import {
   isSupportedGateway,
-  getPendingSettlement,
   initiateSettlement,
   checkSettlementStatus,
   disablePaymentOptionsForGateway,
@@ -20,17 +19,22 @@ import {
  *   linked to that gateway.
  *
  * PHASE 2 — On-demand settlement initiation:
- *   For each gateway where on_demand_settlement_enabled = true:
- *   1. Checks if enough time has passed since last_settlement_at.
- *   2. Fetches the actual pending settlement amount from the gateway API.
- *   3. Initiates a settlement request to the gateway API.
- *   4. Records the settlement attempt. If "onhold", disables payment options.
+ *   For each gateway where on_demand_settlement_enabled = true AND the gateway
+ *   supports on-demand settlement (Razorpay, Cashfree):
+ *   1. Queries payments with status = 'settlement_pending' that have NOT
+ *      already been included in a prior on-demand settlement attempt
+ *      (ondemand_settlement_included_at IS NULL).
+ *   2. Calculates the net settlement amount per gateway:
+ *      SUM(amount - charges - gst)  — i.e. total transaction value minus
+ *      total gateway fee (including GST).
+ *   3. If the net amount > 0, initiates an on-demand settlement with that
+ *      specific amount (settle_full_balance=false for Razorpay).
+ *   4. Marks all included payments with ondemand_settlement_included_at = now()
+ *      so subsequent runs skip them until the settlement settles or fails.
+ *   5. Records the settlement attempt. If "onhold", disables payment options.
  *
- * Currently supports Razorpay and Cashfree settlement APIs.
- *
- * Razorpay notes: amount is always sent (required by API) but
- * settle_full_balance=true tells Razorpay to ignore it and settle
- * everything available. Description must be <=30 chars, alphanumeric+spaces.
+ * Gateways that don't support on-demand settlement are skipped entirely to
+ * speed up calculations. Only Razorpay and Cashfree are supported.
  */
 
 const corsHeaders = {
@@ -54,7 +58,7 @@ Deno.serve(async (req: Request) => {
 
     const now = new Date();
     const trackResults: Array<{ gateway: string; previousStatus: string; currentStatus: string; paymentOptionsDisabled: number }> = [];
-    const initiateResults: Array<{ gateway: string; status: string; amount?: number; skipped: boolean; reason?: string }> = [];
+    const initiateResults: Array<{ gateway: string; status: string; amount?: number; skipped: boolean; reason?: string; paymentsIncluded?: number; grossAmount?: number; totalFees?: number; totalGst?: number }> = [];
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PHASE 1: Track status of existing non-terminal settlements
@@ -115,6 +119,9 @@ Deno.serve(async (req: Request) => {
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PHASE 2: Initiate new on-demand settlements
+    // Calculate amount from settlement_pending payments minus gateway fees,
+    // grouped by payment gateway. Skip gateways that don't support on-demand
+    // settlement, and skip payments already included in a pending settlement.
     // ═══════════════════════════════════════════════════════════════════════════
 
     const { data: initSettings, error: sErr } = await supabase
@@ -127,7 +134,25 @@ Deno.serve(async (req: Request) => {
 
     if (sErr) throw new Error(`Initiate settings query failed: ${sErr.message}`);
 
-    for (const setting of initSettings || []) {
+    // Filter to only gateways that support on-demand settlement
+    const supportedSettings = (initSettings || []).filter(
+      (s) => isSupportedGateway(s.gateway_name),
+    );
+
+    // Skip unsupported gateways in the results for visibility
+    for (const setting of (initSettings || [])) {
+      if (!isSupportedGateway(setting.gateway_name)) {
+        initiateResults.push({
+          gateway: setting.gateway_name,
+          status: "skipped_unsupported",
+          amount: 0,
+          skipped: true,
+          reason: "Gateway does not offer on-demand settlement",
+        });
+      }
+    }
+
+    for (const setting of supportedSettings) {
       const { data: gateway, error: gErr } = await supabase
         .from("payment_gateway_settings")
         .select("*")
@@ -139,68 +164,97 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // Fetch actual pending settlement amount from the gateway API
       const env = gateway.environment || "production";
-      const { amount: pendingAmount, onHold, error: balanceError } = await getPendingSettlement(setting.gateway_name, gateway, env);
 
-      // If the gateway reports onhold, disable payment options immediately
-      if (onHold) {
-        await disablePaymentOptionsForGateway(supabase, gateway.id, setting.gateway_name);
+      // Query settlement_pending payments for this gateway that haven't been
+      // included in a prior on-demand settlement attempt.
+      const { data: pendingPayments, error: pErr } = await supabase
+        .from("payments")
+        .select("id, amount, charges, gst")
+        .eq("status", "settlement_pending")
+        .eq("payment_gateway_id", gateway.id)
+        .is("ondemand_settlement_included_at", null);
+
+      if (pErr) {
+        initiateResults.push({
+          gateway: setting.gateway_name,
+          status: "query_failed",
+          amount: 0,
+          skipped: true,
+          reason: `Payments query failed: ${pErr.message}`,
+        });
+        continue;
+      }
+
+      if (!pendingPayments || pendingPayments.length === 0) {
+        initiateResults.push({
+          gateway: setting.gateway_name,
+          status: "no_pending_payments",
+          amount: 0,
+          skipped: true,
+          reason: "No new settlement_pending payments to process",
+        });
+        continue;
+      }
+
+      // Calculate net settlement amount:
+      // SUM(amount - charges - gst) = total transaction value minus total
+      // gateway fee (charges + GST) for all eligible payments.
+      const paymentIds: string[] = [];
+      let totalAmount = 0;
+      let totalFees = 0;
+      let totalGst = 0;
+
+      for (const p of pendingPayments) {
+        const amt = Number(p.amount) || 0;
+        const chg = Number(p.charges) || 0;
+        const g = Number(p.gst) || 0;
+        totalAmount += amt;
+        totalFees += chg;
+        totalGst += g;
+        paymentIds.push(p.id);
+      }
+
+      const netSettlementAmount = totalAmount - totalFees - totalGst;
+
+      if (netSettlementAmount <= 0) {
+        // Still mark these payments as processed so we don't keep re-evaluating
+        // them — fees equal or exceed the transaction value (edge case).
         await supabase
-          .from("gateway_settlement_settings")
-          .update({
-            last_settlement_at: now.toISOString(),
-            last_settlement_status: "onhold",
-            last_settlement_amount: pendingAmount,
-            updated_at: now.toISOString(),
-          })
-          .eq("id", setting.id);
+          .from("payments")
+          .update({ ondemand_settlement_included_at: now.toISOString() })
+          .in("id", paymentIds);
 
         initiateResults.push({
           gateway: setting.gateway_name,
-          status: "onhold",
-          amount: pendingAmount,
-          skipped: false,
-        });
-        continue;
-      }
-
-      // For Razorpay: always attempt settlement using settle_full_balance=true.
-      // The recon API may report 0 or fail entirely, but Razorpay will settle
-      // whatever is actually available when settle_full_balance=true is sent.
-      // For other gateways: skip if no balance or if the balance check failed.
-      const isRazorpay = setting.gateway_name.toLowerCase().includes("razorpay");
-
-      if (!isRazorpay && !balanceError && pendingAmount === 0) {
-        initiateResults.push({
-          gateway: setting.gateway_name,
-          status: "no_balance",
+          status: "no_net_amount",
           amount: 0,
           skipped: true,
-          reason: "No pending balance available for settlement",
+          reason: `Net amount ≤ 0 (gross=${totalAmount}, fees=${totalFees}, gst=${totalGst})`,
         });
         continue;
       }
 
-      if (!isRazorpay && balanceError) {
-        initiateResults.push({
-          gateway: setting.gateway_name,
-          status: "check_failed",
-          amount: 0,
-          skipped: true,
-          reason: `Balance check failed: ${balanceError}`,
-        });
-        continue;
+      // Initiate settlement with the calculated net amount
+      const settlementResult = await initiateSettlement(
+        setting.gateway_name, gateway, env, netSettlementAmount,
+      );
+
+      // Only mark payments as "included" if the settlement was actually
+      // triggered (initiated, in_progress, or onhold). If it failed or the
+      // API check failed, leave the payments unmarked so they're retried
+      // in the next run.
+      const wasTriggered = ["initiated", "in_progress", "onhold"].includes(
+        settlementResult.status,
+      );
+
+      if (wasTriggered) {
+        await supabase
+          .from("payments")
+          .update({ ondemand_settlement_included_at: now.toISOString() })
+          .in("id", paymentIds);
       }
 
-      if (balanceError) {
-        console.log(`on-demand-settlement: balance check failed for ${setting.gateway_name} (${balanceError}), attempting settlement with settle_full_balance`);
-      }
-
-      // Initiate settlement via the gateway API
-      const settlementResult = await initiateSettlement(setting.gateway_name, gateway, env, pendingAmount);
-
-      // Only record in DB if a settlement was actually attempted
       const errorDetail = settlementResult.status === "failed" || settlementResult.status === "check_failed"
         ? JSON.stringify(settlementResult.response || {}).substring(0, 500)
         : null;
@@ -210,7 +264,7 @@ Deno.serve(async (req: Request) => {
         .update({
           last_settlement_at: now.toISOString(),
           last_settlement_status: settlementResult.status,
-          last_settlement_amount: pendingAmount,
+          last_settlement_amount: netSettlementAmount,
           last_settlement_error: errorDetail,
           updated_at: now.toISOString(),
         })
@@ -219,8 +273,12 @@ Deno.serve(async (req: Request) => {
       initiateResults.push({
         gateway: setting.gateway_name,
         status: settlementResult.status,
-        amount: pendingAmount,
+        amount: netSettlementAmount,
         skipped: false,
+        paymentsIncluded: paymentIds.length,
+        grossAmount: totalAmount,
+        totalFees,
+        totalGst,
       });
 
       if (settlementResult.status === "onhold") {

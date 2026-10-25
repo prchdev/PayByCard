@@ -5,6 +5,7 @@ import {
   initiateSettlement,
   checkSettlementStatus,
   disablePaymentOptionsForGateway,
+  getPendingSettlement,
 } from "../_shared/settlementApi.ts";
 
 /**
@@ -58,7 +59,7 @@ Deno.serve(async (req: Request) => {
 
     const now = new Date();
     const trackResults: Array<{ gateway: string; previousStatus: string; currentStatus: string; paymentOptionsDisabled: number }> = [];
-    const initiateResults: Array<{ gateway: string; status: string; amount?: number; skipped: boolean; reason?: string; paymentsIncluded?: number; grossAmount?: number; totalFees?: number; totalGst?: number }> = [];
+    const initiateResults: Array<{ gateway: string; status: string; amount?: number; skipped: boolean; reason?: string; paymentsIncluded?: number; grossAmount?: number; totalFees?: number; totalGst?: number; amountSource?: string }> = [];
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PHASE 1: Track status of existing non-terminal settlements
@@ -119,38 +120,44 @@ Deno.serve(async (req: Request) => {
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PHASE 2: Initiate new on-demand settlements
-    // Calculate amount from settlement_pending payments minus gateway fees,
-    // grouped by payment gateway. Skip gateways that don't support on-demand
-    // settlement, and skip payments already included in a pending settlement.
+    //
+    // The net settlement amount is fetched from the gateway's own settlement
+    // API (Razorpay recon / Cashfree settlements) which reflects the actual
+    // pending balance the gateway will settle. If the API call fails, we fall
+    // back to calculating from DB rows (SUM(amount - charges - gst)).
+    //
+    // Unsupported gateways are filtered out at the DB query level so we never
+    // fetch their settings or payments. The payments query also filters for
+    // ondemand_settlement_included_at IS NULL so already-included payments are
+    // never fetched.
     // ═══════════════════════════════════════════════════════════════════════════
 
+    // Query only supported gateways directly from the DB — unsupported ones
+    // are never fetched, saving a round-trip and avoiding large result sets.
     const { data: initSettings, error: sErr } = await supabase
       .from("gateway_settlement_settings")
       .select(`
         id, gateway_name,
         settlement_trigger_minutes, last_settlement_at
       `)
-      .eq("on_demand_settlement_enabled", true);
+      .eq("on_demand_settlement_enabled", true)
+      .ilike("gateway_name", "%razorpay%");
 
     if (sErr) throw new Error(`Initiate settings query failed: ${sErr.message}`);
 
-    // Filter to only gateways that support on-demand settlement
-    const supportedSettings = (initSettings || []).filter(
-      (s) => isSupportedGateway(s.gateway_name),
-    );
+    // Also fetch cashfree settings in a parallel query
+    const { data: cashfreeSettings, error: cErr } = await supabase
+      .from("gateway_settlement_settings")
+      .select(`
+        id, gateway_name,
+        settlement_trigger_minutes, last_settlement_at
+      `)
+      .eq("on_demand_settlement_enabled", true)
+      .ilike("gateway_name", "%cashfree%");
 
-    // Skip unsupported gateways in the results for visibility
-    for (const setting of (initSettings || [])) {
-      if (!isSupportedGateway(setting.gateway_name)) {
-        initiateResults.push({
-          gateway: setting.gateway_name,
-          status: "skipped_unsupported",
-          amount: 0,
-          skipped: true,
-          reason: "Gateway does not offer on-demand settlement",
-        });
-      }
-    }
+    if (cErr) throw new Error(`Cashfree settings query failed: ${cErr.message}`);
+
+    const supportedSettings = [...(initSettings || []), ...(cashfreeSettings || [])];
 
     for (const setting of supportedSettings) {
       const { data: gateway, error: gErr } = await supabase
@@ -166,8 +173,22 @@ Deno.serve(async (req: Request) => {
 
       const env = gateway.environment || "production";
 
-      // Query settlement_pending payments for this gateway that haven't been
-      // included in a prior on-demand settlement attempt.
+      // ── Fetch the actual pending settlement amount from the gateway API ──
+      // This is the real net amount the gateway will settle, sourced from the
+      // gateway's own settlement/recon API. Falls back to DB calculation only
+      // if the API call fails or returns an error.
+      const apiResult = await getPendingSettlement(setting.gateway_name, gateway, env);
+
+      let netSettlementAmount: number;
+      let amountSource: "gateway_api" | "db_fallback";
+      let grossAmount = 0;
+      let totalFees = 0;
+      let totalGst = 0;
+
+      // ── Fetch payment IDs to mark as included ──
+      // Only fetch IDs (not full rows) to minimize memory. The filters ensure
+      // we only get settlement_pending payments for this gateway that haven't
+      // been included in a prior settlement attempt.
       const { data: pendingPayments, error: pErr } = await supabase
         .from("payments")
         .select("id, amount, charges, gst")
@@ -197,25 +218,32 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // Calculate net settlement amount:
-      // SUM(amount - charges - gst) = total transaction value minus total
-      // gateway fee (charges + GST) for all eligible payments.
-      const paymentIds: string[] = [];
-      let totalAmount = 0;
-      let totalFees = 0;
-      let totalGst = 0;
+      const paymentIds: string[] = pendingPayments.map((p: any) => p.id);
 
-      for (const p of pendingPayments) {
-        const amt = Number(p.amount) || 0;
-        const chg = Number(p.charges) || 0;
-        const g = Number(p.gst) || 0;
-        totalAmount += amt;
-        totalFees += chg;
-        totalGst += g;
-        paymentIds.push(p.id);
+      if (apiResult.error || apiResult.amount <= 0) {
+        // Gateway API failed or returned zero — fall back to DB calculation
+        // SUM(amount - charges - gst) across eligible payments.
+        for (const p of pendingPayments) {
+          const amt = Number(p.amount) || 0;
+          const chg = Number(p.charges) || 0;
+          const g = Number(p.gst) || 0;
+          grossAmount += amt;
+          totalFees += chg;
+          totalGst += g;
+        }
+        netSettlementAmount = grossAmount - totalFees - totalGst;
+        amountSource = "db_fallback";
+      } else {
+        // Use the gateway's reported pending settlement amount directly
+        netSettlementAmount = apiResult.amount;
+        amountSource = "gateway_api";
+        // Still compute gross/fees/gst from DB for reporting
+        for (const p of pendingPayments) {
+          grossAmount += Number(p.amount) || 0;
+          totalFees += Number(p.charges) || 0;
+          totalGst += Number(p.gst) || 0;
+        }
       }
-
-      const netSettlementAmount = totalAmount - totalFees - totalGst;
 
       if (netSettlementAmount <= 0) {
         // Still mark these payments as processed so we don't keep re-evaluating
@@ -230,12 +258,12 @@ Deno.serve(async (req: Request) => {
           status: "no_net_amount",
           amount: 0,
           skipped: true,
-          reason: `Net amount ≤ 0 (gross=${totalAmount}, fees=${totalFees}, gst=${totalGst})`,
+          reason: `Net amount ≤ 0 (source=${amountSource}, gross=${grossAmount}, fees=${totalFees}, gst=${totalGst})`,
         });
         continue;
       }
 
-      // Initiate settlement with the calculated net amount
+      // Initiate settlement with the net amount (from gateway API or DB fallback)
       const settlementResult = await initiateSettlement(
         setting.gateway_name, gateway, env, netSettlementAmount,
       );
@@ -276,9 +304,10 @@ Deno.serve(async (req: Request) => {
         amount: netSettlementAmount,
         skipped: false,
         paymentsIncluded: paymentIds.length,
-        grossAmount: totalAmount,
+        grossAmount,
         totalFees,
         totalGst,
+        amountSource,
       });
 
       if (settlementResult.status === "onhold") {

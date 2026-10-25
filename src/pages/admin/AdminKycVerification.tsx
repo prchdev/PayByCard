@@ -209,6 +209,7 @@ export default function AdminKycVerification() {
       'Address Proof Type', 'Address Status', 'Address Verification Date',
       'Business Name', 'Business PAN', 'GST Number', 'Business Status',
       'Referred By Name', 'Referred By Email', 'Referred By Mobile Number',
+      'Email Verified', 'Mobile Verified',
       'Overall Status',
     ];
     const fmtDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('en-IN') : '');
@@ -232,6 +233,8 @@ export default function AdminKycVerification() {
       e.referrer?.name ?? '',
       e.referrer?.email ?? '',
       e.referrer?.mobile_number ?? '',
+      e.user.is_email_verified ? 'Yes' : 'No',
+      e.user.is_mobile_verified ? 'Yes' : 'No',
       getOverallStatus(e),
     ]);
     const dateStr = new Date().toISOString().split('T')[0];

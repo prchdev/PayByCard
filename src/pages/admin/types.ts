@@ -16,6 +16,8 @@ export interface UserRecord {
   created_at: string;
   is_disabled?: boolean;
   is_restricted?: boolean;
+  is_email_verified?: boolean;
+  is_mobile_verified?: boolean;
 }
 
 export interface PanRecord {

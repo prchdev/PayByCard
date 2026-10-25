@@ -96,9 +96,7 @@ export default function MyBeneficiaries() {
       const result = await response.json();
       if (response.ok) {
         setKycStatus(result);
-        if (result.isVerified) {
-          fetchBeneficiaries();
-        }
+        fetchBeneficiaries();
       }
     } catch (error) {
       console.error('Error checking KYC status:', error);
@@ -383,61 +381,8 @@ export default function MyBeneficiaries() {
     );
   }
 
-  if (kycStatus && !kycStatus.isVerified) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardNavigation
-          userEmail={userEmail}
-          userId={userId}
-          onLogout={handleLogout}
-          onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        />
-
-        <div className="flex max-w-7xl mx-auto">
-          <DashboardSidebar
-            userId={userId}
-            userEmail={userEmail}
-            currentPage="beneficiaries"
-            isMobileMenuOpen={isMobileMenuOpen}
-            onClose={() => setIsMobileMenuOpen(false)}
-            onLogout={handleLogout}
-          />
-
-          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
-            <div className="max-w-2xl mx-auto">
-              <div className="bg-white rounded-2xl border-2 border-yellow-300 p-8 text-center">
-                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="w-8 h-8 text-yellow-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">KYC Verification Required</h2>
-                <p className="text-gray-700 mb-6">
-                  {kycStatus.status === 'not_submitted' &&
-                    'Please complete your KYC verification to manage beneficiaries. You need to submit your PAN and Address details.'
-                  }
-                  {kycStatus.status === 'incomplete' &&
-                    'Your KYC submission is incomplete. Please complete all required sections to proceed.'
-                  }
-                  {kycStatus.status === 'pending' &&
-                    'Your KYC documents are under review. Please wait for admin approval before managing beneficiaries.'
-                  }
-                  {kycStatus.status === 'rejected' &&
-                    'Your KYC verification was rejected. Please review the feedback and resubmit your documents.'
-                  }
-                </p>
-                <button
-                  onClick={() => navigate('/kyc-verification', { state: { userId, userEmail } })}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
-                >
-                  Go to KYC Verification
-                </button>
-              </div>
-            </div>
-          </main>
-        </div>
-
-        <Footer />
-      </div>
-    );
+  if (kycStatus && false) {
+    return null;
   }
 
   if (kycStatus?.isRestricted) {

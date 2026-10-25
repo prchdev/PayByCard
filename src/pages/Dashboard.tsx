@@ -255,7 +255,7 @@ export default function Dashboard() {
           {/* KYC Status Banner */}
           {!isCheckingKyc && kycStatus && (
             <>
-              {kycStatus.isVerified ? (
+              {false ? (
                 <div className="mb-8 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-xl px-6 py-5">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">

@@ -13,6 +13,7 @@ import {
   Loader2,
   AlertCircle,
   Star,
+  ArrowRight,
 } from 'lucide-react';
 import DashboardNavigation from '../components/DashboardNavigation';
 import DashboardSidebar from '../components/DashboardSidebar';
@@ -385,10 +386,6 @@ export default function MyBankAccounts() {
     );
   }
 
-  if (kycStatus && false) {
-    return null;
-  }
-
   if (kycStatus?.isRestricted) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -472,7 +469,13 @@ export default function MyBankAccounts() {
                 </div>
                 <button
                   onClick={openAddModal}
-                  className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg"
+                  disabled={!kycStatus?.isVerified}
+                  title={!kycStatus?.isVerified ? 'Complete KYC verification to add bank accounts' : undefined}
+                  className={`hidden md:flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-opacity shadow-lg ${
+                    kycStatus?.isVerified
+                      ? 'bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white hover:opacity-90'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
                   <Plus className="w-5 h-5" />
                   Add Bank Account
@@ -492,7 +495,13 @@ export default function MyBankAccounts() {
             {/* Mobile add button */}
             <button
               onClick={openAddModal}
-              className="md:hidden w-full flex items-center justify-center gap-2 mb-6 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg"
+              disabled={!kycStatus?.isVerified}
+              title={!kycStatus?.isVerified ? 'Complete KYC verification to add bank accounts' : undefined}
+              className={`md:hidden w-full flex items-center justify-center gap-2 mb-6 px-6 py-3 rounded-xl font-medium transition-opacity shadow-lg ${
+                kycStatus?.isVerified
+                  ? 'bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white hover:opacity-90'
+                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+              }`}
             >
               <Plus className="w-5 h-5" />
               Add New Bank Account
@@ -517,7 +526,13 @@ export default function MyBankAccounts() {
                 </p>
                 <button
                   onClick={openAddModal}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
+                  disabled={!kycStatus?.isVerified}
+                  title={!kycStatus?.isVerified ? 'Complete KYC verification to add bank accounts' : undefined}
+                  className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-opacity ${
+                    kycStatus?.isVerified
+                      ? 'bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white hover:opacity-90'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
                   <Plus className="w-5 h-5" />
                   Add Bank Account

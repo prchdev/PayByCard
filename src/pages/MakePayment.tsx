@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   ArrowLeft,
@@ -14,10 +14,7 @@ import {
   Loader2,
   Ticket,
 } from 'lucide-react';
-import DashboardNavigation from '../components/DashboardNavigation';
-import DashboardSidebar from '../components/DashboardSidebar';
-import Footer from '../components/Footer';
-import { useAuth } from '../contexts/AuthContext';
+import { useDashboardContext } from '../hooks/useDashboardContext';
 
 
 interface Beneficiary {
@@ -132,10 +129,8 @@ function formatSettlementTime(t: string): string {
 }
 
 export default function MakePayment() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { userId, userEmail } = location.state || {};
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { userId, userEmail } = useDashboardContext();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -1560,113 +1555,50 @@ export default function MakePayment() {
     setCurrentStep(5);
   };
 
-  const { logout } = useAuth();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
-  };
-
   if (!userId) return null;
 
   if (isCheckingKyc) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardNavigation
-          userEmail={userEmail}
-          userId={userId}
-          onLogout={handleLogout}
-          onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        />
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" />
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" />
       </div>
     );
   }
 
-
-
   if (kycStatus?.isRestricted) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardNavigation
-          userEmail={userEmail}
-          userId={userId}
-          onLogout={handleLogout}
-          onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        />
-
-        <div className="flex max-w-7xl mx-auto">
-          <DashboardSidebar
-            userId={userId}
-            userEmail={userEmail}
-            currentPage="make-payment"
-            isMobileMenuOpen={isMobileMenuOpen}
-            onClose={() => setIsMobileMenuOpen(false)}
-            onLogout={handleLogout}
-          />
-
-          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
-            <div className="max-w-2xl mx-auto">
-              <div className="bg-white rounded-2xl border-2 border-red-300 p-8 text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="w-8 h-8 text-red-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">Account Restricted</h2>
-                <p className="text-gray-700 mb-6">
-                  Your account has been restricted by our compliance team. You are unable to make payments at this time. Please raise a support ticket for assistance.
-                </p>
-                <button
-                  onClick={() => navigate('/help-support', { state: { userId, userEmail } })}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
-                >
-                  Raise Support Ticket
-                </button>
-              </div>
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-2xl border-2 border-red-300 p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
-          </main>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Account Restricted</h2>
+            <p className="text-gray-700 mb-6">
+              Your account has been restricted by our compliance team. You are unable to make payments at this time. Please raise a support ticket for assistance.
+            </p>
+            <button
+              onClick={() => navigate('/help-support', { state: { userId, userEmail } })}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
+            >
+              Raise Support Ticket
+            </button>
+          </div>
         </div>
-
-        <Footer />
-      </div>
+      </main>
     );
   }
 
   if (loading && currentStep === 1) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardNavigation
-          userEmail={userEmail}
-          userId={userId}
-          onLogout={handleLogout}
-          onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        />
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" />
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardNavigation
-        userEmail={userEmail}
-        userId={userId}
-        onLogout={handleLogout}
-        onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      />
-
-      <div className="flex max-w-7xl mx-auto">
-        <DashboardSidebar
-          userId={userId}
-          userEmail={userEmail}
-          currentPage="make-payment"
-          isMobileMenuOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-        />
-
+    <>
         <div className="flex-1 p-4 sm:p-6 lg:p-8">
           <div className="max-w-4xl mx-auto">
             <div className="mb-8">
@@ -2647,9 +2579,6 @@ export default function MakePayment() {
             </div>
           </div>
         </div>
-      </div>
-
-      <Footer />
-    </div>
+    </>
   );
 }

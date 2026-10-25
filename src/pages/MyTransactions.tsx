@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   Download,
@@ -16,10 +16,7 @@ import {
   Building2,
   RefreshCw,
 } from 'lucide-react';
-import DashboardNavigation from '../components/DashboardNavigation';
-import DashboardSidebar from '../components/DashboardSidebar';
-import Footer from '../components/Footer';
-import { useAuth } from '../contexts/AuthContext';
+import { useDashboardContext } from '../hooks/useDashboardContext';
 
 interface Transaction {
   id: string;
@@ -119,12 +116,9 @@ function canDownloadReceipt(displayStatus: string): boolean {
 }
 
 export default function MyTransactions() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { userId, userEmail } = location.state || {};
-  const { logout } = useAuth();
+  const { userId, userEmail } = useDashboardContext();
 
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -188,11 +182,6 @@ export default function MyTransactions() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
-  };
-
   const handleDownloadReceipt = async (txn: Transaction) => {
     setDownloadingId(txn.id);
     try {
@@ -234,24 +223,7 @@ export default function MyTransactions() {
   if (!userId) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardNavigation
-        userEmail={userEmail}
-        userId={userId}
-        onLogout={handleLogout}
-        onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      />
-
-      <div className="flex max-w-7xl mx-auto">
-        <DashboardSidebar
-          userId={userId}
-          userEmail={userEmail}
-          currentPage="my-transactions"
-          isMobileMenuOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-          onLogout={handleLogout}
-        />
-
+    <>
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8 min-w-0">
           {/* Header */}
           <div className="mb-6">
@@ -444,9 +416,6 @@ export default function MyTransactions() {
             </div>
           )}
         </main>
-      </div>
-
-      <Footer />
 
       {/* Transaction Detail Modal */}
       {selectedTxn && (
@@ -653,6 +622,6 @@ export default function MyTransactions() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

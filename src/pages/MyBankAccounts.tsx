@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Landmark,
   Plus,
@@ -14,11 +14,9 @@ import {
   AlertCircle,
   Star,
   ArrowRight,
+  Clock,
 } from 'lucide-react';
-import DashboardNavigation from '../components/DashboardNavigation';
-import DashboardSidebar from '../components/DashboardSidebar';
-import Footer from '../components/Footer';
-import { useAuth } from '../contexts/AuthContext';
+import { useDashboardContext } from '../hooks/useDashboardContext';
 import { getClientIp } from '../utils/getClientIp';
 
 interface BankAccount {
@@ -46,10 +44,8 @@ interface UserProfile {
 }
 
 export default function MyBankAccounts() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { userId, userEmail } = location.state || {};
-  const { logout } = useAuth();
+  const { userId, userEmail } = useDashboardContext();
 
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,7 +55,6 @@ export default function MyBankAccounts() {
   const [success, setSuccess] = useState('');
   const [isValidatingIFSC, setIsValidatingIFSC] = useState(false);
   const [ifscError, setIfscError] = useState('');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSettingDefault, setIsSettingDefault] = useState<string | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -363,127 +358,130 @@ export default function MyBankAccounts() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
-  };
-
   if (!userId) return null;
 
   if (isCheckingKyc) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardNavigation
-          userEmail={userEmail}
-          userId={userId}
-          onLogout={handleLogout}
-          onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        />
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" />
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" />
       </div>
     );
   }
 
   if (kycStatus?.isRestricted) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardNavigation
-          userEmail={userEmail}
-          userId={userId}
-          onLogout={handleLogout}
-          onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        />
-
-        <div className="flex max-w-7xl mx-auto">
-          <DashboardSidebar
-            userId={userId}
-            userEmail={userEmail}
-            currentPage="bank-accounts"
-            isMobileMenuOpen={isMobileMenuOpen}
-            onClose={() => setIsMobileMenuOpen(false)}
-            onLogout={handleLogout}
-          />
-
-          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
-            <div className="max-w-2xl mx-auto">
-              <div className="bg-white rounded-2xl border-2 border-red-300 p-8 text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="w-8 h-8 text-red-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">Account Restricted</h2>
-                <p className="text-gray-700 mb-6">
-                  Your account has been restricted by our compliance team. You are unable to manage bank accounts at this time. Please raise a support ticket for assistance.
-                </p>
-                <button
-                  onClick={() => navigate('/help-support', { state: { userId, userEmail } })}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
-                >
-                  Raise Support Ticket
-                </button>
-              </div>
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-2xl border-2 border-red-300 p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
-          </main>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Account Restricted</h2>
+            <p className="text-gray-700 mb-6">
+              Your account has been restricted by our compliance team. You are unable to manage bank accounts at this time. Please raise a support ticket for assistance.
+            </p>
+            <button
+              onClick={() => navigate('/help-support', { state: { userId, userEmail } })}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
+            >
+              Raise Support Ticket
+            </button>
+          </div>
         </div>
-
-        <Footer />
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardNavigation
-        userEmail={userEmail}
-        userId={userId}
-        onLogout={handleLogout}
-        onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      />
-
-      <div className="flex max-w-7xl mx-auto">
-        <DashboardSidebar
-          userId={userId}
-          userEmail={userEmail}
-          currentPage="bank-accounts"
-          isMobileMenuOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-          onLogout={handleLogout}
-        />
-
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
-          <div className="max-w-6xl">
-            {/* Header */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-xl flex items-center justify-center">
-                      <Landmark className="w-5 h-5 text-white" />
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-900">My Bank Accounts</h1>
+    <>
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-6xl">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-xl flex items-center justify-center">
+                    <Landmark className="w-5 h-5 text-white" />
                   </div>
-                  <p className="text-gray-500 text-sm mt-1 ml-[52px]">
-                    Manage your bank accounts for receiving payments and settlements
-                  </p>
+                  <h1 className="text-2xl font-bold text-gray-900">My Bank Accounts</h1>
                 </div>
-                <button
-                  onClick={openAddModal}
-                  disabled={!kycStatus?.isVerified}
-                  title={!kycStatus?.isVerified ? 'Complete KYC verification to add bank accounts' : undefined}
-                  className={`hidden md:flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-opacity shadow-lg ${
-                    kycStatus?.isVerified
-                      ? 'bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white hover:opacity-90'
-                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Bank Account
-                </button>
+                <p className="text-gray-500 text-sm mt-1 ml-[52px]">
+                  Manage your bank accounts for receiving payments and settlements
+                </p>
               </div>
+              <button
+                onClick={openAddModal}
+                disabled={!kycStatus?.isVerified}
+                title={!kycStatus?.isVerified ? 'Complete KYC verification to add bank accounts' : undefined}
+                className={`hidden md:flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-opacity shadow-lg ${
+                  kycStatus?.isVerified
+                    ? 'bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white hover:opacity-90'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                <Plus className="w-5 h-5" />
+                Add Bank Account
+              </button>
             </div>
+          </div>
 
-            {error && (
+          {/* KYC Banner */}
+          {kycStatus && !kycStatus.isVerified && (
+            <div className="mb-6 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-400 rounded-xl px-6 py-5">
+              {kycStatus.status === 'pending' ? (
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-6 h-6 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-amber-900">Waiting for Confirmation</h3>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Your KYC documents are under review. Adding bank account for whitelisting to accept payment is only allowed after KYC verification.
+                    </p>
+                  </div>
+                </div>
+              ) : kycStatus.status === 'rejected' ? (
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-red-900">KYC Verification Rejected</h3>
+                    <p className="text-sm text-red-700 mt-1">
+                      Your KYC was rejected. Please resubmit your documents to add bank accounts for whitelisting.
+                    </p>
+                    <button
+                      onClick={() => navigate('/kyc-verification', { state: { userId, userEmail } })}
+                      className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                    >
+                      Resubmit KYC
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="w-6 h-6 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-amber-900">KYC Verification Required</h3>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Adding bank account for whitelisting to accept payment is only allowed after KYC verification. Please complete your KYC to continue.
+                    </p>
+                    <button
+                      onClick={() => navigate('/kyc-verification', { state: { userId, userEmail } })}
+                      className="mt-3 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+                    >
+                      Complete KYC Verification
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {error && (
               <div className="mb-6 bg-red-50 border-2 border-red-500 rounded-xl px-6 py-4">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
@@ -661,7 +659,6 @@ export default function MyBankAccounts() {
             </div>
           </div>
         </main>
-      </div>
 
       {/* Add Bank Account Modal */}
       {isModalOpen && (
@@ -950,7 +947,6 @@ export default function MyBankAccounts() {
         </div>
       )}
 
-      <Footer />
-    </div>
+    </>
   );
 }

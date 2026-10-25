@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Lock,
   Eye,
@@ -8,17 +8,12 @@ import {
   CheckCircle,
   Loader2
 } from 'lucide-react';
-import DashboardNavigation from '../components/DashboardNavigation';
-import DashboardSidebar from '../components/DashboardSidebar';
-import Footer from '../components/Footer';
-import { useAuth } from '../contexts/AuthContext';
+import { useDashboardContext } from '../hooks/useDashboardContext';
 import { validatePassword, PASSWORD_REQUIREMENTS } from '../utils/passwordValidation';
 
 export default function ChangePassword() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { userId, userEmail } = location.state || {};
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { userId, userEmail } = useDashboardContext();
 
   useEffect(() => {
     if (!userId) {
@@ -40,13 +35,6 @@ export default function ChangePassword() {
   const [success, setSuccess] = useState(false);
 
   if (!userId) return null;
-
-  const { logout } = useAuth();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
-  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -118,26 +106,8 @@ export default function ChangePassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardNavigation
-        userEmail={userEmail}
-        userId={userId}
-        onLogout={handleLogout}
-        onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      />
-
-      <div className="flex max-w-7xl mx-auto">
-        <DashboardSidebar
-          userId={userId}
-          userEmail={userEmail}
-          currentPage="change-password"
-          isMobileMenuOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-          onLogout={handleLogout}
-        />
-
-        {/* Main Content */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+    <>
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
           <div className="max-w-3xl">
             <div className="mb-8">
               <div className="flex items-center gap-3 mb-2">
@@ -324,9 +294,6 @@ export default function ChangePassword() {
             </div>
           </div>
         </main>
-      </div>
-
-      <Footer />
-    </div>
+    </>
   );
 }

@@ -52,6 +52,7 @@ import AdminSupportTickets from './pages/admin/AdminSupportTickets';
 import PaymentCategories from './pages/admin/PaymentCategories';
 import MasterSettings from './pages/admin/MasterSettings';
 import MerchantOnboarding from './pages/MerchantOnboarding';
+import DashboardLayout from './components/DashboardLayout';
 import ManualPayout from './pages/admin/ManualPayout';
 import PayoutSettings from './pages/admin/PayoutSettings';
 import AdminReports from './pages/admin/AdminReports';
@@ -138,14 +139,16 @@ function App() {
           <Route path="/verify-otp" element={<MainLayout><VerifyOTP /></MainLayout>} />
           <Route path="/forgot-password" element={<MainLayout><ForgotPassword /></MainLayout>} />
           <Route path="/kyc-verification" element={<MainLayout><KYCVerification /></MainLayout>} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/change-password" element={<ChangePassword />} />
-          <Route path="/my-bank-accounts" element={<MyBankAccounts />} />
-          <Route path="/my-beneficiaries" element={<MyBeneficiaries />} />
-          <Route path="/make-payment" element={<MakePayment />} />
-          <Route path="/my-transactions" element={<MyTransactions />} />
+          <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/change-password" element={<ChangePassword />} />
+            <Route path="/my-bank-accounts" element={<MyBankAccounts />} />
+            <Route path="/my-beneficiaries" element={<MyBeneficiaries />} />
+            <Route path="/make-payment" element={<MakePayment />} />
+            <Route path="/my-transactions" element={<MyTransactions />} />
+            <Route path="/help-support" element={<HelpSupport />} />
+          </Route>
           <Route path="/payment-gateway" element={<PaymentGateway />} />
-          <Route path="/help-support" element={<HelpSupport />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
           <Route path="/admin/dashboard" element={<AdminHome />} />

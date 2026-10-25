@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Plus,
@@ -14,10 +14,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import DashboardNavigation from '../components/DashboardNavigation';
-import DashboardSidebar from '../components/DashboardSidebar';
-import Footer from '../components/Footer';
-import { useAuth } from '../contexts/AuthContext';
+import { useDashboardContext } from '../hooks/useDashboardContext';
 import { getClientIp } from '../utils/getClientIp';
 import { isCreditCardIfsc, looksLikeCreditCardNumber } from '../utils/beneficiaryValidation';
 import { capitalizeName } from '../utils/nameFormat';
@@ -43,9 +40,8 @@ interface Beneficiary {
 }
 
 export default function MyBeneficiaries() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { userId, userEmail } = location.state || {};
+  const { userId, userEmail } = useDashboardContext();
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -352,31 +348,14 @@ export default function MyBeneficiaries() {
     }
   };
 
-  const { logout } = useAuth();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
-  };
-
   if (!userId) {
     return null;
   }
 
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   if (isCheckingKyc) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardNavigation
-          userEmail={userEmail}
-          userId={userId}
-          onLogout={handleLogout}
-          onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        />
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" />
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 text-[#8c76f0] animate-spin" />
       </div>
     );
   }
@@ -387,241 +366,201 @@ export default function MyBeneficiaries() {
 
   if (kycStatus?.isRestricted) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardNavigation
-          userEmail={userEmail}
-          userId={userId}
-          onLogout={handleLogout}
-          onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        />
-
-        <div className="flex max-w-7xl mx-auto">
-          <DashboardSidebar
-            userId={userId}
-            userEmail={userEmail}
-            currentPage="beneficiaries"
-            isMobileMenuOpen={isMobileMenuOpen}
-            onClose={() => setIsMobileMenuOpen(false)}
-            onLogout={handleLogout}
-          />
-
-          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
-            <div className="max-w-2xl mx-auto">
-              <div className="bg-white rounded-2xl border-2 border-red-300 p-8 text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="w-8 h-8 text-red-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">Account Restricted</h2>
-                <p className="text-gray-700 mb-6">
-                  Your account has been restricted by our compliance team. You are unable to add beneficiaries at this time. Please raise a support ticket for assistance.
-                </p>
-                <button
-                  onClick={() => navigate('/help-support', { state: { userId, userEmail } })}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
-                >
-                  Raise Support Ticket
-                </button>
-              </div>
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-2xl border-2 border-red-300 p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
-          </main>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Account Restricted</h2>
+            <p className="text-gray-700 mb-6">
+              Your account has been restricted by our compliance team. You are unable to add beneficiaries at this time. Please raise a support ticket for assistance.
+            </p>
+            <button
+              onClick={() => navigate('/help-support', { state: { userId, userEmail } })}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
+            >
+              Raise Support Ticket
+            </button>
+          </div>
         </div>
-
-        <Footer />
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardNavigation
-        userEmail={userEmail}
-        userId={userId}
-        onLogout={handleLogout}
-        onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      />
-
-      <div className="flex max-w-7xl mx-auto">
-        <DashboardSidebar
-          userId={userId}
-          userEmail={userEmail}
-          currentPage="beneficiaries"
-          isMobileMenuOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-          onLogout={handleLogout}
-        />
-
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
-          <div className="max-w-6xl">
-            <div className="mb-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-xl flex items-center justify-center">
-                      <Users className="w-5 h-5 text-white" />
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-900">My Beneficiaries</h1>
+    <>
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-6xl">
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-gradient-to-r from-[#8c76f0] to-purple-600 rounded-xl flex items-center justify-center">
+                    <Users className="w-5 h-5 text-white" />
                   </div>
-                  <p className="text-gray-500 text-sm mt-1 ml-[52px]">
-                    Manage your saved beneficiary accounts for quick and easy payments
-                  </p>
+                  <h1 className="text-2xl font-bold text-gray-900">My Beneficiaries</h1>
                 </div>
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Beneficiary
-                </button>
+                <p className="text-gray-500 text-sm mt-1 ml-[52px]">
+                  Manage your saved beneficiary accounts for quick and easy payments
+                </p>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="hidden md:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg"
+              >
+                <Plus className="w-5 h-5" />
+                Add Beneficiary
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="mb-6 bg-red-50 border-2 border-red-500 rounded-xl px-6 py-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <p className="text-red-700 text-sm">{error}</p>
               </div>
             </div>
+          )}
 
-            {error && (
-              <div className="mb-6 bg-red-50 border-2 border-red-500 rounded-xl px-6 py-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-red-700 text-sm">{error}</p>
-                </div>
-              </div>
-            )}
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="md:hidden w-full flex items-center justify-center gap-2 mb-6 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg"
+          >
+            <Plus className="w-5 h-5" />
+            Add New Beneficiary
+          </button>
 
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="md:hidden w-full flex items-center justify-center gap-2 mb-6 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg"
-            >
-              <Plus className="w-5 h-5" />
-              Add New Beneficiary
-            </button>
-
-            {isLoading ? (
-              <div className="bg-white rounded-2xl border-2 border-gray-300 p-12 flex items-center justify-center">
-                <div className="text-center">
-                  <Loader2 className="w-12 h-12 text-[#8c76f0] animate-spin mx-auto mb-4" />
-                  <p className="text-gray-600 text-sm">Loading beneficiaries...</p>
-                </div>
+          {isLoading ? (
+            <div className="bg-white rounded-2xl border-2 border-gray-300 p-12 flex items-center justify-center">
+              <div className="text-center">
+                <Loader2 className="w-12 h-12 text-[#8c76f0] animate-spin mx-auto mb-4" />
+                <p className="text-gray-600 text-sm">Loading beneficiaries...</p>
               </div>
-            ) : beneficiaries.length === 0 ? (
-              <div className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] p-12 text-center transition-all hover:shadow-xl">
-                <div className="w-16 h-16 bg-gradient-to-r from-purple-50 to-violet-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-8 h-8 text-[#8c76f0]" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No beneficiaries yet</h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  Add your first beneficiary to start sending payments quickly and securely
-                </p>
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Beneficiary
-                </button>
+            </div>
+          ) : beneficiaries.length === 0 ? (
+            <div className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] p-12 text-center transition-all hover:shadow-xl">
+              <div className="w-16 h-16 bg-gradient-to-r from-purple-50 to-violet-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-[#8c76f0]" />
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {beneficiaries.map((beneficiary) => (
-              <div
-                key={beneficiary.id}
-                className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] p-6 transition-all hover:shadow-xl"
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No beneficiaries yet</h3>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                Add your first beneficiary to start sending payments quickly and securely
+              </p>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl flex items-center justify-center">
-                    <Users className="w-6 h-6 text-[#8c76f0]" />
-                  </div>
-                  <div className="flex flex-col items-end gap-1.5">
-                    <span
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                        beneficiary.status === 'Active'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {beneficiary.status}
+                <Plus className="w-5 h-5" />
+                Add Beneficiary
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {beneficiaries.map((beneficiary) => (
+            <div
+              key={beneficiary.id}
+              className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] p-6 transition-all hover:shadow-xl"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl flex items-center justify-center">
+                  <Users className="w-6 h-6 text-[#8c76f0]" />
+                </div>
+                <div className="flex flex-col items-end gap-1.5">
+                  <span
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+                      beneficiary.status === 'Active'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    {beneficiary.status}
+                  </span>
+                  {beneficiary.is_verified_merchant && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-semibold">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      Verified Merchant
                     </span>
-                    {beneficiary.is_verified_merchant && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-semibold">
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        Verified Merchant
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <h3 className="text-lg font-bold text-gray-900 mb-4">{beneficiary.full_name}</h3>
-
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-start gap-3">
-                    <Building2 className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm">
-                      <p className="text-gray-900 font-medium">{beneficiary.bank_name}</p>
-                      <p className="text-gray-600">{beneficiary.branch_name}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <CreditCard className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <div className="text-sm">
-                      <p className="text-gray-900 font-medium">{beneficiary.bank_account}</p>
-                      <p className="text-gray-600">{beneficiary.ifsc} • {beneficiary.account_type}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <p className="text-sm text-gray-900">{beneficiary.email}</p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Phone className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <p className="text-sm text-gray-900">{beneficiary.mobile}</p>
-                  </div>
-
-                  {beneficiary.pan_number && (
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      <p className="text-sm text-gray-900">{beneficiary.pan_number}</p>
-                    </div>
                   )}
                 </div>
-
-                <button
-                  onClick={() => toggleStatus(beneficiary.id, beneficiary.status)}
-                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all mt-6 ${
-                    beneficiary.status === 'Active'
-                      ? 'border-2 border-gray-300 text-gray-700 hover:border-red-500 hover:bg-red-50 hover:text-red-700'
-                      : 'border-2 border-gray-300 text-gray-700 hover:border-green-500 hover:bg-green-50 hover:text-green-700'
-                  }`}
-                >
-                  {beneficiary.status === 'Active' ? (
-                    <>
-                      <XCircle className="w-5 h-5" />
-                      Deactivate
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-5 h-5" />
-                      Activate
-                    </>
-                  )}
-                </button>
               </div>
-            ))}
-              </div>
-            )}
 
-            <div className="mt-8 bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-[#8c76f0] rounded-2xl px-6 py-4 shadow-lg">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-[#8c76f0] mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">About Beneficiaries</p>
-                  <p className="text-sm text-gray-700 mt-1">
-                    Save frequently used bank accounts for quick and easy payments. You can activate or deactivate beneficiaries at any time. Only active beneficiaries will be available for transactions.
-                  </p>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">{beneficiary.full_name}</h3>
+
+              <div className="space-y-3 mb-6">
+                <div className="flex items-start gap-3">
+                  <Building2 className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="text-gray-900 font-medium">{beneficiary.bank_name}</p>
+                    <p className="text-gray-600">{beneficiary.branch_name}</p>
+                  </div>
                 </div>
+
+                <div className="flex items-center gap-3">
+                  <CreditCard className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="text-gray-900 font-medium">{beneficiary.bank_account}</p>
+                    <p className="text-gray-600">{beneficiary.ifsc} • {beneficiary.account_type}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <p className="text-sm text-gray-900">{beneficiary.email}</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Phone className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <p className="text-sm text-gray-900">{beneficiary.mobile}</p>
+                </div>
+
+                {beneficiary.pan_number && (
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <p className="text-sm text-gray-900">{beneficiary.pan_number}</p>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => toggleStatus(beneficiary.id, beneficiary.status)}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all mt-6 ${
+                  beneficiary.status === 'Active'
+                    ? 'border-2 border-gray-300 text-gray-700 hover:border-red-500 hover:bg-red-50 hover:text-red-700'
+                    : 'border-2 border-gray-300 text-gray-700 hover:border-green-500 hover:bg-green-50 hover:text-green-700'
+                }`}
+              >
+                {beneficiary.status === 'Active' ? (
+                  <>
+                    <XCircle className="w-5 h-5" />
+                    Deactivate
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    Activate
+                  </>
+                )}
+              </button>
+            </div>
+          ))}
+            </div>
+          )}
+
+          <div className="mt-8 bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-[#8c76f0] rounded-2xl px-6 py-4 shadow-lg">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-[#8c76f0] mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-gray-900">About Beneficiaries</p>
+                <p className="text-sm text-gray-700 mt-1">
+                  Save frequently used bank accounts for quick and easy payments. You can activate or deactivate beneficiaries at any time. Only active beneficiaries will be available for transactions.
+                </p>
               </div>
             </div>
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -880,7 +819,6 @@ export default function MyBeneficiaries() {
         </div>
       )}
 
-      <Footer />
-    </div>
+    </>
   );
 }

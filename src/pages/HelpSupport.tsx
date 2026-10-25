@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Plus, FileText, ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
-import DashboardNavigation from '../components/DashboardNavigation';
-import DashboardSidebar from '../components/DashboardSidebar';
-import Footer from '../components/Footer';
 import CreateTicketModal from './support/CreateTicketModal';
 import TicketDetailsModal from './support/TicketDetailsModal';
-import { useAuth } from '../contexts/AuthContext';
+import { useDashboardContext } from '../hooks/useDashboardContext';
 
 interface Ticket {
   id: string;
@@ -22,9 +19,7 @@ interface Ticket {
 
 export default function HelpSupport() {
   const navigate = useNavigate();
-  const userId = sessionStorage.getItem('userId');
-  const userEmail = sessionStorage.getItem('userEmail') || '';
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { userId, userEmail } = useDashboardContext();
 
   useEffect(() => {
     if (!userId) {
@@ -42,13 +37,6 @@ export default function HelpSupport() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
-  const { logout } = useAuth();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   useEffect(() => {
     fetchTickets();
@@ -145,25 +133,8 @@ export default function HelpSupport() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardNavigation
-        userEmail={userEmail}
-        userId={userId}
-        onLogout={handleLogout}
-        onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      />
-
-      <div className="flex max-w-7xl mx-auto">
-        <DashboardSidebar
-          userId={userId}
-          userEmail={userEmail}
-          currentPage="help"
-          isMobileMenuOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-          onLogout={handleLogout}
-        />
-
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+    <>
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
           <div className="max-w-6xl">
             <div className="mb-8">
               <div className="flex items-center justify-between">
@@ -345,9 +316,6 @@ export default function HelpSupport() {
             </div>
           </div>
         </main>
-      </div>
-
-      <Footer />
 
       {showCreateModal && (
         <CreateTicketModal
@@ -364,6 +332,6 @@ export default function HelpSupport() {
           onClose={handleDetailsClose}
         />
       )}
-    </div>
+    </>
   );
 }

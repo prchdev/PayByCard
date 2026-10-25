@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle,
   ArrowUpRight,
@@ -21,10 +21,7 @@ import {
   Check,
   MessageCircle,
 } from 'lucide-react';
-import DashboardNavigation from '../components/DashboardNavigation';
-import DashboardSidebar from '../components/DashboardSidebar';
-import Footer from '../components/Footer';
-import { useAuth } from '../contexts/AuthContext';
+import { useDashboardContext } from '../hooks/useDashboardContext';
 
 interface RecentTransaction {
   id: string;
@@ -66,12 +63,8 @@ function fmtDateShort(iso: string) {
 }
 
 export default function Dashboard() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { userId, userEmail } = location.state || {};
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [kycStatus, setKycStatus] = useState<{ isVerified: boolean; status: string } | null>(null);
-  const [isCheckingKyc, setIsCheckingKyc] = useState(true);
+  const { userId, userEmail } = useDashboardContext();
   const [recentTxns, setRecentTxns] = useState<RecentTransaction[]>([]);
   const [loadingTxns, setLoadingTxns] = useState(true);
   const [stats, setStats] = useState<{
@@ -217,34 +210,13 @@ export default function Dashboard() {
     window.open(`https://wa.me/?text=${encodeURIComponent(buildReferralMessage())}`, '_blank', 'noopener,noreferrer');
   };
 
-  const { logout } = useAuth();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
-  };
+  const [kycStatus, setKycStatus] = useState<{ isVerified: boolean; status: string } | null>(null);
+  const [isCheckingKyc, setIsCheckingKyc] = useState(true);
 
   if (!userId) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardNavigation
-        userEmail={userEmail}
-        userId={userId}
-        onLogout={handleLogout}
-        onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      />
-
-      <div className="flex max-w-7xl mx-auto">
-        <DashboardSidebar
-          userId={userId}
-          userEmail={userEmail}
-          currentPage="dashboard"
-          isMobileMenuOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-          onLogout={handleLogout}
-        />
-
+    <>
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
           {/* Welcome Banner */}
           <div className="mb-8">
@@ -616,9 +588,6 @@ export default function Dashboard() {
             </div>
           )}
         </main>
-      </div>
-
-      <Footer />
-    </div>
+    </>
   );
 }

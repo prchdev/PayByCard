@@ -419,7 +419,7 @@
     },
     "on-demand-settlement": {
       "hasChanged": false,
-      "hash": "19a2c8621ff8bb0090f573c3122e0d5c1e5c93cc12f5f4b252047f90d1913ae8f3be7a49a69890902a093bc5d28d36bb9e18ec5f5780c1c6b10ea2d1f5189518"
+      "hash": "48a5c86de9aa870e3fe16d83bb943911bb6a7768c05625fa55e91dfeb264ae42f3be7a49a69890902a093bc5d28d36bb9e18ec5f5780c1c6b10ea2d1f5189518"
     },
     "payment-gateway-webhook": {
       "hasChanged": false,

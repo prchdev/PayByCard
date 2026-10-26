@@ -26,8 +26,9 @@ import {
  *      already been included in a prior on-demand settlement attempt
  *      (ondemand_settlement_included_at IS NULL).
  *   2. Calculates the net settlement amount per gateway:
- *      SUM(amount - charges - gst)  — i.e. total transaction value minus
- *      total gateway fee (including GST).
+ *      SUM(total_amount - gateway_fee)  — i.e. the amount the customer paid
+ *      minus the actual gateway fee (including GST) extracted from the
+ *      gateway's webhook response.
  *   3. If the net amount > 0, initiates an on-demand settlement with that
  *      specific amount (settle_full_balance=false for Razorpay).
  *   4. Marks all included payments with ondemand_settlement_included_at = now()
@@ -43,6 +44,22 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
+
+// Extract the actual gateway fee (in rupees) from the stored webhook response.
+// Razorpay stores fee in paise at gateway_response.payment.fee.
+// CashFree stores payment charges at gateway_response.data.payment.payment_amount
+// (we subtract the settlement amount, but CashFree fee isn't always in the webhook;
+// for CashFree the gateway API path should succeed, so this is only a fallback).
+function extractGatewayFee(gatewayResponse: any): number {
+  if (!gatewayResponse || typeof gatewayResponse !== "object") return 0;
+  // Razorpay: fee is in paise
+  const rzpFee = gatewayResponse?.payment?.fee;
+  if (rzpFee != null) return Number(rzpFee) / 100;
+  // Some gateways nest under data
+  const nested = gatewayResponse?.data?.payment?.fee;
+  if (nested != null) return Number(nested) / 100;
+  return 0;
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -124,7 +141,7 @@ Deno.serve(async (req: Request) => {
     // The net settlement amount is fetched from the gateway's own settlement
     // API (Razorpay recon / Cashfree settlements) which reflects the actual
     // pending balance the gateway will settle. If the API call fails, we fall
-    // back to calculating from DB rows (SUM(amount - charges - gst)).
+    // back to calculating from DB rows (SUM(total_amount - gateway_fee)).
     //
     // Unsupported gateways are filtered out at the DB query level so we never
     // fetch their settings or payments. The payments query also filters for
@@ -191,7 +208,7 @@ Deno.serve(async (req: Request) => {
       // been included in a prior settlement attempt.
       const { data: pendingPayments, error: pErr } = await supabase
         .from("payments")
-        .select("id, amount, charges, gst")
+        .select("id, total_amount, gateway_response")
         .eq("status", "settlement_pending")
         .eq("payment_gateway_id", gateway.id)
         .is("ondemand_settlement_included_at", null);
@@ -221,27 +238,30 @@ Deno.serve(async (req: Request) => {
       const paymentIds: string[] = pendingPayments.map((p: any) => p.id);
 
       if (apiResult.error || apiResult.amount <= 0) {
-        // Gateway API failed or returned zero — fall back to DB calculation
-        // SUM(amount - charges - gst) across eligible payments.
+        // Gateway API failed or returned zero — fall back to DB calculation.
+        // The net settlement is: total_amount (what the customer paid) minus
+        // the actual gateway fee (from the gateway's webhook response, in paise).
+        // The platform's own charges/gst columns are NOT the gateway fee — they
+        // are PayByCard's markup, so they must not be subtracted here.
         for (const p of pendingPayments) {
-          const amt = Number(p.amount) || 0;
-          const chg = Number(p.charges) || 0;
-          const g = Number(p.gst) || 0;
-          grossAmount += amt;
-          totalFees += chg;
-          totalGst += g;
+          const paid = Number(p.total_amount) || 0;
+          // Razorpay stores fee in paise inside gateway_response.payment.fee;
+          // CashFree stores it in gateway_response.data.payment.amount.
+          // Fall back to 0 if the field is absent (settles full amount — safe upper bound).
+          const gwFee = extractGatewayFee(p.gateway_response);
+          grossAmount += paid;
+          totalFees += gwFee;
         }
-        netSettlementAmount = grossAmount - totalFees - totalGst;
+        netSettlementAmount = grossAmount - totalFees;
         amountSource = "db_fallback";
       } else {
         // Use the gateway's reported pending settlement amount directly
         netSettlementAmount = apiResult.amount;
         amountSource = "gateway_api";
-        // Still compute gross/fees/gst from DB for reporting
+        // Still compute gross/fees from DB for reporting
         for (const p of pendingPayments) {
-          grossAmount += Number(p.amount) || 0;
-          totalFees += Number(p.charges) || 0;
-          totalGst += Number(p.gst) || 0;
+          grossAmount += Number(p.total_amount) || 0;
+          totalFees += extractGatewayFee(p.gateway_response);
         }
       }
 

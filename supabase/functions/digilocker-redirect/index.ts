@@ -30,6 +30,11 @@ function resolveAppUrl(req: Request, state: string): string {
   return 'https://paybycard.in';
 }
 
+function isMobileBrowser(req: Request): boolean {
+  const ua = (req.headers.get('user-agent') || '').toLowerCase();
+  return /android|iphone|ipad|ipod/.test(ua);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -43,6 +48,16 @@ Deno.serve(async (req: Request) => {
   const isMerchant = state.startsWith('m');
   const fallbackPath = isMerchant ? '/merchant-onboarding' : '/kyc-verification';
   const webAppUrl = resolveAppUrl(req, state);
+  const mobile = isMobileBrowser(req);
+
+  const paramsParts: string[] = [];
+  if (code) paramsParts.push('code=' + encodeURIComponent(code));
+  if (state) paramsParts.push('state=' + encodeURIComponent(state));
+  if (error) paramsParts.push('error=' + encodeURIComponent(error));
+  const queryParams = paramsParts.join('&');
+
+  const mobileUrl = MOBILE_SCHEME + '?' + queryParams;
+  const webFallbackUrl = webAppUrl + fallbackPath + (fallbackPath.includes('?') ? '&' : '?') + queryParams;
 
   const html = `<!DOCTYPE html>
 <html>
@@ -56,6 +71,7 @@ Deno.serve(async (req: Request) => {
   .spinner { width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #8c76f0; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
   @keyframes spin { to { transform: rotate(360deg); } }
   p { color: #6b7280; font-size: 0.875rem; }
+  a { color: #8c76f0; text-decoration: none; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -68,22 +84,6 @@ Deno.serve(async (req: Request) => {
   var code = ${JSON.stringify(code)};
   var error = ${JSON.stringify(error)};
   var state = ${JSON.stringify(state)};
-  var fallbackPath = ${JSON.stringify(fallbackPath)};
-  var webAppUrl = ${JSON.stringify(webAppUrl)};
-  var mobileScheme = ${JSON.stringify(MOBILE_SCHEME)};
-
-  function buildParams() {
-    var params = [];
-    if (code) params.push('code=' + encodeURIComponent(code));
-    if (state) params.push('state=' + encodeURIComponent(state));
-    if (error) params.push('error=' + encodeURIComponent(error));
-    return params.join('&');
-  }
-
-  function redirectFallback() {
-    var sep = fallbackPath.indexOf('?') >= 0 ? '&' : '?';
-    window.location.href = webAppUrl + fallbackPath + sep + buildParams();
-  }
 
   // Popup flow (web): postMessage to opener, then close
   if (window.opener && !window.opener.closed) {
@@ -92,23 +92,26 @@ Deno.serve(async (req: Request) => {
       setTimeout(function() {
         try { window.close(); } catch (e) {}
         setTimeout(function() {
-          if (!window.closed) redirectFallback();
+          if (!window.closed) window.location.href = ${JSON.stringify(webFallbackUrl)};
         }, 300);
       }, 200);
       return;
     } catch (e) {
-      redirectFallback();
+      window.location.href = ${JSON.stringify(webFallbackUrl)};
       return;
     }
   }
 
-  // No opener (mobile or full-page redirect): try custom scheme first, then web fallback
-  var mobileUrl = mobileScheme + '?' + buildParams();
-  window.location.href = mobileUrl;
+  // Mobile: redirect to custom scheme — the OS intercepts this and returns
+  // the URL to openAuthSessionAsync. No timeout/fallback: the app is always
+  // installed (the user is inside it), so the scheme always resolves.
+  if (${mobile ? 'true' : 'false'}) {
+    window.location.href = ${JSON.stringify(mobileUrl)};
+    return;
+  }
 
-  // If the custom scheme didn't navigate away (mobile app not installed, or
-  // browser didn't handle it), fall back to the web URL after a short delay.
-  setTimeout(function() { redirectFallback(); }, 1500);
+  // Desktop without opener (popup was blocked): redirect to web app
+  window.location.href = ${JSON.stringify(webFallbackUrl)};
 })();
 </script>
 </body>

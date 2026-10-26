@@ -48,7 +48,6 @@ Deno.serve(async (req: Request) => {
   const isMerchant = state.startsWith('m');
   const fallbackPath = isMerchant ? '/merchant-onboarding' : '/kyc-verification';
   const webAppUrl = resolveAppUrl(req, state);
-  const mobile = isMobileBrowser(req);
 
   const paramsParts: string[] = [];
   if (code) paramsParts.push('code=' + encodeURIComponent(code));
@@ -56,7 +55,22 @@ Deno.serve(async (req: Request) => {
   if (error) paramsParts.push('error=' + encodeURIComponent(error));
   const queryParams = paramsParts.join('&');
 
-  const mobileUrl = MOBILE_SCHEME + '?' + queryParams;
+  // Mobile: HTTP 302 redirect to the paybycard:// custom scheme.
+  // A 302 is handled at the browser/navigation level, which reliably
+  // triggers the Android intent filter / iOS universal link mechanism
+  // inside Custom Chrome Tabs and ASWebAuthenticationSession.
+  // JavaScript window.location.href does NOT reliably trigger intent
+  // filters inside a Custom Chrome Tab.
+  if (isMobileBrowser(req)) {
+    const mobileUrl = MOBILE_SCHEME + '?' + queryParams;
+    return new Response(null, {
+      status: 302,
+      headers: { 'Location': mobileUrl, ...corsHeaders },
+    });
+  }
+
+  // Desktop: return HTML that either postMessages to the opener (popup flow)
+  // or redirects to the web app (full-page fallback).
   const webFallbackUrl = webAppUrl + fallbackPath + (fallbackPath.includes('?') ? '&' : '?') + queryParams;
 
   const html = `<!DOCTYPE html>
@@ -71,7 +85,6 @@ Deno.serve(async (req: Request) => {
   .spinner { width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #8c76f0; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
   @keyframes spin { to { transform: rotate(360deg); } }
   p { color: #6b7280; font-size: 0.875rem; }
-  a { color: #8c76f0; text-decoration: none; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -84,34 +97,27 @@ Deno.serve(async (req: Request) => {
   var code = ${JSON.stringify(code)};
   var error = ${JSON.stringify(error)};
   var state = ${JSON.stringify(state)};
+  var webFallbackUrl = ${JSON.stringify(webFallbackUrl)};
 
-  // Popup flow (web): postMessage to opener, then close
+  // Popup flow: postMessage to opener, then close
   if (window.opener && !window.opener.closed) {
     try {
       window.opener.postMessage({ type: 'digilocker_callback', code: code, state: state, error: error }, '*');
       setTimeout(function() {
         try { window.close(); } catch (e) {}
         setTimeout(function() {
-          if (!window.closed) window.location.href = ${JSON.stringify(webFallbackUrl)};
+          if (!window.closed) window.location.href = webFallbackUrl;
         }, 300);
       }, 200);
       return;
     } catch (e) {
-      window.location.href = ${JSON.stringify(webFallbackUrl)};
+      window.location.href = webFallbackUrl;
       return;
     }
   }
 
-  // Mobile: redirect to custom scheme — the OS intercepts this and returns
-  // the URL to openAuthSessionAsync. No timeout/fallback: the app is always
-  // installed (the user is inside it), so the scheme always resolves.
-  if (${mobile ? 'true' : 'false'}) {
-    window.location.href = ${JSON.stringify(mobileUrl)};
-    return;
-  }
-
-  // Desktop without opener (popup was blocked): redirect to web app
-  window.location.href = ${JSON.stringify(webFallbackUrl)};
+  // No opener (popup was blocked): redirect to web app
+  window.location.href = webFallbackUrl;
 })();
 </script>
 </body>

@@ -1299,7 +1299,7 @@ serveUser(async (req: Request) => {
           const msg = (e as Error).message;
           if (msg === 'DRIVING_LICENSE_UNAVAILABLE' || msg === 'ADDRESS_PROOF_UNAVAILABLE') {
             return new Response(
-              JSON.stringify({ success: false, autoApproved: false, error: "An unexpected error occurred. Please try again." }),
+              JSON.stringify({ success: false, autoApproved: false, error: msg }),
               { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
@@ -1399,9 +1399,9 @@ serveUser(async (req: Request) => {
 
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'An error occurred';
-    console.error('DigiLocker KYC error:', msg);
+    console.error('DigiLocker KYC error:', msg, error instanceof Error ? error.stack : '');
     return new Response(
-      JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
+      JSON.stringify({ error: msg || "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -4,6 +4,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
 };
 
+const APP_DOMAINS = new Set([
+  'paybycard.in',
+  'www.paybycard.in',
+  'app.paybycard.in',
+  'api.paybycard.in',
+]);
+
+function resolveAppUrl(req: Request, state: string): string {
+  const origin = req.headers.get('origin') || '';
+  const referer = req.headers.get('referer') || '';
+
+  for (const headerVal of [origin, referer]) {
+    if (!headerVal) continue;
+    try {
+      const parsed = new URL(headerVal);
+      const host = parsed.hostname.toLowerCase();
+      if (APP_DOMAINS.has(host)) return parsed.origin;
+    } catch { /* not a valid URL */ }
+  }
+
+  if (state.startsWith('m')) return 'https://app.paybycard.in';
+  return 'https://paybycard.in';
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -17,12 +41,7 @@ Deno.serve(async (req: Request) => {
   const isMerchant = state.startsWith('m');
   const fallbackPath = isMerchant ? '/merchant-onboarding' : '/kyc-verification';
 
-  const origin = req.headers.get('origin') || req.headers.get('referer') || '';
-  let appUrl = 'https://paybycard.in';
-  if (origin) {
-    try { appUrl = new URL(origin).origin; } catch { /* keep default */ }
-  }
-  if (appUrl.includes('supabase')) appUrl = 'https://paybycard.in';
+  const appUrl = resolveAppUrl(req, state);
 
   const html = `<!DOCTYPE html>
 <html>

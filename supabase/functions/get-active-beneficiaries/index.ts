@@ -50,26 +50,18 @@ serveUser(async (req: Request) => {
       );
     }
 
-    const [{ data: bankAccounts }, { data: merchantOnboarding }] = await Promise.all([
-      supabase
-        .from("user_bank_accounts")
-        .select("bank_account_number, ifsc_code"),
-      supabase
-        .from("merchant_onboarding")
-        .select("bank_account_number, bank_ifsc")
-        .eq("status", "verified"),
-    ]);
+    const { data: merchantOnboarding } = await supabase
+      .from("merchant_onboarding")
+      .select("bank_account_number, bank_ifsc")
+      .eq("status", "verified");
 
-    const bankAccountSet = new Set(
-      (bankAccounts || []).map((b: any) => `${b.bank_account_number}|${b.ifsc_code}`)
-    );
     const merchantSet = new Set(
       (merchantOnboarding || []).map((m: any) => `${m.bank_account_number}|${m.bank_ifsc}`)
     );
 
     const enriched = list.map((b: any) => {
       const key = `${b.bank_account}|${b.ifsc}`;
-      const is_verified_merchant = bankAccountSet.has(key) || merchantSet.has(key);
+      const is_verified_merchant = merchantSet.has(key);
       return { ...b, is_verified_merchant };
     });
 

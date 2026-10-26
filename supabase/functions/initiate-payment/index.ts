@@ -196,7 +196,7 @@ Deno.serve(withUserSession(async (req: Request) => {
     // even if the beneficiary was created before the save-beneficiary check.
     const { data: selfBen } = await supabase
       .from("beneficiaries")
-      .select("full_name, email, mobile, pan_number")
+      .select("full_name, email, mobile, pan_number, bank_account, ifsc")
       .eq("id", beneficiaryId)
       .maybeSingle();
     if (selfBen) {
@@ -228,8 +228,21 @@ Deno.serve(withUserSession(async (req: Request) => {
         }
       }
 
-      if (emailMatch || mobileMatch || panMatch || nameMatch) {
-        const matchedField = panMatch ? "PAN number"
+      let bankMatch = false;
+      if (selfBen.bank_account && selfBen.ifsc) {
+        const { data: ownBank } = await supabase
+          .from("user_bank_accounts")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("bank_account_number", selfBen.bank_account)
+          .eq("ifsc_code", selfBen.ifsc)
+          .maybeSingle();
+        bankMatch = !!ownBank;
+      }
+
+      if (emailMatch || mobileMatch || panMatch || nameMatch || bankMatch) {
+        const matchedField = bankMatch ? "bank account"
+          : panMatch ? "PAN number"
           : nameMatch ? "name"
           : emailMatch ? "email address"
           : "mobile number";

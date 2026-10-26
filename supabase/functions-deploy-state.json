@@ -303,7 +303,7 @@
     },
     "get-active-beneficiaries": {
       "hasChanged": false,
-      "hash": "8fe8c23481e7b0b6e993e73e156f4cd7c32844d2b1e889db0dc44e535d9afecaf3be7a49a69890902a093bc5d28d36bb9e18ec5f5780c1c6b10ea2d1f5189518"
+      "hash": "85e83ddd5d8f5dd07b2d3fa6e4763315930660b31f121a537133dfa4d3be32b1f3be7a49a69890902a093bc5d28d36bb9e18ec5f5780c1c6b10ea2d1f5189518"
     },
     "get-active-offers": {
       "hasChanged": false,
@@ -403,7 +403,7 @@
     },
     "initiate-payment": {
       "hasChanged": false,
-      "hash": "38b4de7db1aa6727f5038c8230323b6b0ef7ae461aa3d3643ca12701696342e9f3be7a49a69890902a093bc5d28d36bb9e18ec5f5780c1c6b10ea2d1f5189518"
+      "hash": "87aedeb7634f1bea21557f5665f3008d68ce279437d8e352a5e55e680b9115eef3be7a49a69890902a093bc5d28d36bb9e18ec5f5780c1c6b10ea2d1f5189518"
     },
     "log-digilocker-event": {
       "hasChanged": false,

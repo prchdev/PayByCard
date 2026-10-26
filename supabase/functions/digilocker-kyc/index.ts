@@ -1179,7 +1179,14 @@ serveUser(async (req: Request) => {
       .eq('id', userId)
       .maybeSingle();
 
-    if (userLookupError || !userRow) throw new Error('Unauthorized');
+    if (userLookupError) {
+      console.error('[digilocker-kyc] user lookup error:', userLookupError.message, 'for userId:', userId);
+      throw new Error(`User lookup failed: ${userLookupError.message}`);
+    }
+    if (!userRow) {
+      console.error('[digilocker-kyc] no user found for userId:', userId);
+      throw new Error(`No user found for ID: ${userId}`);
+    }
 
     const { data: providers, error: providerError } = await supabase
       .from('kyc_method_settings')

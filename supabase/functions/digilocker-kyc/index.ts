@@ -10,6 +10,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session',
 };
 
+// Supabase's gateway caches OPTIONS responses. Using a dynamic origin ensures
+// the preflight is never served from a stale cache when headers change.
+
 interface DigiLockerKycRequest {
   userId: string;
   action: 'get_auth_url' | 'check_status' | 'auto_approve';

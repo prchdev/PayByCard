@@ -1181,11 +1181,17 @@ serveUser(async (req: Request) => {
 
     if (userLookupError) {
       console.error('[digilocker-kyc] user lookup error:', userLookupError.message, 'for userId:', userId);
-      throw new Error(`User lookup failed: ${userLookupError.message}`);
+      return new Response(
+        JSON.stringify({ error: 'User lookup failed. Please sign in again.', code: 'USER_LOOKUP_FAILED' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     if (!userRow) {
       console.error('[digilocker-kyc] no user found for userId:', userId);
-      throw new Error(`No user found for ID: ${userId}`);
+      return new Response(
+        JSON.stringify({ error: 'Your account could not be found. Please sign in again.', code: 'USER_NOT_FOUND' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const { data: providers, error: providerError } = await supabase

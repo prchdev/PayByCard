@@ -56,7 +56,27 @@ async function interceptedFetch(
     }
   }
 
-  return originalFetch(input, attachSessionHeaders(input, init));
+  const response = await originalFetch(input, attachSessionHeaders(input, init));
+
+  if (response.status === 401 && isSupabaseEdgeFunction(url) && !url.includes('/login') && !url.includes('/admin-login') && !url.includes('/forgot')) {
+    try {
+      const clone = response.clone();
+      const data = await clone.json();
+      if (data?.code === 'SESSION_INVALID' || data?.code === 'USER_NOT_FOUND' || data?.code === 'USER_LOOKUP_FAILED') {
+        sessionStorage.removeItem('pbc_session');
+        sessionStorage.removeItem('pbc_admin_session');
+        localStorage.removeItem('pbc_session');
+        localStorage.removeItem('pbc_admin_session');
+        sessionStorage.removeItem('userId');
+        sessionStorage.removeItem('userEmail');
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+      }
+    } catch { /* response wasn't JSON, let caller handle */ }
+  }
+
+  return response;
 }
 
 // Edge functions now require a server-issued session token rather than trusting an

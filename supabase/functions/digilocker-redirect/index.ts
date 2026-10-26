@@ -11,6 +11,8 @@ const APP_DOMAINS = new Set([
   'api.paybycard.in',
 ]);
 
+const MOBILE_SCHEME = 'paybycard://digilocker-callback';
+
 function resolveAppUrl(req: Request, state: string): string {
   const origin = req.headers.get('origin') || '';
   const referer = req.headers.get('referer') || '';
@@ -40,8 +42,7 @@ Deno.serve(async (req: Request) => {
 
   const isMerchant = state.startsWith('m');
   const fallbackPath = isMerchant ? '/merchant-onboarding' : '/kyc-verification';
-
-  const appUrl = resolveAppUrl(req, state);
+  const webAppUrl = resolveAppUrl(req, state);
 
   const html = `<!DOCTYPE html>
 <html>
@@ -68,17 +69,23 @@ Deno.serve(async (req: Request) => {
   var error = ${JSON.stringify(error)};
   var state = ${JSON.stringify(state)};
   var fallbackPath = ${JSON.stringify(fallbackPath)};
-  var appUrl = ${JSON.stringify(appUrl)};
+  var webAppUrl = ${JSON.stringify(webAppUrl)};
+  var mobileScheme = ${JSON.stringify(MOBILE_SCHEME)};
 
-  function redirectFallback() {
-    var sep = fallbackPath.indexOf('?') >= 0 ? '&' : '?';
+  function buildParams() {
     var params = [];
     if (code) params.push('code=' + encodeURIComponent(code));
     if (state) params.push('state=' + encodeURIComponent(state));
     if (error) params.push('error=' + encodeURIComponent(error));
-    window.location.href = appUrl + fallbackPath + sep + params.join('&');
+    return params.join('&');
   }
 
+  function redirectFallback() {
+    var sep = fallbackPath.indexOf('?') >= 0 ? '&' : '?';
+    window.location.href = webAppUrl + fallbackPath + sep + buildParams();
+  }
+
+  // Popup flow (web): postMessage to opener, then close
   if (window.opener && !window.opener.closed) {
     try {
       window.opener.postMessage({ type: 'digilocker_callback', code: code, state: state, error: error }, '*');
@@ -95,7 +102,13 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  redirectFallback();
+  // No opener (mobile or full-page redirect): try custom scheme first, then web fallback
+  var mobileUrl = mobileScheme + '?' + buildParams();
+  window.location.href = mobileUrl;
+
+  // If the custom scheme didn't navigate away (mobile app not installed, or
+  // browser didn't handle it), fall back to the web URL after a short delay.
+  setTimeout(function() { redirectFallback(); }, 1500);
 })();
 </script>
 </body>

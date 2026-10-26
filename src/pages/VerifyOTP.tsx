@@ -173,7 +173,7 @@ export default function VerifyOTP() {
 
       if (data.sessionToken) sessionStorage.setItem('pbc_session', data.sessionToken);
       login(userId, email);
-      navigate('/kyc-verification', { state: { userId, userEmail: email } });
+      navigate('/dashboard', { state: { userId, userEmail: email } });
     } catch (error) {
       setError(error instanceof Error ? error.message : 'OTP verification failed. Please try again.');
     } finally {

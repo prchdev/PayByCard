@@ -99,11 +99,7 @@ export default function Login() {
         } else {
           sessionStorage.removeItem('isRestricted');
         }
-        if (!data.kycCompleted) {
-          navigate('/kyc-verification', { state: { userId: data.userId, userEmail: data.email } });
-        } else {
-          navigate('/dashboard', { state: { userId: data.userId, userEmail: data.email } });
-        }
+        navigate('/dashboard', { state: { userId: data.userId, userEmail: data.email } });
       }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Login failed. Please try again.');

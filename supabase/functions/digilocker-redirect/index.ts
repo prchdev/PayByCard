@@ -11,6 +11,11 @@ const APP_DOMAINS = new Set([
   'api.paybycard.in',
 ]);
 
+// Mobile app custom scheme — registered in app.json (iOS CFBundleURLSchemes +
+// Android intentFilters). expo-web-browser's openAuthSessionAsync intercepts
+// redirects to this scheme and returns the full URL to the app.
+const MOBILE_CALLBACK_SCHEME = 'paybycard://digilocker-callback';
+
 function resolveAppUrl(req: Request, state: string): string {
   const origin = req.headers.get('origin') || '';
   const referer = req.headers.get('referer') || '';
@@ -28,6 +33,19 @@ function resolveAppUrl(req: Request, state: string): string {
   return 'https://paybycard.in';
 }
 
+// State encoding:
+//   u<userid>   → user KYC, web
+//   mu<userid>  → user KYC, mobile
+//   m<recordid> → merchant KYC, web
+//   mm<recordid>→ merchant KYC, mobile
+function isMobileState(state: string): boolean {
+  return state.startsWith('mu') || state.startsWith('mm');
+}
+
+function isMerchantState(state: string): boolean {
+  return state.startsWith('mm') || (state.startsWith('m') && !state.startsWith('mu'));
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -38,11 +56,32 @@ Deno.serve(async (req: Request) => {
   const error = url.searchParams.get('error') || '';
   const state = url.searchParams.get('state') || '';
 
-  const isMerchant = state.startsWith('m');
+  const isMerchant = isMerchantState(state);
+  const isMobile = isMobileState(state);
   const fallbackPath = isMerchant ? '/merchant-onboarding' : '/kyc-verification';
 
   const appUrl = resolveAppUrl(req, state);
 
+  // Build query params for the redirect target
+  const params: string[] = [];
+  if (code) params.push('code=' + encodeURIComponent(code));
+  if (state) params.push('state=' + encodeURIComponent(state));
+  if (error) params.push('error=' + encodeURIComponent(error));
+  const queryString = params.length > 0 ? '?' + params.join('&') : '';
+
+  // ── Mobile: redirect to the custom app scheme ──────────────────────────────
+  // expo-web-browser's openAuthSessionAsync intercepts this and returns the
+  // full URL (paybycard://digilocker-callback?code=...&state=...) to the app,
+  // which then extracts the code and calls auto_approve.
+  if (isMobile) {
+    const mobileRedirect = MOBILE_CALLBACK_SCHEME + queryString;
+    return new Response(null, {
+      status: 302,
+      headers: { ...corsHeaders, Location: mobileRedirect },
+    });
+  }
+
+  // ── Web: serve the HTML bridge page ─────────────────────────────────────────
   const html = `<!DOCTYPE html>
 <html>
 <head>

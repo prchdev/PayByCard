@@ -1169,7 +1169,8 @@ serveUser(async (req: Request) => {
 
   try {
     const body: DigiLockerKycRequest = await req.json();
-    const { userId, action, authCode, verificationId: bodyVerificationId, redirectUri: bodyRedirectUri, codeChallenge, codeVerifier, ipAddress } = body;
+    const { userId, action, authCode, verificationId: bodyVerificationId, redirectUri: bodyRedirectUri, codeChallenge, codeVerifier, ipAddress, platform } = body;
+    const isMobile = platform === 'mobile';
 
     if (!userId) throw new Error('Missing userId');
 
@@ -1235,8 +1236,14 @@ serveUser(async (req: Request) => {
           apiKey, apiSecret, publicKey, provider.environment, userId, redirectUrl,
         );
 
+        // CashFree uses polling for status, so the mobile app doesn't need a
+        // custom-scheme redirect — it polls check_status. Return the verification
+        // ID so the mobile client can poll.
         return new Response(
-          JSON.stringify({ authUrl: url, verificationId, provider_name: provider.provider_name }),
+          JSON.stringify({
+            authUrl: url, verificationId, provider_name: provider.provider_name,
+            ...(isMobile ? { mobileCallback: 'paybycard://digilocker-callback' } : {}),
+          }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } else {
@@ -1245,7 +1252,11 @@ serveUser(async (req: Request) => {
           const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
           redirectUri = `${supabaseUrl}/functions/v1/digilocker-redirect`;
         }
-        const state = 'u' + userId.replace(/-/g, '');
+        // Encode platform into state: 'mu' prefix signals mobile to the redirect
+        // function, which issues a paybycard:// custom-scheme redirect that
+        // expo-web-browser's openAuthSessionAsync intercepts.
+        const statePrefix = isMobile ? 'mu' : 'u';
+        const state = statePrefix + userId.replace(/-/g, '');
         const pkceParams = codeChallenge
           ? `&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256`
           : '';
@@ -1255,8 +1266,13 @@ serveUser(async (req: Request) => {
           `&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}` +
           pkceParams;
 
+        // For mobile, return the custom-scheme callback as the redirectUri the
+        // client should pass to openAuthSessionAsync. The actual DigiLocker
+        // redirect_uri (sent to DigiLocker) remains the edge function URL above.
+        const clientRedirectUri = isMobile ? 'paybycard://digilocker-callback' : redirectUri;
+
         return new Response(
-          JSON.stringify({ authUrl, redirectUri, provider_name: provider.provider_name }),
+          JSON.stringify({ authUrl, redirectUri: clientRedirectUri, provider_name: provider.provider_name }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1305,7 +1321,19 @@ serveUser(async (req: Request) => {
 
         kycData = await fetchCashFreeDocuments(supabase, apiKey, apiSecret, publicKey, provider.environment, code, userId);
       } else {
-        const redirectUri = bodyRedirectUri || savedRedirectUri || '';
+        // For DigiLocker direct OAuth, the token exchange requires the same
+        // redirect_uri that was sent to DigiLocker in get_auth_url. The mobile
+        // client receives paybycard://digilocker-callback as its redirectUri (for
+        // openAuthSessionAsync interception), but that's not the real OAuth
+        // redirect_uri. Reconstruct the real one here.
+        let redirectUri = bodyRedirectUri;
+        if (!redirectUri || redirectUri.startsWith('paybycard://')) {
+          redirectUri = savedRedirectUri || '';
+          if (!redirectUri) {
+            const supabaseUrlEnv = Deno.env.get('SUPABASE_URL') || '';
+            redirectUri = `${supabaseUrlEnv}/functions/v1/digilocker-redirect`;
+          }
+        }
         try {
           kycData = await fetchDigiLockerData(supabase, apiKey, apiSecret, code, redirectUri, userId, codeVerifier);
         } catch (e) {

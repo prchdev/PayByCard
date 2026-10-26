@@ -279,11 +279,11 @@
     },
     "digilocker-kyc": {
       "hasChanged": false,
-      "hash": "714e3a5d6ac50a115ec3dd97e440f9fb13a11bdd20c96b1e4027db66af67ba4df3be7a49a69890902a093bc5d28d36bb9e18ec5f5780c1c6b10ea2d1f5189518"
+      "hash": "a9afbd2ac95b4299a1bd3481303fd7f84f1fc6c2e2760925ac6809ac450e56a0f3be7a49a69890902a093bc5d28d36bb9e18ec5f5780c1c6b10ea2d1f5189518"
     },
     "digilocker-redirect": {
       "hasChanged": false,
-      "hash": "7660f83b50c2d043a0d3d19eafb6bf1e676568518490c0f8496c3859312bcf15f3be7a49a69890902a093bc5d28d36bb9e18ec5f5780c1c6b10ea2d1f5189518"
+      "hash": "277e812cfeb8d75b137c48e33fd49e1b42060a0856b6de8ad948a8fbeef084eef3be7a49a69890902a093bc5d28d36bb9e18ec5f5780c1c6b10ea2d1f5189518"
     },
     "download-kyc-file": {
       "hasChanged": false,
@@ -415,7 +415,7 @@
     },
     "merchant-digilocker-kyc": {
       "hasChanged": false,
-      "hash": "b1b4054db2d51b5e15cfc257a5eee1d41f567bd39c373f36cb51debd83a02a78f3be7a49a69890902a093bc5d28d36bb9e18ec5f5780c1c6b10ea2d1f5189518"
+      "hash": "5a46dddd61296c5aeb64b0dedf09a6dca31bad6d36058a7c19e63a39733fd6ecf3be7a49a69890902a093bc5d28d36bb9e18ec5f5780c1c6b10ea2d1f5189518"
     },
     "on-demand-settlement": {
       "hasChanged": false,

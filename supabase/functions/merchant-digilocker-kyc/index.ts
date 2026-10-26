@@ -16,6 +16,7 @@ interface MerchantDigiLockerRequest {
   redirectUri?: string;
   codeChallenge?: string;
   codeVerifier?: string;
+  platform?: string;
 }
 
 type AddressProofType = 'aadhar' | 'passport' | 'voter_id' | 'driving_license';
@@ -773,7 +774,8 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body: MerchantDigiLockerRequest = await req.json();
-    const { token, action, authCode, verificationId: bodyVerificationId, redirectUri: bodyRedirectUri, codeChallenge, codeVerifier } = body;
+    const { token, action, authCode, verificationId: bodyVerificationId, redirectUri: bodyRedirectUri, codeChallenge, codeVerifier, platform } = body;
+    const isMobile = platform === 'mobile';
 
     if (!token) throw new Error('Missing token');
 
@@ -830,7 +832,10 @@ Deno.serve(async (req: Request) => {
           apiKey, apiSecret, publicKey, provider.environment, record.id, redirectUrl,
         );
         return new Response(
-          JSON.stringify({ authUrl: url, verificationId, provider_name: provider.provider_name }),
+          JSON.stringify({
+            authUrl: url, verificationId, provider_name: provider.provider_name,
+            ...(isMobile ? { mobileCallback: 'paybycard://digilocker-callback' } : {}),
+          }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } else {
@@ -842,7 +847,10 @@ Deno.serve(async (req: Request) => {
           if (!appOrigin || appOrigin.includes('supabase')) appOrigin = 'https://paybycard.in';
           redirectUri = `${appOrigin}/digilocker-callback`;
         }
-        const state = 'm' + record.id.replace(/-/g, '');
+        // Encode platform into state: 'mm' prefix signals mobile to the redirect
+        // function, which issues a paybycard:// custom-scheme redirect.
+        const statePrefix = isMobile ? 'mm' : 'm';
+        const state = statePrefix + record.id.replace(/-/g, '');
         const pkceParams = codeChallenge
           ? `&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256`
           : '';
@@ -852,8 +860,10 @@ Deno.serve(async (req: Request) => {
           `&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}` +
           pkceParams;
 
+        const clientRedirectUri = isMobile ? 'paybycard://digilocker-callback' : redirectUri;
+
         return new Response(
-          JSON.stringify({ authUrl, redirectUri, provider_name: provider.provider_name }),
+          JSON.stringify({ authUrl, redirectUri: clientRedirectUri, provider_name: provider.provider_name }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -897,7 +907,20 @@ Deno.serve(async (req: Request) => {
 
         kycData = await fetchCashFreeDocuments(supabase, apiKey, apiSecret, publicKey, provider.environment, code, record.id);
       } else {
-        const redirectUri = bodyRedirectUri || savedRedirectUri || '';
+        // Reconstruct the real OAuth redirect_uri for token exchange — the
+        // mobile client receives paybycard://digilocker-callback which is not
+        // the actual redirect_uri registered with DigiLocker.
+        let redirectUri = bodyRedirectUri;
+        if (!redirectUri || redirectUri.startsWith('paybycard://')) {
+          redirectUri = savedRedirectUri || '';
+          if (!redirectUri) {
+            const originHeader = req.headers.get('origin') || req.headers.get('referer') || '';
+            let appOrigin = '';
+            try { appOrigin = originHeader ? new URL(originHeader).origin : ''; } catch { /* ignore */ }
+            if (!appOrigin || appOrigin.includes('supabase')) appOrigin = 'https://paybycard.in';
+            redirectUri = `${appOrigin}/digilocker-callback`;
+          }
+        }
         kycData = await fetchDigiLockerData(supabase, apiKey, apiSecret, code, redirectUri, record.id, codeVerifier);
       }
 

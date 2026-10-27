@@ -315,7 +315,7 @@
     },
     "get-company-settings": {
       "hasChanged": false,
-      "hash": "ccd4763408eadef743eac7f1719e9dc2e98d898e6c84d7a5aed605b297c7d95d55e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
+      "hash": "a0a002991c7292d6ff1f177e228c84f1dfab2868086d4f87184fe00073bb16e955e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
     },
     "get-gateway-charges": {
       "hasChanged": false,
@@ -491,7 +491,7 @@
     },
     "save-beneficiary": {
       "hasChanged": false,
-      "hash": "b0713050ec69242260042969fc76bc76594ff6390f6e947213ef5c79222fc1de55e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
+      "hash": "85b8c180d58c58f586104205bd9c193b4ba1baa4fe8153b1be7efa895df4ccec55e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
     },
     "save-kyc-data": {
       "hasChanged": false,

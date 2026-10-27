@@ -54,6 +54,7 @@ export default function MyBeneficiaries() {
   const [kycStatus, setKycStatus] = useState<{ isVerified: boolean; status: string; isRestricted?: boolean } | null>(null);
   const [isCheckingKyc, setIsCheckingKyc] = useState(true);
   const [allowCreditCard, setAllowCreditCard] = useState(false);
+  const [allowSelfTransfer, setAllowSelfTransfer] = useState(false);
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -89,6 +90,7 @@ export default function MyBeneficiaries() {
       const data = await res.json();
       if (data.settings) {
         setAllowCreditCard(!!data.settings.allow_credit_card_payment);
+        setAllowSelfTransfer(!!data.settings.allow_self_transfer);
       }
     } catch (_) {}
   };
@@ -719,14 +721,20 @@ export default function MyBeneficiaries() {
                     Bank Details
                   </h3>
 
-                  <div className="mb-4 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3">
-                    <div className="flex items-start gap-2.5">
-                      <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm font-medium text-amber-800 leading-relaxed">
-                        Transfer of Money to Your Own Bank Account and Credit Card Bill Payments Are Not Allowed.
-                      </p>
+                  {(!allowSelfTransfer || !allowCreditCard) && (
+                    <div className="mb-4 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3">
+                      <div className="flex items-start gap-2.5">
+                        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm font-medium text-amber-800 leading-relaxed">
+                          {!allowSelfTransfer && !allowCreditCard
+                            ? 'Transfer of Money to Your Own Bank Account and Credit Card Bill Payments Are Not Allowed.'
+                            : !allowSelfTransfer
+                              ? 'Transfer of Money to Your Own Bank Account Is Not Allowed.'
+                              : 'Credit Card Bill Payments Are Not Allowed.'}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="space-y-4">
                     <div>

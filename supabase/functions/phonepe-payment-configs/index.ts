@@ -31,8 +31,7 @@ serveAdmin(async (req: Request) => {
       const { data, error } = await supabase
         .from("phonepe_payment_configs")
         .select("*, payment_options!inner(id, category_name)")
-        .eq("payment_gateway_id", gatewayId)
-        .eq("is_active", true);
+        .eq("payment_gateway_id", gatewayId);
 
       if (error) {
         return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {

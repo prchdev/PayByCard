@@ -190,6 +190,7 @@ export default function PaymentGatewaySettings() {
       const data = await response.json();
       if (response.ok) {
         setMessage({ type: 'success', text: 'Razorpay payment configurations saved successfully' });
+        fetchRazorpayConfigs(gatewayId);
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to save Razorpay configurations' });
       }
@@ -282,6 +283,7 @@ export default function PaymentGatewaySettings() {
       const data = await response.json();
       if (response.ok) {
         setMessage({ type: 'success', text: 'PhonePe payment configurations saved successfully' });
+        fetchPhonepeConfigs(gatewayId);
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to save PhonePe configurations' });
       }
@@ -387,7 +389,47 @@ export default function PaymentGatewaySettings() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Payment gateway settings updated successfully' });
+        const razorpayGw = gateways.find((gw) => gw.gateway_name === 'RazorPay');
+        const phonepeGw = gateways.find((gw) => gw.gateway_name === 'PhonePe');
+
+        const configSaves: Promise<boolean>[] = [];
+
+        if (razorpayGw) {
+          const cfgApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/razorpay-payment-configs`;
+          configSaves.push(
+            fetch(cfgApiUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ gateway_id: razorpayGw.id, configs: Object.values(razorpayConfigs) }),
+            }).then(r => r.ok)
+          );
+        }
+
+        if (phonepeGw) {
+          const cfgApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/phonepe-payment-configs`;
+          configSaves.push(
+            fetch(cfgApiUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ gateway_id: phonepeGw.id, configs: Object.values(phonepeConfigs) }),
+            }).then(r => r.ok)
+          );
+        }
+
+        const results = await Promise.all(configSaves);
+        const allConfigsSaved = results.every(ok => ok);
+
+        if (allConfigsSaved) {
+          setMessage({ type: 'success', text: 'Payment gateway settings updated successfully' });
+        } else {
+          setMessage({ type: 'error', text: 'Gateway settings saved, but some payment configurations failed to save. Please try saving again.' });
+        }
         fetchGateways();
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to save payment gateway settings' });

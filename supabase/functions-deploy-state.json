@@ -427,7 +427,7 @@
     },
     "phonepe-payment-configs": {
       "hasChanged": false,
-      "hash": "b7ec723f5ab65d4b56582b7c9c46c12b6db1811989d7e026afb705a959bbbb1f55e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
+      "hash": "f05c8a201b41ac80511897aaf638f036bec3deff4300bdabcd1302dce95531cf55e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
     },
     "poll-stale-payments": {
       "hasChanged": false,
@@ -471,7 +471,7 @@
     },
     "razorpay-payment-configs": {
       "hasChanged": false,
-      "hash": "98378744698b6de938331acbb7f854c9839fb1aea439dc3edc311c0820ffc94155e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
+      "hash": "a9c12e0efb43229edbce1b45c6a1c66ff112e885c9cd9ed0dce2dcd56751b67e55e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
     },
     "register-push-token": {
       "hasChanged": false,

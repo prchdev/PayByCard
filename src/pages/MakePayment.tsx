@@ -15,7 +15,7 @@ import {
   Ticket,
 } from 'lucide-react';
 import { useDashboardContext } from '../hooks/useDashboardContext';
-import { isCreditCardIfsc, looksLikeCreditCardNumber } from '../utils/beneficiaryValidation';
+import { isCreditCardIfsc, looksLikeCreditCardNumber, isSelfAccountName } from '../utils/beneficiaryValidation';
 
 
 interface Beneficiary {
@@ -292,6 +292,9 @@ export default function MakePayment() {
   const [couponStatus, setCouponStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [allowCreditCard, setAllowCreditCard] = useState(true);
+  const [allowSelfTransfer, setAllowSelfTransfer] = useState(true);
+  const [userProfile, setUserProfile] = useState<{ full_name: string; email: string; mobile: string; pan_number: string } | null>(null);
+  const [userBankAccounts, setUserBankAccounts] = useState<{ bank_account_number: string; ifsc_code: string }[]>([]);
 
 
   useEffect(() => {
@@ -495,6 +498,7 @@ export default function MakePayment() {
         fetchPaymentLimits(),
         fetchPaymentCategories(),
         fetchCompanySettings(),
+        fetchUserProfile(),
       ]);
     } catch (error) {
       console.error('Error fetching initial data:', error);
@@ -569,6 +573,7 @@ export default function MakePayment() {
       const data = await response.json();
       if (data.settings) {
         setAllowCreditCard(!!data.settings.allow_credit_card_payment);
+        setAllowSelfTransfer(!!data.settings.allow_self_transfer);
       }
     } catch {
       // default to allowing if fetch fails
@@ -578,9 +583,52 @@ export default function MakePayment() {
   const isCreditCardBeneficiary = (b: Beneficiary): boolean =>
     isCreditCardIfsc(b.ifsc) || looksLikeCreditCardNumber(b.bank_account);
 
-  const visibleBeneficiaries = beneficiaries.filter(
-    (b) => allowCreditCard || !isCreditCardBeneficiary(b)
-  );
+  const isSelfTransferBeneficiary = (b: Beneficiary): boolean => {
+    if (!userProfile) return false;
+    const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (isSelfAccountName(b.full_name, userProfile.full_name)) return true;
+    if (normalize(b.email) && normalize(b.email) === normalize(userProfile.email)) return true;
+    const bMobile = (b.mobile || '').replace(/\D/g, '').slice(-10);
+    const uMobile = (userProfile.mobile || '').replace(/\D/g, '').slice(-10);
+    if (bMobile && uMobile && bMobile === uMobile) return true;
+    if (b.pan_number && userProfile.pan_number &&
+        b.pan_number.trim().toUpperCase() === userProfile.pan_number.trim().toUpperCase()) return true;
+    const bAcc = (b.bank_account || '').replace(/\s+/g, '');
+    const bIfsc = (b.ifsc || '').trim().toUpperCase();
+    if (bAcc && bIfsc && userBankAccounts.some(a =>
+      (a.bank_account_number || '').replace(/\s+/g, '') === bAcc &&
+      (a.ifsc_code || '').trim().toUpperCase() === bIfsc)) return true;
+    return false;
+  };
+
+  const visibleBeneficiaries = beneficiaries.filter((b) => {
+    if (!allowCreditCard && isCreditCardBeneficiary(b)) return false;
+    if (!allowSelfTransfer && isSelfTransferBeneficiary(b)) return false;
+    return true;
+  });
+
+  const fetchUserProfile = async () => {
+    try {
+      const [profileRes, bankRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-user-profile-for-bank`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        }),
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-user-bank-accounts`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        }),
+      ]);
+      const profileData = await profileRes.json();
+      if (profileRes.ok) setUserProfile(profileData);
+      const bankData = await bankRes.json();
+      if (bankRes.ok && bankData.accounts) setUserBankAccounts(bankData.accounts);
+    } catch {
+      // if fetch fails, self-transfer filter just won't apply
+    }
+  };
 
   const fetchGateways = async () => {
     try {
@@ -1767,6 +1815,16 @@ export default function MakePayment() {
                         <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
                         <p className="text-sm font-medium text-amber-800 leading-relaxed">
                           Credit Card Bill Payments Are Not Allowed. Credit card beneficiaries have been hidden from the list.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {!allowSelfTransfer && beneficiaries.some(isSelfTransferBeneficiary) && (
+                    <div className="mb-4 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3">
+                      <div className="flex items-start gap-2.5">
+                        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm font-medium text-amber-800 leading-relaxed">
+                          Self-account transfers are not allowed. Beneficiaries matching your own account details have been hidden from the list.
                         </p>
                       </div>
                     </div>

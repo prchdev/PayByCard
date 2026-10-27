@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { withUserSession } from "../_shared/session.ts";
+import { getPaymentRestrictions } from "../_shared/paymentRestrictions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -194,6 +195,7 @@ Deno.serve(withUserSession(async (req: Request) => {
     // ── Self-transfer check ────────────────────────────────────────────────
     // Block payments to beneficiaries that match the logged-in user's identity,
     // even if the beneficiary was created before the save-beneficiary check.
+    const restrictions = await getPaymentRestrictions(supabase);
     const { data: selfBen } = await supabase
       .from("beneficiaries")
       .select("full_name, email, mobile, pan_number, bank_account, ifsc")
@@ -240,7 +242,7 @@ Deno.serve(withUserSession(async (req: Request) => {
         bankMatch = !!ownBank;
       }
 
-      if (emailMatch || mobileMatch || panMatch || nameMatch || bankMatch) {
+      if ((emailMatch || mobileMatch || panMatch || nameMatch || bankMatch) && !restrictions.allow_self_transfer) {
         const matchedField = bankMatch ? "bank account"
           : panMatch ? "PAN number"
           : nameMatch ? "name"

@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 import { serveUser } from "../_shared/session.ts";
+import { getPaymentRestrictions } from "../_shared/paymentRestrictions.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -124,6 +125,8 @@ serveUser(async (req: Request) => {
     }
 
     // ── Credit card bill payment detection ─────────────────────────────────────
+    const restrictions = await getPaymentRestrictions(supabase);
+
     const CREDIT_CARD_IFSCS = new Set([
       'ICIC0000104', 'ICIC0000105', 'ICIC0000106',
       'HDFC0000207', 'HDFC0000208',
@@ -136,7 +139,7 @@ serveUser(async (req: Request) => {
       'CIUB0000001',
     ]);
 
-    if (CREDIT_CARD_IFSCS.has(ifscUpper)) {
+    if (CREDIT_CARD_IFSCS.has(ifscUpper) && !restrictions.allow_credit_card_payment) {
       return new Response(
         JSON.stringify({
           error: 'This IFSC code is for credit card bill payments. Adding credit card accounts as beneficiaries is not allowed.',
@@ -149,7 +152,7 @@ serveUser(async (req: Request) => {
       );
     }
 
-    if (/^\d{15,16}$/.test(cleanAccount)) {
+    if (/^\d{15,16}$/.test(cleanAccount) && !restrictions.allow_credit_card_payment) {
       const first = cleanAccount[0];
       const len = cleanAccount.length;
       if (first === '4' || (first === '5' && len === 16) || (first === '6' && len === 16)) {
@@ -246,7 +249,7 @@ serveUser(async (req: Request) => {
     const nameMatch = userFullName && bName && userFullName === bName;
 
     // Block if any individual identity field matches the logged-in user
-    if (emailMatch || mobileMatch || panMatch || nameMatch) {
+    if ((emailMatch || mobileMatch || panMatch || nameMatch) && !restrictions.allow_self_transfer) {
       const matchedField = panMatch ? 'PAN number'
         : nameMatch ? 'name'
         : emailMatch ? 'email address'

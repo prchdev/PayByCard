@@ -53,6 +53,7 @@ export default function MyBeneficiaries() {
   const [ifscError, setIfscError] = useState('');
   const [kycStatus, setKycStatus] = useState<{ isVerified: boolean; status: string; isRestricted?: boolean } | null>(null);
   const [isCheckingKyc, setIsCheckingKyc] = useState(true);
+  const [allowCreditCard, setAllowCreditCard] = useState(false);
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -71,8 +72,26 @@ export default function MyBeneficiaries() {
       navigate('/login', { replace: true });
     } else {
       checkKycStatus();
+      fetchCompanySettings();
     }
   }, [userId, navigate]);
+
+  const fetchCompanySettings = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-company-settings`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.settings) {
+        setAllowCreditCard(!!data.settings.allow_credit_card_payment);
+      }
+    } catch (_) {}
+  };
 
   const checkKycStatus = async () => {
     try {
@@ -260,12 +279,12 @@ export default function MyBeneficiaries() {
       setError('Please enter a valid PAN number (e.g., ABCDE1234F).'); return;
     }
 
-    if (isCreditCardIfsc(formData.ifsc)) {
+    if (!allowCreditCard && isCreditCardIfsc(formData.ifsc)) {
       setError('This IFSC code is for credit card bill payments. Adding credit card accounts as beneficiaries is not allowed.');
       return;
     }
 
-    if (looksLikeCreditCardNumber(formData.bank_account)) {
+    if (!allowCreditCard && looksLikeCreditCardNumber(formData.bank_account)) {
       setError('The account number entered appears to be a credit card number. Credit card bill payments are not allowed through this platform.');
       return;
     }

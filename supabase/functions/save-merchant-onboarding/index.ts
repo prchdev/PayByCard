@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { withSignedKycUrls } from "../_shared/kycUrls.ts";
+import { getPaymentRestrictions } from "../_shared/paymentRestrictions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -98,6 +99,7 @@ Deno.serve(async (req: Request) => {
     // ── Self-transfer check: merchant must not be the same person as the sender ──
     // The sender is the logged-in user who initiated the payment. The merchant is
     // the beneficiary completing KYC. Self-funds transfer is not allowed.
+    const restrictions = await getPaymentRestrictions(supabase);
     const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
     // The merchant's name comes from the onboarding record (pre-filled by admin/sender)
@@ -154,7 +156,7 @@ Deno.serve(async (req: Request) => {
     const mobileMatch = senderMobile && merchantMobile && senderMobile === merchantMobile;
     const panMatch = senderPanNorm && merchantPan && senderPanNorm === merchantPan;
 
-    if (nameMatch || emailMatch || mobileMatch || panMatch) {
+    if ((nameMatch || emailMatch || mobileMatch || panMatch) && !restrictions.allow_self_transfer) {
       const matchedField = panMatch ? 'PAN number'
         : nameMatch ? 'name'
         : emailMatch ? 'email address'

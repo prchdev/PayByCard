@@ -38,6 +38,8 @@ serveAdmin(async (req: Request) => {
       ios_min_version,
       ios_min_build,
       referral_message,
+      allow_self_transfer,
+      allow_credit_card_payment,
     } = await req.json();
 
     if (!adminId) {
@@ -88,6 +90,8 @@ serveAdmin(async (req: Request) => {
       ios_min_version: ios_min_version || "",
       ios_min_build: ios_min_build || "",
       referral_message: referral_message ?? null,
+      allow_self_transfer: allow_self_transfer !== undefined ? !!allow_self_transfer : false,
+      allow_credit_card_payment: allow_credit_card_payment !== undefined ? !!allow_credit_card_payment : false,
       updated_by: adminId,
       updated_at: new Date().toISOString(),
     };

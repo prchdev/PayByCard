@@ -47,6 +47,12 @@ serveAdmin(async (req: Request) => {
       .limit(1)
       .maybeSingle();
 
+    // Ensure the payment-restriction booleans are always present in the response
+    if (settings) {
+      settings.allow_self_transfer = settings.allow_self_transfer ?? false;
+      settings.allow_credit_card_payment = settings.allow_credit_card_payment ?? false;
+    }
+
     if (settings?.company_logo_url) {
       const bucketMatch = settings.company_logo_url.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.*)/);
       if (bucketMatch) {

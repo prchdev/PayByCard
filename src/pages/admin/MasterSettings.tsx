@@ -18,6 +18,7 @@ import {
   Apple,
   Bot,
   Gift,
+  ShieldCheck,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -46,6 +47,8 @@ interface MasterSettingsData {
   ios_min_version: string;
   ios_min_build: string;
   referral_message: string;
+  allow_self_transfer: boolean;
+  allow_credit_card_payment: boolean;
 }
 
 const EMPTY_SETTINGS: MasterSettingsData = {
@@ -71,6 +74,8 @@ const EMPTY_SETTINGS: MasterSettingsData = {
   ios_min_version: '',
   ios_min_build: '',
   referral_message: '',
+  allow_self_transfer: false,
+  allow_credit_card_payment: false,
 };
 
 export default function MasterSettings() {
@@ -775,6 +780,69 @@ export default function MasterSettings() {
                     <option value="cash_credit">Cash Credit Account</option>
                   </select>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Restrictions */}
+          <div className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] p-6 transition-all hover:shadow-xl">
+            <div className="flex items-center gap-3 pb-4 mb-6 border-b border-gray-200">
+              <div className="w-10 h-10 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-[#8c76f0]" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Payment Restrictions</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Control what types of payments and beneficiaries are allowed</p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Allow Self Transfer</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    When enabled, users can add their own bank account as a beneficiary, send payments to themselves, and complete merchant KYC using their own PAN/KYC details.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.allow_self_transfer}
+                  onClick={() => setSettings({ ...settings, allow_self_transfer: !settings.allow_self_transfer })}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${
+                    settings.allow_self_transfer ? 'bg-[#8c76f0]' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                      settings.allow_self_transfer ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between pt-5 border-t border-gray-200">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Allow Credit Card Payment</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    When enabled, users can add a credit card number as a beneficiary bank account for credit card bill payments.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.allow_credit_card_payment}
+                  onClick={() => setSettings({ ...settings, allow_credit_card_payment: !settings.allow_credit_card_payment })}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${
+                    settings.allow_credit_card_payment ? 'bg-[#8c76f0]' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                      settings.allow_credit_card_payment ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
           </div>

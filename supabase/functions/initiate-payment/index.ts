@@ -260,6 +260,27 @@ Deno.serve(withUserSession(async (req: Request) => {
       }
     }
 
+    // ── Credit card payment check ──────────────────────────────────────────
+    if (!restrictions.allow_credit_card_payment && selfBen) {
+      const CREDIT_CARD_IFSCS = new Set([
+        "ICIC0000104","ICIC0000105","ICIC0000106","HDFC0000207","HDFC0000208",
+        "SBIN0003833","UTIB0000450","YESB0000001","KKBK0000801","KKBK0000802",
+        "SCBL0032001","BARB0VIPCARD","CIUB0000001",
+      ]);
+      const isCcIfsc = CREDIT_CARD_IFSCS.has((selfBen.ifsc || "").toUpperCase().trim());
+      const digits = (selfBen.bank_account || "").replace(/[\s-]/g, "");
+      const isCcNumber = /^\d{15,16}$/.test(digits) && ["4","5","6"].includes(digits[0]);
+      if (isCcIfsc || isCcNumber) {
+        return new Response(
+          JSON.stringify({
+            error: "Credit card bill payments are not allowed through this platform.",
+            credit_card_blocked: true,
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const { data: gatewaySettings, error: gatewayError } = await supabase
       .from("payment_gateway_settings")
       .select("*")

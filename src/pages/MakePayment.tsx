@@ -15,6 +15,7 @@ import {
   Ticket,
 } from 'lucide-react';
 import { useDashboardContext } from '../hooks/useDashboardContext';
+import { isCreditCardIfsc, looksLikeCreditCardNumber } from '../utils/beneficiaryValidation';
 
 
 interface Beneficiary {
@@ -290,6 +291,7 @@ export default function MakePayment() {
   } | null>(null);
   const [couponStatus, setCouponStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
   const [validatingCoupon, setValidatingCoupon] = useState(false);
+  const [allowCreditCard, setAllowCreditCard] = useState(true);
 
 
   useEffect(() => {
@@ -491,7 +493,8 @@ export default function MakePayment() {
         fetchGateways(),
         fetchGatewayCharges(),
         fetchPaymentLimits(),
-        fetchPaymentCategories()
+        fetchPaymentCategories(),
+        fetchCompanySettings(),
       ]);
     } catch (error) {
       console.error('Error fetching initial data:', error);
@@ -549,6 +552,35 @@ export default function MakePayment() {
     }
   };
 
+
+  const fetchCompanySettings = async () => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-company-settings`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
+        }
+      );
+      const data = await response.json();
+      if (data.settings) {
+        setAllowCreditCard(!!data.settings.allow_credit_card_payment);
+      }
+    } catch {
+      // default to allowing if fetch fails
+    }
+  };
+
+  const isCreditCardBeneficiary = (b: Beneficiary): boolean =>
+    isCreditCardIfsc(b.ifsc) || looksLikeCreditCardNumber(b.bank_account);
+
+  const visibleBeneficiaries = beneficiaries.filter(
+    (b) => allowCreditCard || !isCreditCardBeneficiary(b)
+  );
 
   const fetchGateways = async () => {
     try {
@@ -1729,7 +1761,17 @@ export default function MakePayment() {
                   {fieldErrors.beneficiary && (
                     <p className="text-sm text-red-600 font-medium mt-2">{fieldErrors.beneficiary}</p>
                   )}
-                  {beneficiaries.length === 0 ? (
+                  {!allowCreditCard && beneficiaries.some(isCreditCardBeneficiary) && (
+                    <div className="mb-4 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3">
+                      <div className="flex items-start gap-2.5">
+                        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm font-medium text-amber-800 leading-relaxed">
+                          Credit Card Bill Payments Are Not Allowed. Credit card beneficiaries have been hidden from the list.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {visibleBeneficiaries.length === 0 ? (
                     <div className="text-center py-12">
                       <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-600 mb-4">No active beneficiaries found</p>
@@ -1742,7 +1784,7 @@ export default function MakePayment() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {beneficiaries.map((beneficiary) => (
+                      {visibleBeneficiaries.map((beneficiary) => (
                         <div
                           key={beneficiary.id}
                           onClick={() => setSelectedBeneficiary(beneficiary)}

@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { isCreditCardIfsc, looksLikeCreditCardNumber } from './beneficiaryValidation';
 
 export interface AxisPayoutRow {
   amount: number;
@@ -91,7 +92,10 @@ function mapRowToTemplate(
 ): (string | number)[] {
   const refNoDash = row.paymentReference.replace(/-/g, '');
   const refNoSpaces = row.beneficiaryName.replace(/\s+/g, '');
-  const paymentMode = row.beneficiaryIfsc.trim().toUpperCase().startsWith('UTIB') ? 'I' : 'IMPS';
+  const isCreditCard = isCreditCardIfsc(row.beneficiaryIfsc) || looksLikeCreditCardNumber(row.beneficiaryAccountNumber);
+  const paymentMode = isCreditCard
+    ? 'NEFT'
+    : row.beneficiaryIfsc.trim().toUpperCase().startsWith('UTIB') ? 'I' : 'IMPS';
 
   // 31 values matching columns A–AE
   return [

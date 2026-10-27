@@ -1809,26 +1809,6 @@ export default function MakePayment() {
                   {fieldErrors.beneficiary && (
                     <p className="text-sm text-red-600 font-medium mt-2">{fieldErrors.beneficiary}</p>
                   )}
-                  {!allowCreditCard && beneficiaries.some(isCreditCardBeneficiary) && (
-                    <div className="mb-4 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3">
-                      <div className="flex items-start gap-2.5">
-                        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm font-medium text-amber-800 leading-relaxed">
-                          Credit Card Bill Payments Are Not Allowed. Credit card beneficiaries have been hidden from the list.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {!allowSelfTransfer && beneficiaries.some(isSelfTransferBeneficiary) && (
-                    <div className="mb-4 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3">
-                      <div className="flex items-start gap-2.5">
-                        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm font-medium text-amber-800 leading-relaxed">
-                          Self-account transfers are not allowed. Beneficiaries matching your own account details have been hidden from the list.
-                        </p>
-                      </div>
-                    </div>
-                  )}
                   {visibleBeneficiaries.length === 0 ? (
                     <div className="text-center py-12">
                       <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />

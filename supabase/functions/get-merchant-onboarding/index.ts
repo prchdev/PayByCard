@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
     if (record.beneficiary_id) {
       const { data: bene } = await supabase
         .from("beneficiaries")
-        .select("bank_name, branch_name, ifsc, bank_account, full_name")
+        .select("bank_name, branch_name, ifsc, bank_account, full_name, pan_number")
         .eq("id", record.beneficiary_id)
         .maybeSingle();
       if (bene) {
@@ -58,6 +58,7 @@ Deno.serve(async (req: Request) => {
           bank_account_number: bene.bank_account || '',
         };
         if (!beneficiaryName) beneficiaryName = bene.full_name || '';
+        if (!record.pan_number && bene.pan_number) record.pan_number = bene.pan_number;
       }
     }
 

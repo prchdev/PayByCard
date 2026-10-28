@@ -335,7 +335,7 @@
     },
     "get-merchant-onboarding": {
       "hasChanged": false,
-      "hash": "e168d902e70e3a5d7d87e24aed5b0bdea5dad0a2b62d43120000fd75b6bc596c55e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
+      "hash": "5db41aa0167859f8c76cc73e7fc38c0bf9ca9b16c1b05d29f000f0b4ee80b78955e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
     },
     "get-payment-categories-list": {
       "hasChanged": false,

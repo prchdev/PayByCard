@@ -126,7 +126,7 @@ export default function KycMethodSettings() {
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ admin_id: adminId }),
+          body: JSON.stringify({ adminId }),
         }
       );
       const data = await response.json();

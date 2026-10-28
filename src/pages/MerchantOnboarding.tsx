@@ -83,9 +83,10 @@ interface MerchantDlFlowProps {
   expectedPan: string;
   onSuccess: (kycData: KycData) => void;
   onFallback: (reason: string) => void;
+  allowManualKyc?: boolean;
 }
 
-function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallback }: MerchantDlFlowProps) {
+function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallback, allowManualKyc = true }: MerchantDlFlowProps) {
   const [step, setStep] = useState<DlStep>('idle');
   const [error, setError] = useState('');
   const [ipWhitelistIp, setIpWhitelistIp] = useState('');
@@ -417,13 +418,15 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
             </p>
           </div>
           <div className="flex gap-3">
-            <button
-              onClick={() => onFallback('pan_mismatch')}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-all"
-            >
-              <FileText className="w-4 h-4" />
-              Submit KYC Manually
-            </button>
+            {allowManualKyc && (
+              <button
+                onClick={() => onFallback('pan_mismatch')}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-all"
+              >
+                <FileText className="w-4 h-4" />
+                Submit KYC Manually
+              </button>
+            )}
             <button
               onClick={retry}
               className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 border border-gray-300 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
@@ -528,7 +531,7 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
                 <ScanFace className="w-4 h-4" />
                 Connect DigiLocker
               </button>
-              {step === 'error' && (
+              {step === 'error' && allowManualKyc && (
                 <button
                   onClick={() => onFallback(error)}
                   className="flex items-center gap-2 px-4 py-3 bg-amber-100 text-amber-800 border-2 border-amber-300 rounded-xl text-sm font-medium hover:bg-amber-200 transition-colors"
@@ -1003,7 +1006,7 @@ export default function MerchantOnboarding() {
     setSubmitted(true);
   };
 
-  const handleDigiLockerFallback = (_reason: string) => { setKycMethod('manual'); };
+  const handleDigiLockerFallback = (_reason: string) => { if (allowManualKyc) setKycMethod('manual'); };
 
   const showDigilockerOption = provider !== null;
   const effectiveMethod = kycMethod ?? (showDigilockerOption ? 'digilocker' : (allowManualKyc ? 'manual' : null));
@@ -1300,7 +1303,7 @@ export default function MerchantOnboarding() {
                   <h3 className="font-semibold text-gray-900 text-sm">Select Verification Method</h3>
                   <p className="text-xs text-gray-500 mt-0.5">Choose how you'd like to complete your KYC</p>
                 </div>
-                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className={`p-4 ${allowManualKyc ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : 'space-y-3'}`}>
                   <button
                     onClick={() => setKycMethod('digilocker')}
                     className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
@@ -1326,25 +1329,27 @@ export default function MerchantOnboarding() {
                     </div>
                   </button>
 
-                  <button
-                    onClick={() => setKycMethod('manual')}
-                    className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
-                      effectiveMethod === 'manual'
-                        ? 'border-[#8c76f0] bg-purple-50'
-                        : 'border-gray-200 hover:border-[#8c76f0] hover:bg-purple-50/40'
+                  {allowManualKyc && (
+                    <button
+                      onClick={() => setKycMethod('manual')}
+                      className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                        effectiveMethod === 'manual'
+                          ? 'border-[#8c76f0] bg-purple-50'
+                          : 'border-gray-200 hover:border-[#8c76f0] hover:bg-purple-50/40'
                     }`}
-                  >
-                    <div className="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-5 h-5 text-[#8c76f0]" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 text-sm">Manual Upload</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Upload your PAN card document</p>
-                      <span className="inline-block mt-1.5 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
-                        Upto 48 Working Hours for Approval
-                      </span>
-                    </div>
-                  </button>
+                    >
+                      <div className="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-5 h-5 text-[#8c76f0]" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">Manual Upload</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Upload your PAN card document</p>
+                        <span className="inline-block mt-1.5 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                          Upto 48 Working Hours for Approval
+                        </span>
+                      </div>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -1357,6 +1362,7 @@ export default function MerchantOnboarding() {
                 expectedPan={panNumber}
                 onSuccess={handleDigiLockerSuccess}
                 onFallback={handleDigiLockerFallback}
+                allowManualKyc={allowManualKyc}
               />
             )}
 

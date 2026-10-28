@@ -11,6 +11,7 @@ export interface DigiLockerFlowProps {
   authToken: string;
   onSuccess: (data: DigiLockerResult) => void;
   onFallback: (reason: string) => void;
+  allowManualKyc?: boolean;
 }
 
 export interface DigiLockerResult {
@@ -86,7 +87,7 @@ function logEvent(userId: string, provider: string, action: string, success: boo
   }).catch(() => { /* non-critical */ });
 }
 
-export default function DigiLockerFlow({ userId, providerName, authToken, onSuccess, onFallback }: DigiLockerFlowProps) {
+export default function DigiLockerFlow({ userId, providerName, authToken, onSuccess, onFallback, allowManualKyc = true }: DigiLockerFlowProps) {
   const [step, setStep] = useState<Step>('idle');
   const [error, setError] = useState('');
   const [addrError, setAddrError] = useState<'DRIVING_LICENSE_UNAVAILABLE' | 'ADDRESS_PROOF_UNAVAILABLE' | null>(null);
@@ -564,12 +565,14 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
               : 'Address proof documents are not available in your DigiLocker account. Please upload your address proof manually or ensure your documents (Aadhaar, Passport, Driving License, or Voter ID) are linked to DigiLocker and try again.'}
           </p>
           <div className="flex flex-col gap-3">
-            <button
-              onClick={() => onFallback('dl_unavailable')}
-              className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
-            >
-              Upload Address Proof Manually
-            </button>
+            {allowManualKyc && (
+              <button
+                onClick={() => onFallback('dl_unavailable')}
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                Upload Address Proof Manually
+              </button>
+            )}
             <button
               onClick={retry}
               className="w-full py-2.5 px-4 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl border-2 border-gray-200 transition-colors flex items-center justify-center gap-2"
@@ -655,13 +658,15 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
           </div>
 
           <div className="flex gap-3">
-            <button
-              onClick={() => onFallback('name_mismatch')}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all shadow-sm shadow-purple-500/20"
-            >
-              <FileEdit className="w-4 h-4" />
-              Submit KYC Manually
-            </button>
+            {allowManualKyc && (
+              <button
+                onClick={() => onFallback('name_mismatch')}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all shadow-sm shadow-purple-500/20"
+              >
+                <FileEdit className="w-4 h-4" />
+                Submit KYC Manually
+              </button>
+            )}
             <button
               onClick={retry}
               className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 border border-gray-300 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
@@ -781,7 +786,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
                 <ScanFace className="w-4 h-4" />
                 Connect DigiLocker
               </button>
-              {step === 'error' && (
+              {step === 'error' && allowManualKyc && (
                 <button
                   onClick={() => onFallback(error)}
                   className="flex items-center gap-2 px-4 py-3 bg-amber-100 text-amber-800 border-2 border-amber-300 rounded-xl text-sm font-medium hover:bg-amber-200 transition-colors"

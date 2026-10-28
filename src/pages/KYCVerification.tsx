@@ -126,7 +126,7 @@ export default function KYCVerification() {
   };
 
   const handleDigiLockerFallback = (_reason: string) => {
-    setKycMethod('manual');
+    if (allowManualKyc) setKycMethod('manual');
   };
 
   const overallStatus = (() => {
@@ -338,6 +338,7 @@ export default function KYCVerification() {
                     authToken=""
                     onSuccess={handleDigiLockerSuccess}
                     onFallback={handleDigiLockerFallback}
+                    allowManualKyc={allowManualKyc}
                   />
                 )}
 

@@ -1385,8 +1385,8 @@ export default function MerchantOnboarding() {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
                     <input
                       type="email" value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all text-sm"
+                      readOnly
+                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed text-sm"
                       placeholder="your@email.com"
                     />
                   </div>
@@ -1394,9 +1394,8 @@ export default function MerchantOnboarding() {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Mobile Number</label>
                     <input
                       type="tel" value={mobile}
-                      onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      maxLength={10}
-                      className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all text-sm"
+                      readOnly
+                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed text-sm"
                       placeholder="9876543210"
                     />
                   </div>

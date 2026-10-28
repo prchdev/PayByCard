@@ -68,36 +68,36 @@ serveAdmin(async (req: Request) => {
       );
     }
 
-    const payload = {
-      company_name: company_name || "",
-      address: address || "",
-      cin: cin || "",
-      gst_number: gst_number || "",
-      pan: pan || "",
-      tan: tan || "",
-      company_logo_url: company_logo_url || "",
-      website_url: website_url || "",
-      support_email: support_email || "",
-      phone_number: phone_number || "",
-      bank_beneficiary_name: bank_beneficiary_name || "",
-      bank_ifsc_code: bank_ifsc_code || "",
-      bank_account_number: bank_account_number || "",
-      bank_branch_name: bank_branch_name || "",
-      bank_name: bank_name || "",
-      bank_account_type: bank_account_type || "current",
-      mobile_app_enabled: mobile_app_enabled !== undefined ? !!mobile_app_enabled : true,
-      android_min_version: android_min_version || "",
-      android_min_build: android_min_build || "",
-      ios_min_version: ios_min_version || "",
-      ios_min_build: ios_min_build || "",
-      referral_message: referral_message ?? null,
-      allow_self_transfer: allow_self_transfer !== undefined ? !!allow_self_transfer : false,
-      allow_credit_card_payment: allow_credit_card_payment !== undefined ? !!allow_credit_card_payment : false,
+    const payload: Record<string, unknown> = {
       updated_by: adminId,
       updated_at: new Date().toISOString(),
     };
 
-    payload.allow_manual_kyc = allow_manual_kyc !== undefined ? !!allow_manual_kyc : true;
+    if (company_name !== undefined) payload.company_name = company_name || "";
+    if (address !== undefined) payload.address = address || "";
+    if (cin !== undefined) payload.cin = cin || "";
+    if (gst_number !== undefined) payload.gst_number = gst_number || "";
+    if (pan !== undefined) payload.pan = pan || "";
+    if (tan !== undefined) payload.tan = tan || "";
+    if (company_logo_url !== undefined) payload.company_logo_url = company_logo_url || "";
+    if (website_url !== undefined) payload.website_url = website_url || "";
+    if (support_email !== undefined) payload.support_email = support_email || "";
+    if (phone_number !== undefined) payload.phone_number = phone_number || "";
+    if (bank_beneficiary_name !== undefined) payload.bank_beneficiary_name = bank_beneficiary_name || "";
+    if (bank_ifsc_code !== undefined) payload.bank_ifsc_code = bank_ifsc_code || "";
+    if (bank_account_number !== undefined) payload.bank_account_number = bank_account_number || "";
+    if (bank_branch_name !== undefined) payload.bank_branch_name = bank_branch_name || "";
+    if (bank_name !== undefined) payload.bank_name = bank_name || "";
+    if (bank_account_type !== undefined) payload.bank_account_type = bank_account_type || "current";
+    if (mobile_app_enabled !== undefined) payload.mobile_app_enabled = !!mobile_app_enabled;
+    if (android_min_version !== undefined) payload.android_min_version = android_min_version || "";
+    if (android_min_build !== undefined) payload.android_min_build = android_min_build || "";
+    if (ios_min_version !== undefined) payload.ios_min_version = ios_min_version || "";
+    if (ios_min_build !== undefined) payload.ios_min_build = ios_min_build || "";
+    if (referral_message !== undefined) payload.referral_message = referral_message ?? null;
+    if (allow_self_transfer !== undefined) payload.allow_self_transfer = !!allow_self_transfer;
+    if (allow_credit_card_payment !== undefined) payload.allow_credit_card_payment = !!allow_credit_card_payment;
+    if (allow_manual_kyc !== undefined) payload.allow_manual_kyc = !!allow_manual_kyc;
 
     const { data: existing } = await supabase
       .from("master_settings")

@@ -49,6 +49,7 @@ interface MasterSettingsData {
   referral_message: string;
   allow_self_transfer: boolean;
   allow_credit_card_payment: boolean;
+  allow_manual_kyc?: boolean;
 }
 
 const EMPTY_SETTINGS: MasterSettingsData = {
@@ -91,6 +92,7 @@ export default function MasterSettings() {
 
   const [settings, setSettings] = useState<MasterSettingsData>(EMPTY_SETTINGS);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -116,7 +118,10 @@ export default function MasterSettings() {
         }
       );
       const data = await response.json();
-      if (response.ok && data.settings) {
+      if (!response.ok) {
+        setLoadFailed(true);
+        setMessage({ type: 'error', text: data.error || 'Failed to load settings' });
+      } else if (data.settings) {
         const merged = { ...EMPTY_SETTINGS, ...data.settings, referral_message: data.settings.referral_message ?? '' };
         setSettings(merged);
         if (merged.company_logo_url) {
@@ -124,6 +129,7 @@ export default function MasterSettings() {
         }
       }
     } catch (error) {
+      setLoadFailed(true);
       setMessage({ type: 'error', text: 'Failed to load settings' });
     } finally {
       setLoading(false);
@@ -201,6 +207,10 @@ export default function MasterSettings() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loadFailed) {
+      setMessage({ type: 'error', text: 'Cannot save — settings failed to load. Please reload the page.' });
+      return;
+    }
     setSaving(true);
     setMessage(null);
 

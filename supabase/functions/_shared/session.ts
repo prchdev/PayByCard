@@ -158,12 +158,18 @@ export function withSession(kind: "admin" | "user", idFields: string[]) {
 
       if (claimed && claimed !== session.id) return unauthorized();
 
-      const forwarded = new Request(req.url, {
-        method: req.method,
-        headers: req.headers,
-        body: hasBody && raw ? raw : undefined,
-      });
-      return handler(forwarded);
+      // For JSON bodies we re-serialised (possibly injecting the session id);
+      // for everything else (FormData, empty, GET) forward the original request
+      // untouched so multipart bodies are not discarded.
+      if (hasBody && raw) {
+        const forwarded = new Request(req.url, {
+          method: req.method,
+          headers: req.headers,
+          body: raw,
+        });
+        return handler(forwarded);
+      }
+      return handler(req);
     };
   };
 }

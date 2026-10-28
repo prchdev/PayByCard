@@ -117,9 +117,10 @@ export default function MasterSettings() {
       );
       const data = await response.json();
       if (response.ok && data.settings) {
-        setSettings(data.settings);
-        if (data.settings.company_logo_url) {
-          setLogoPreview(data.settings.company_logo_url);
+        const merged = { ...EMPTY_SETTINGS, ...data.settings, referral_message: data.settings.referral_message ?? '' };
+        setSettings(merged);
+        if (merged.company_logo_url) {
+          setLogoPreview(merged.company_logo_url);
         }
       }
     } catch (error) {
@@ -228,7 +229,7 @@ export default function MasterSettings() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to save settings');
 
-      setSettings(data.settings);
+      setSettings({ ...EMPTY_SETTINGS, ...data.settings, referral_message: data.settings?.referral_message ?? '' });
       if (data.settings?.company_logo_url) {
         setLogoPreview(data.settings.company_logo_url);
       }

@@ -1407,9 +1407,9 @@ export default function MerchantOnboarding() {
                   </label>
                   <input
                     type="text" value={panNumber}
-                    onChange={(e) => setPanNumber(e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase())}
+                    readOnly
                     maxLength={10}
-                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all font-mono tracking-wider text-sm"
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed font-mono tracking-wider text-sm"
                     placeholder="AAAAA0000A"
                     required
                   />

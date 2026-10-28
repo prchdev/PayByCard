@@ -93,10 +93,13 @@ serveAdmin(async (req: Request) => {
       referral_message: referral_message ?? null,
       allow_self_transfer: allow_self_transfer !== undefined ? !!allow_self_transfer : false,
       allow_credit_card_payment: allow_credit_card_payment !== undefined ? !!allow_credit_card_payment : false,
-      allow_manual_kyc: allow_manual_kyc !== undefined ? !!allow_manual_kyc : true,
       updated_by: adminId,
       updated_at: new Date().toISOString(),
     };
+
+    if (allow_manual_kyc !== undefined) {
+      payload.allow_manual_kyc = !!allow_manual_kyc;
+    }
 
     const { data: existing } = await supabase
       .from("master_settings")

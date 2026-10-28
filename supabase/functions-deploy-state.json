@@ -95,7 +95,7 @@
     },
     "admin-get-master-settings": {
       "hasChanged": false,
-      "hash": "58d600f4cbd80f55f7400d24ad2b73a8afb4e4d1ba1d09515c4061a85f2c35fb55e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
+      "hash": "74380acce1c4cbd08e0977cfe854f778457906dc024f986189c65886facab4c755e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
     },
     "admin-get-merchant-kyc": {
       "hasChanged": false,
@@ -171,7 +171,7 @@
     },
     "admin-save-master-settings": {
       "hasChanged": false,
-      "hash": "4b7acbb8505cdc44a78f1c0a069f42a5826ec0a3e32739f8bf57397af7d2e6fe55e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
+      "hash": "e002f670ed38c96d419b60c58e1703952eac01f4abfe4c7d22174689628d0b7d55e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
     },
     "admin-save-notification": {
       "hasChanged": false,
@@ -315,7 +315,7 @@
     },
     "get-company-settings": {
       "hasChanged": false,
-      "hash": "a0a002991c7292d6ff1f177e228c84f1dfab2868086d4f87184fe00073bb16e955e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
+      "hash": "8c3b27a964e59ac56ecd733378bc7e9e219ae4f81f91d535a227a607596c8a2255e4099a1e217d4b9e181fffd07ae12fb6fa85b51bf422dabfb51b9c51fe1de4"
     },
     "get-gateway-charges": {
       "hasChanged": false,

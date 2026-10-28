@@ -900,10 +900,11 @@ export default function MerchantOnboarding() {
   const [kycMethod, setKycMethod] = useState<KycMethod>(null);
   const [digilockerDone, setDigilockerDone] = useState(false);
   const [verifiedKycData, setVerifiedKycData] = useState<KycData | null>(null);
+  const [allowManualKyc, setAllowManualKyc] = useState(true);
 
   useEffect(() => {
     if (!token) { setStatus('error'); setErrorMessage('Invalid link. No token provided.'); setLoading(false); return; }
-    Promise.all([fetchOnboardingData(), fetchProvider()]);
+    Promise.all([fetchOnboardingData(), fetchProvider(), fetchCompanySettings()]);
   }, [token]);
 
   const fetchOnboardingData = async () => {
@@ -943,6 +944,20 @@ export default function MerchantOnboarding() {
       const d = await res.json();
       setProvider(d.provider || null);
     } catch { setProvider(null); }
+  };
+
+  const fetchCompanySettings = async () => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/get-company-settings`, {
+        headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.settings) {
+        setAllowManualKyc(data.settings.allow_manual_kyc ?? true);
+      }
+    } catch {
+      // default to true
+    }
   };
 
   const uploadPanPhoto = async (): Promise<string> => {
@@ -991,7 +1006,7 @@ export default function MerchantOnboarding() {
   const handleDigiLockerFallback = (_reason: string) => { setKycMethod('manual'); };
 
   const showDigilockerOption = provider !== null;
-  const effectiveMethod = kycMethod ?? (showDigilockerOption ? 'digilocker' : 'manual');
+  const effectiveMethod = kycMethod ?? (showDigilockerOption ? 'digilocker' : (allowManualKyc ? 'manual' : null));
 
   const pageContent = () => {
     if (loading) {
@@ -1346,7 +1361,7 @@ export default function MerchantOnboarding() {
             )}
 
             {/* Manual KYC Form */}
-            {effectiveMethod === 'manual' && (
+            {effectiveMethod === 'manual' && allowManualKyc && (
               <form onSubmit={handleSubmit} className="bg-white rounded-2xl border-2 border-gray-300 p-6 space-y-5 shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 pb-3 border-b border-gray-200">
                   Verification Details

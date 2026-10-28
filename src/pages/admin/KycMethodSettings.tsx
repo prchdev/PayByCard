@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScanFace, Save, AlertCircle, CheckCircle, Loader2, KeyRound, Eye, EyeOff, Info } from 'lucide-react';
+import { ScanFace, Save, AlertCircle, CheckCircle, Loader2, KeyRound, Eye, EyeOff, Info, FileText } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
 
@@ -107,10 +107,66 @@ export default function KycMethodSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [allowManualKyc, setAllowManualKyc] = useState(true);
+  const [masterLoading, setMasterLoading] = useState(true);
+  const [masterSaving, setMasterSaving] = useState(false);
 
   useEffect(() => {
     fetchSettings();
+    fetchMasterSettings();
   }, []);
+
+  const fetchMasterSettings = async () => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-get-master-settings`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ admin_id: adminId }),
+        }
+      );
+      const data = await response.json();
+      if (response.ok && data.settings) {
+        setAllowManualKyc(data.settings.allow_manual_kyc ?? true);
+      }
+    } catch {
+      // default to true
+    } finally {
+      setMasterLoading(false);
+    }
+  };
+
+  const saveManualKycSetting = async () => {
+    setMasterSaving(true);
+    setMessage(null);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-save-master-settings`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ adminId, allow_manual_kyc: allowManualKyc }),
+        }
+      );
+      const data = await response.json();
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Manual KYC setting updated successfully' });
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to update manual KYC setting' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'An error occurred while saving the manual KYC setting' });
+    } finally {
+      setMasterSaving(false);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -236,6 +292,49 @@ export default function KycMethodSettings() {
         )}
 
         <div className="space-y-6">
+          {/* Allow Manual KYC Toggle */}
+          <div className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] p-6 transition-all hover:shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-[#8c76f0]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Allow Manual KYC Submission</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    When enabled, users and merchants can upload documents manually. When disabled, only DigiLocker verification is available.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={masterLoading || masterSaving || !canEdit}
+                aria-checked={allowManualKyc}
+                onClick={() => setAllowManualKyc(!allowManualKyc)}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  allowManualKyc ? 'bg-[#8c76f0]' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                  allowManualKyc ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <button
+                onClick={saveManualKycSetting}
+                disabled={masterSaving || masterLoading || !canEdit}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {masterSaving ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" />Saving...</>
+                ) : (
+                  <><Save className="w-4 h-4" />Save Setting</>
+                )}
+              </button>
+            </div>
+          </div>
+
           {providers.map((provider, index) => {
             const isCashFree = provider.provider_name === 'CashFree DigiLocker';
             return (

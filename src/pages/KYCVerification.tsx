@@ -35,10 +35,10 @@ export default function KYCVerification() {
   const location = useLocation();
   const navigate = useNavigate();
   const { userId: authUserId, userEmail: authUserEmail } = useAuth();
-  // Accept userId from location state (navigate from Dashboard) or fall back to auth context
   const userId = (location.state?.userId as string | undefined) || authUserId || '';
   const userEmail = (location.state?.userEmail as string | undefined) || authUserEmail || '';
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [allowManualKyc, setAllowManualKyc] = useState(true);
 
   // CashFree DigiLocker redirects back to this page with ?cf_verification_id=...
   // Bridge-based DigiLocker redirect falls back to ?code=...&state=... when popup is blocked.
@@ -76,7 +76,22 @@ export default function KYCVerification() {
 
   useEffect(() => {
     fetchProvider();
+    fetchCompanySettings();
   }, []);
+
+  const fetchCompanySettings = async () => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/get-company-settings`, {
+        headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.settings) {
+        setAllowManualKyc(data.settings.allow_manual_kyc ?? true);
+      }
+    } catch {
+      // default to true
+    }
+  };
 
   const fetchProvider = async () => {
     try {
@@ -144,7 +159,7 @@ export default function KYCVerification() {
 
   const showDigilockerOption = !providerLoading && provider !== null && !alreadyVerified;
 
-  const effectiveMethod = kycMethod ?? (showDigilockerOption ? 'digilocker' : 'manual');
+  const effectiveMethod = kycMethod ?? (showDigilockerOption ? 'digilocker' : (allowManualKyc ? 'manual' : null));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -252,66 +267,68 @@ export default function KYCVerification() {
                 />
 
                 {/* KYC Method Selector — shown when a provider is enabled and KYC not yet done */}
-                {showDigilockerOption && !digilockerDone && !alreadyVerified && (
-                  <div className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] overflow-hidden transition-all hover:shadow-xl">
-                    <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-violet-50">
-                      <h3 className="font-semibold text-gray-900 text-sm">Select Verification Method</h3>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Choose how you'd like to complete your KYC
-                      </p>
-                    </div>
-                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <button
-                        onClick={() => setKycMethod('digilocker')}
-                        className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
-                          effectiveMethod === 'digilocker'
-                            ? 'border-[#8c76f0] bg-purple-50'
-                            : 'border-gray-200 hover:border-[#8c76f0] hover:bg-purple-50/40'
-                        }`}
-                      >
-                        <div className="w-9 h-9 bg-gradient-to-r from-purple-100 to-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <ScanFace className="w-5 h-5 text-[#8c76f0]" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-900 text-sm">{provider.provider_name}</p>
+                    {showDigilockerOption && !digilockerDone && !alreadyVerified && (
+                      <div className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] overflow-hidden transition-all hover:shadow-xl">
+                        <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-violet-50">
+                          <h3 className="font-semibold text-gray-900 text-sm">Select Verification Method</h3>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            Instant, paperless verification using your DigiLocker account
+                            Choose how you'd like to complete your KYC
                           </p>
-                          <div className="flex flex-wrap gap-1.5 mt-1.5">
-                            <span className="inline-block text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                              Recommended
-                            </span>
-                            <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                              Instant
-                            </span>
-                          </div>
                         </div>
-                      </button>
+                        <div className={`p-4 ${allowManualKyc ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : 'space-y-3'}`}>
+                          <button
+                            onClick={() => setKycMethod('digilocker')}
+                            className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                              effectiveMethod === 'digilocker'
+                                ? 'border-[#8c76f0] bg-purple-50'
+                                : 'border-gray-200 hover:border-[#8c76f0] hover:bg-purple-50/40'
+                            }`}
+                          >
+                            <div className="w-9 h-9 bg-gradient-to-r from-purple-100 to-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                              <ScanFace className="w-5 h-5 text-[#8c76f0]" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-900 text-sm">{provider.provider_name}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Instant, paperless verification using your DigiLocker account
+                              </p>
+                              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                <span className="inline-block text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                                  Recommended
+                                </span>
+                                <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                                  Instant
+                                </span>
+                              </div>
+                            </div>
+                          </button>
 
-                      <button
-                        onClick={() => setKycMethod('manual')}
-                        className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
-                          effectiveMethod === 'manual'
-                            ? 'border-[#8c76f0] bg-purple-50'
-                            : 'border-gray-200 hover:border-[#8c76f0] hover:bg-purple-50/40'
-                        }`}
-                      >
-                        <div className="w-9 h-9 bg-gradient-to-r from-purple-100 to-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <FileText className="w-5 h-5 text-[#8c76f0]" />
+                          {allowManualKyc && (
+                            <button
+                              onClick={() => setKycMethod('manual')}
+                              className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                                effectiveMethod === 'manual'
+                                  ? 'border-[#8c76f0] bg-purple-50'
+                                  : 'border-gray-200 hover:border-[#8c76f0] hover:bg-purple-50/40'
+                              }`}
+                            >
+                              <div className="w-9 h-9 bg-gradient-to-r from-purple-100 to-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <FileText className="w-5 h-5 text-[#8c76f0]" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900 text-sm">Manual Upload</p>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  Upload PAN card and address proof documents manually
+                                </p>
+                                <span className="inline-block mt-1.5 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                                  Upto 48 Working Hours for Approval
+                                </span>
+                              </div>
+                            </button>
+                          )}
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-900 text-sm">Manual Upload</p>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            Upload PAN card and address proof documents manually
-                          </p>
-                          <span className="inline-block mt-1.5 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
-                            Upto 48 Working Hours for Approval
-                          </span>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                )}
+                      </div>
+                    )}
 
                 {/* DigiLocker Flow */}
                 {effectiveMethod === 'digilocker' && provider && !digilockerDone && (
@@ -325,7 +342,7 @@ export default function KYCVerification() {
                 )}
 
                 {/* Manual KYC sections */}
-                {(effectiveMethod === 'manual' || !showDigilockerOption || digilockerDone) && (
+                {((effectiveMethod === 'manual' || (!showDigilockerOption && allowManualKyc) || digilockerDone)) && (
                   <>
                     <PanSection userId={userId} data={kycData?.pan ?? null} onSaved={refresh} />
                     <AddressSection userId={userId} data={kycData?.address ?? null} onSaved={refresh} />

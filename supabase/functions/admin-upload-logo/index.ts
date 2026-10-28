@@ -99,8 +99,9 @@ serveAdmin(async (req: Request) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
+    console.error("admin-upload-logo exception:", error);
     return new Response(
-      JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Failed to upload logo" }),
       { status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }

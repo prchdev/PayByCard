@@ -225,25 +225,9 @@ export default function Dashboard() {
           </div>
 
           {/* KYC Status Banner */}
-          {!isCheckingKyc && kycStatus && (
+          {!isCheckingKyc && kycStatus && !kycStatus.isVerified && (
             <>
-              {kycStatus.isVerified ? (
-                <div className="mb-8 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-xl px-6 py-5">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <CheckCircle className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-green-900">Account Verified Successfully</h3>
-                      <p className="text-sm text-green-700 mt-1">
-                        Your KYC verification is complete. You can now accept payments, make transfers, and access all features.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {kycStatus.status === 'pending' ? (
+              {kycStatus.status === 'pending' ? (
                     <div className="mb-8 bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-500 rounded-xl px-6 py-5">
                       <div className="flex items-start gap-4">
                         <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">

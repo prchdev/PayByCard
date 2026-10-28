@@ -97,9 +97,7 @@ serveAdmin(async (req: Request) => {
       updated_at: new Date().toISOString(),
     };
 
-    if (allow_manual_kyc !== undefined) {
-      payload.allow_manual_kyc = !!allow_manual_kyc;
-    }
+    payload.allow_manual_kyc = allow_manual_kyc !== undefined ? !!allow_manual_kyc : true;
 
     const { data: existing } = await supabase
       .from("master_settings")
@@ -124,8 +122,9 @@ serveAdmin(async (req: Request) => {
     }
 
     if (result.error) {
+      console.error("admin-save-master-settings DB error:", result.error);
       return new Response(
-        JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
+        JSON.stringify({ error: `Database error: ${result.error.message || 'Unknown error'}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -149,8 +148,9 @@ serveAdmin(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
+    console.error("admin-save-master-settings exception:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: `Server error: ${error instanceof Error ? error.message : 'Unknown error'}` }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

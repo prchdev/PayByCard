@@ -68,14 +68,25 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
       );
     }
 
-    const userIds = users.map((u: any) => u.id);
-
-    // Fetch all KYC records in 3 bulk queries (was 4 per-user = ~2760 round trips)
+    // Fetch all KYC records without user_id filter — with 700+ users the .in()
+    // filter exceeds the PostgREST URL length limit (~25k chars of UUIDs), causing
+    // the query to fail silently. We need all records anyway, so fetch everything
+    // and map by user_id in memory.
     const [panRes, addressRes, businessRes] = await Promise.all([
-      supabase.from("kyc_pan_verification").select("*").in("user_id", userIds),
-      supabase.from("kyc_address_proof").select("*").in("user_id", userIds),
-      supabase.from("kyc_business_info").select("*").in("user_id", userIds),
+      supabase.from("kyc_pan_verification").select("*"),
+      supabase.from("kyc_address_proof").select("*"),
+      supabase.from("kyc_business_info").select("*"),
     ]);
+
+    if (panRes.error || addressRes.error || businessRes.error) {
+      return new Response(
+        JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     const panMap = new Map<string, any>();
     for (const p of panRes.data || []) {

@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { withSignedKycUrls } from "../_shared/kycUrls.ts";
 import { lookupStateFromPincode } from "../_shared/pincodeLookup.ts";
+import { getPaymentRestrictions } from "../_shared/paymentRestrictions.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -949,6 +950,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // ── Self-transfer check: merchant must not be the same person as the sender ──
+      const restrictions = await getPaymentRestrictions(supabase);
       const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
       const merchantFullName = normalize(kycData.full_name || record.full_name || '');
       const merchantPan = normalizePan(kycData.pan_number);
@@ -996,7 +998,7 @@ Deno.serve(async (req: Request) => {
       const mobileMatch = senderMobile && merchantMobile && senderMobile === merchantMobile;
       const panMatch = senderPanNorm && merchantPan && senderPanNorm === merchantPan;
 
-      if (nameMatch || emailMatch || mobileMatch || panMatch) {
+      if ((nameMatch || emailMatch || mobileMatch || panMatch) && !restrictions.allow_self_transfer) {
         const matchedField = panMatch ? 'PAN number'
           : nameMatch ? 'name'
           : emailMatch ? 'email address'

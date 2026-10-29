@@ -51,6 +51,8 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
       );
     }
 
+    // --- Batch fetch all data in parallel instead of N+1 queries ---
+
     const { data: users, error: usersError } = await supabase
       .from("users")
       .select("*")
@@ -66,7 +68,31 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
       );
     }
 
-    // Batch-resolve referrer details for every user that has a referred_by value.
+    const userIds = users.map((u: any) => u.id);
+
+    // Fetch all KYC records in 3 bulk queries (was 4 per-user = ~2760 round trips)
+    const [panRes, addressRes, businessRes] = await Promise.all([
+      supabase.from("kyc_pan_verification").select("*").in("user_id", userIds),
+      supabase.from("kyc_address_proof").select("*").in("user_id", userIds),
+      supabase.from("kyc_business_info").select("*").in("user_id", userIds),
+    ]);
+
+    const panMap = new Map<string, any>();
+    for (const p of panRes.data || []) {
+      panMap.set(p.user_id, p);
+    }
+
+    const addressMap = new Map<string, any>();
+    for (const a of addressRes.data || []) {
+      addressMap.set(a.user_id, a);
+    }
+
+    const businessMap = new Map<string, any>();
+    for (const b of businessRes.data || []) {
+      businessMap.set(b.user_id, b);
+    }
+
+    // Batch-resolve referrer details
     const referrerIds = Array.from(
       new Set(users.map((u: any) => u.referred_by).filter(Boolean))
     ) as string[];
@@ -83,47 +109,28 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
       }
     }
 
-    const kycData = await Promise.all(
-      users.map(async (user) => {
-        const [panRes, addressRes, businessRes, merchantRes] = await Promise.all([
-          supabase.from("kyc_pan_verification").select("*").eq("user_id", user.id).maybeSingle(),
-          supabase.from("kyc_address_proof").select("*").eq("user_id", user.id).maybeSingle(),
-          supabase.from("kyc_business_info").select("*").eq("user_id", user.id).maybeSingle(),
-          supabase.from("merchant_onboarding").select("payment_id").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-        ]);
+    // Assemble results in memory — no further DB queries needed
+    // (merchant_onboarding has no user_id column; the previous per-user query
+    // always returned null, so invoice_status/bill_file_url/payment_reference
+    // were always null and are kept as such for compatibility)
+    const kycData = users.map((user: any) => {
+      const referrer = user.referred_by ? referrerMap[user.referred_by] || null : null;
 
-        let invoice_status = null;
-        let bill_file_url = null;
-        let payment_reference = null;
-        if (merchantRes.data?.payment_id) {
-          const { data: payment } = await supabase
-            .from("payments")
-            .select("invoice_status, bill_file_url, payment_reference")
-            .eq("id", merchantRes.data.payment_id)
-            .maybeSingle();
-          invoice_status = payment?.invoice_status ?? null;
-          bill_file_url = payment?.bill_file_url ?? null;
-          payment_reference = payment?.payment_reference ?? null;
-        }
-
-        const referrer = (user as any).referred_by ? referrerMap[(user as any).referred_by] || null : null;
-
-        return {
-          user,
-          pan: panRes.data,
-          address: addressRes.data,
-          business: businessRes.data,
-          invoice_status,
-          bill_file_url,
-          payment_reference,
-          referrer: referrer ? {
-            name: referrer.full_name || [referrer.first_name, referrer.middle_name, referrer.last_name].filter(Boolean).join(' ') || null,
-            email: referrer.email,
-            mobile_number: referrer.mobile_number,
-          } : null,
-        };
-      })
-    );
+      return {
+        user,
+        pan: panMap.get(user.id) || null,
+        address: addressMap.get(user.id) || null,
+        business: businessMap.get(user.id) || null,
+        invoice_status: null,
+        bill_file_url: null,
+        payment_reference: null,
+        referrer: referrer ? {
+          name: referrer.full_name || [referrer.first_name, referrer.middle_name, referrer.last_name].filter(Boolean).join(' ') || null,
+          email: referrer.email,
+          mobile_number: referrer.mobile_number,
+        } : null,
+      };
+    });
 
     let filtered = kycData;
     if (statusFilter && statusFilter !== "all") {
@@ -131,40 +138,40 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
         filtered = kycData.filter((entry: any) => entry.invoice_status === "pending_verification");
       } else {
         filtered = kycData.filter((entry) => {
-        const panStatus = entry.pan?.status;
-        const addressStatus = entry.address?.status;
-        const businessStatus = entry.business?.status;
+          const panStatus = entry.pan?.status;
+          const addressStatus = entry.address?.status;
+          const businessStatus = entry.business?.status;
 
-        if (!panStatus || !addressStatus) {
-          return statusFilter === "pending";
-        }
-
-        if (panStatus === "rejected" || addressStatus === "rejected") {
-          return statusFilter === "rejected";
-        }
-
-        const hasBusinessDocs = entry.business?.incorporation_certificate_url || entry.business?.gst_certificate_url || entry.business?.loa_url;
-        if (hasBusinessDocs && businessStatus === "rejected") {
-          return statusFilter === "rejected";
-        }
-
-        if (panStatus === "verification_pending" || addressStatus === "verification_pending") {
-          return statusFilter === "verification_pending";
-        }
-
-        if (hasBusinessDocs && businessStatus === "verification_pending") {
-          return statusFilter === "verification_pending";
-        }
-
-        if (panStatus === "verified" && addressStatus === "verified") {
-          if (hasBusinessDocs) {
-            return businessStatus === "verified" ? statusFilter === "verified" : statusFilter === "verification_pending";
+          if (!panStatus || !addressStatus) {
+            return statusFilter === "pending";
           }
-          return statusFilter === "verified";
-        }
 
-        return statusFilter === "pending";
-      });
+          if (panStatus === "rejected" || addressStatus === "rejected") {
+            return statusFilter === "rejected";
+          }
+
+          const hasBusinessDocs = entry.business?.incorporation_certificate_url || entry.business?.gst_certificate_url || entry.business?.loa_url;
+          if (hasBusinessDocs && businessStatus === "rejected") {
+            return statusFilter === "rejected";
+          }
+
+          if (panStatus === "verification_pending" || addressStatus === "verification_pending") {
+            return statusFilter === "verification_pending";
+          }
+
+          if (hasBusinessDocs && businessStatus === "verification_pending") {
+            return statusFilter === "verification_pending";
+          }
+
+          if (panStatus === "verified" && addressStatus === "verified") {
+            if (hasBusinessDocs) {
+              return businessStatus === "verified" ? statusFilter === "verified" : statusFilter === "verification_pending";
+            }
+            return statusFilter === "verified";
+          }
+
+          return statusFilter === "pending";
+        });
       }
     }
 

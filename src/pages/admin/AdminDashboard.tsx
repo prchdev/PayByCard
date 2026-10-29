@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, RefreshCw, Users, ShieldCheck, Clock, XCircle, CheckCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAdminKyc } from './useAdminKyc';
-import { KycUserEntry, KycStatus } from './types';
+import { KycUserEntry } from './types';
 import KycStatusBadge from './KycStatusBadge';
 import ReviewModal from './ReviewModal';
 import { useTableSort, SortableTh } from './TableSort';
+import { getOverallStatus } from './kycStatus';
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'All Users' },
@@ -15,36 +16,6 @@ const STATUS_FILTERS = [
   { value: 'rejected', label: 'Rejected' },
   { value: 'pending', label: 'Pending' },
 ];
-
-function getOverallStatus(entry: KycUserEntry): KycStatus {
-  const panStatus = entry.pan?.status;
-  const addressStatus = entry.address?.status;
-  const businessStatus = entry.business?.status;
-
-  if (!panStatus || !addressStatus) return 'pending';
-
-  if (panStatus === 'rejected' || addressStatus === 'rejected') return 'rejected';
-
-  const hasBusinessDocs = entry.business?.incorporation_certificate_url || entry.business?.gst_certificate_url;
-  if (hasBusinessDocs && businessStatus === 'rejected') return 'rejected';
-
-  if (panStatus === 'verification_pending' || addressStatus === 'verification_pending') {
-    return 'verification_pending';
-  }
-
-  if (hasBusinessDocs && businessStatus === 'verification_pending') {
-    return 'verification_pending';
-  }
-
-  if (panStatus === 'verified' && addressStatus === 'verified') {
-    if (hasBusinessDocs) {
-      return businessStatus === 'verified' ? 'verified' : 'verification_pending';
-    }
-    return 'verified';
-  }
-
-  return 'pending';
-}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -72,8 +43,8 @@ export default function AdminDashboard() {
       navigate('/admin/login');
       return;
     }
-    fetchList(statusFilter);
-  }, [adminId, statusFilter]);
+    fetchList('all');
+  }, [adminId, fetchList]);
 
   const handleLogout = () => {
     sessionStorage.removeItem('adminId');
@@ -84,35 +55,46 @@ export default function AdminDashboard() {
 
   const handleReview = async (recordId: string, table: string, action: 'verified' | 'rejected', reason?: string) => {
     await reviewKyc(recordId, table, action, reason);
-    await fetchList(statusFilter);
+    await fetchList('all');
     if (selectedEntry) {
       const updated = entries.find((e) => e.user.id === selectedEntry.user.id);
       if (updated) setSelectedEntry(updated);
     }
   };
 
-  const filtered = entries.filter((e) => {
-    const q = search.toLowerCase();
-    return (
-      !q ||
-      e.user.first_name.toLowerCase().includes(q) ||
-      e.user.last_name.toLowerCase().includes(q) ||
-      e.user.email.toLowerCase().includes(q) ||
-      e.user.mobile_number.toLowerCase().includes(q)
-    );
-  });
+  const filtered = entries
+    .filter((e) => {
+      if (statusFilter === 'all') return true;
+      if (statusFilter === 'invoice_pending') return e.invoice_status === 'pending_verification';
+      return getOverallStatus(e) === statusFilter;
+    })
+    .filter((e) => {
+      const q = search.toLowerCase();
+      return (
+        !q ||
+        e.user.first_name.toLowerCase().includes(q) ||
+        e.user.last_name.toLowerCase().includes(q) ||
+        e.user.email.toLowerCase().includes(q) ||
+        e.user.mobile_number.toLowerCase().includes(q)
+      );
+    });
 
-  const { sortedData, sortConfig, handleSort } = useTableSort(filtered, (entry: KycUserEntry, key: string) => {
-    switch (key) {
-      case 'user': return `${entry.user.first_name} ${entry.user.last_name}`;
-      case 'contact': return entry.user.email;
-      case 'pan': return entry.pan?.status ?? '';
-      case 'address': return entry.address?.status ?? '';
-      case 'business': return entry.business?.status ?? '';
-      case 'overall': return getOverallStatus(entry);
-      default: return '';
-    }
-  });
+  const sortAccessor = useCallback(
+    (entry: KycUserEntry, key: string): string | number | null | undefined => {
+      switch (key) {
+        case 'user': return `${entry.user.first_name} ${entry.user.last_name}`;
+        case 'contact': return entry.user.email;
+        case 'pan': return entry.pan?.status ?? null;
+        case 'address': return entry.address?.status ?? null;
+        case 'business': return entry.business?.status ?? null;
+        case 'overall': return getOverallStatus(entry);
+        default: return null;
+      }
+    },
+    []
+  );
+
+  const { sortedData, sortConfig, handleSort } = useTableSort<KycUserEntry>(filtered, sortAccessor);
 
   const totalPages = Math.ceil(filtered.length / recordsPerPage);
   const startIndex = (currentPage - 1) * recordsPerPage;
@@ -242,7 +224,7 @@ export default function AdminDashboard() {
                 />
               </div>
               <button
-                onClick={() => fetchList(statusFilter)}
+                onClick={() => fetchList('all')}
                 disabled={loading}
                 className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
                 title="Refresh"

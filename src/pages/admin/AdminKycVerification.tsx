@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Users, Clock, XCircle, CheckCircle, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminKyc } from './useAdminKyc';
-import { KycUserEntry, KycStatus } from './types';
+import { KycUserEntry } from './types';
 import KycStatusBadge from './KycStatusBadge';
 import ReviewModal from './ReviewModal';
 import { useAdminPermission } from './useAdminPermission';
 import { downloadCsv } from '../../utils/csvExport';
 import { useTableSort, SortableTh } from './TableSort';
+import { getOverallStatus } from './kycStatus';
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'All Users' },
@@ -17,36 +18,6 @@ const STATUS_FILTERS = [
   { value: 'rejected', label: 'Rejected' },
   { value: 'pending', label: 'Pending' },
 ];
-
-function getOverallStatus(entry: KycUserEntry): KycStatus {
-  const panStatus = entry.pan?.status;
-  const addressStatus = entry.address?.status;
-  const businessStatus = entry.business?.status;
-
-  if (!panStatus || !addressStatus) return 'pending';
-
-  if (panStatus === 'rejected' || addressStatus === 'rejected') return 'rejected';
-
-  const hasBusinessDocs = entry.business?.incorporation_certificate_url || entry.business?.company_pan_photo_url || entry.business?.gst_certificate_url || entry.business?.loa_url;
-  if (hasBusinessDocs && businessStatus === 'rejected') return 'rejected';
-
-  if (panStatus === 'verification_pending' || addressStatus === 'verification_pending') {
-    return 'verification_pending';
-  }
-
-  if (hasBusinessDocs && businessStatus === 'verification_pending') {
-    return 'verification_pending';
-  }
-
-  if (panStatus === 'verified' && addressStatus === 'verified') {
-    if (hasBusinessDocs) {
-      return businessStatus === 'verified' ? 'verified' : 'verification_pending';
-    }
-    return 'verified';
-  }
-
-  return 'pending';
-}
 
 export default function AdminKycVerification() {
   const navigate = useNavigate();
@@ -67,13 +38,13 @@ export default function AdminKycVerification() {
       navigate('/admin/login');
       return;
     }
-    fetchList(statusFilter);
-  }, [adminId, statusFilter]);
+    fetchList('all');
+  }, [adminId, fetchList]);
 
   const handleReview = async (recordId: string, table: string, action: 'verified' | 'rejected', reason?: string, surgeCharge?: number) => {
     try {
       await reviewKyc(recordId, table, action, reason, surgeCharge);
-      await fetchList(statusFilter);
+      await fetchList('all');
     } catch (error) {
       throw error;
     }
@@ -96,7 +67,7 @@ export default function AdminKycVerification() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Action failed');
 
-    await fetchList(statusFilter);
+    await fetchList('all');
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -116,7 +87,7 @@ export default function AdminKycVerification() {
       );
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to delete account');
-      await fetchList(statusFilter);
+      await fetchList('all');
     } finally {
       setDeleteUserLoading(false);
     }
@@ -139,41 +110,48 @@ export default function AdminKycVerification() {
       );
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to clear KYC');
-      await fetchList(statusFilter);
+      await fetchList('all');
     } finally {
       setClearKycLoading(false);
     }
   };
 
-  const filtered = entries.filter((e) => {
-    const q = search.toLowerCase();
-    return (
-      !q ||
-      e.user.first_name.toLowerCase().includes(q) ||
-      e.user.last_name.toLowerCase().includes(q) ||
-      e.user.email.toLowerCase().includes(q) ||
-      e.user.mobile_number.toLowerCase().includes(q)
-    );
-  });
+  const filtered = entries
+    .filter((e) => statusFilter === 'all' || getOverallStatus(e) === statusFilter)
+    .filter((e) => {
+      const q = search.toLowerCase();
+      return (
+        !q ||
+        e.user.first_name.toLowerCase().includes(q) ||
+        e.user.last_name.toLowerCase().includes(q) ||
+        e.user.email.toLowerCase().includes(q) ||
+        e.user.mobile_number.toLowerCase().includes(q)
+      );
+    });
 
-  const { sortedData, sortConfig, handleSort } = useTableSort<KycUserEntry>(filtered, (item, key) => {
-    switch (key) {
-      case 'user':
-        return `${item.user.first_name} ${item.user.last_name}`;
-      case 'contact':
-        return item.user.email;
-      case 'pan':
-        return item.pan?.status ?? null;
-      case 'address':
-        return item.address?.status ?? null;
-      case 'business':
-        return item.business?.status ?? null;
-      case 'overall':
-        return getOverallStatus(item);
-      default:
-        return null;
-    }
-  });
+  const sortAccessor = useCallback(
+    (item: KycUserEntry, key: string): string | number | null | undefined => {
+      switch (key) {
+        case 'user':
+          return `${item.user.first_name} ${item.user.last_name}`;
+        case 'contact':
+          return item.user.email;
+        case 'pan':
+          return item.pan?.status ?? null;
+        case 'address':
+          return item.address?.status ?? null;
+        case 'business':
+          return item.business?.status ?? null;
+        case 'overall':
+          return getOverallStatus(item);
+        default:
+          return null;
+      }
+    },
+    []
+  );
+
+  const { sortedData, sortConfig, handleSort } = useTableSort<KycUserEntry>(filtered, sortAccessor);
 
   const totalPages = Math.ceil(filtered.length / recordsPerPage);
   const startIndex = (currentPage - 1) * recordsPerPage;
@@ -183,6 +161,9 @@ export default function AdminKycVerification() {
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, search, recordsPerPage]);
+
+  // Re-apply current filter after a review/clear/delete action refreshes entries
+  const handleRefresh = () => fetchList('all');
 
   // Update selected entry when entries change
   useEffect(() => {
@@ -337,7 +318,7 @@ export default function AdminKycVerification() {
                 <span className="hidden sm:inline">Download Report CSV</span>
               </button>
               <button
-                onClick={() => fetchList(statusFilter)}
+                onClick={handleRefresh}
                 disabled={loading}
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
                 title="Refresh"

@@ -150,7 +150,7 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
             return statusFilter === "rejected";
           }
 
-          const hasBusinessDocs = entry.business?.incorporation_certificate_url || entry.business?.gst_certificate_url || entry.business?.loa_url;
+          const hasBusinessDocs = entry.business?.incorporation_certificate_url || entry.business?.company_pan_photo_url || entry.business?.gst_certificate_url || entry.business?.loa_url;
           if (hasBusinessDocs && businessStatus === "rejected") {
             return statusFilter === "rejected";
           }

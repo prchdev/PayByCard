@@ -1352,18 +1352,16 @@ export default function AdminReports() {
     return data.payments || [];
   }, [adminId, buildFetchBody, total]);
 
-  useEffect(() => {
-    setPage(1);
-    fetchRecords(1, pageSize);
-  }, [statusFilters, dateFrom, dateTo, search]);
-
+  // Single fetch trigger — when filters/search change, reset to page 1 and fetch.
+  // When page/pageSize/sort change, just fetch the current page.
   useEffect(() => {
     fetchRecords(page, pageSize);
-  }, [page, pageSize, sortConfig, fetchRecords]);
+  }, [fetchRecords, page, pageSize]);
 
   const handleSearch = () => {
     setSearch(searchInput);
     setPage(1);
+    fetchRecords(1, pageSize);
   };
 
   if (permLoading) return null;

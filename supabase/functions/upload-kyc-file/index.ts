@@ -107,6 +107,19 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    const { data: settings } = await supabase
+      .from("master_settings")
+      .select("allow_manual_kyc")
+      .limit(1)
+      .maybeSingle();
+
+    if (settings?.allow_manual_kyc === false) {
+      return new Response(
+        JSON.stringify({ error: "Manual KYC submission is currently disabled. Please use DigiLocker to complete your KYC." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const path = `${userId}/${fileKey}.${ext}`;
     const arrayBuffer = await file.arrayBuffer();

@@ -495,7 +495,7 @@
     },
     "save-kyc-data": {
       "hasChanged": false,
-      "hash": "6f0b4d19f271779a79743bd5d21e8db1e9141b7dfd13c8cbf7a51357ee6fe5234f679ecc82540efccba46da5dd490be3684671566c418276e4422849f44b6b98"
+      "hash": "fa1827e69477e6b7671fc98c83a9062696648a1e845ba197ad8c64868fda69474f679ecc82540efccba46da5dd490be3684671566c418276e4422849f44b6b98"
     },
     "save-kyc-method-settings": {
       "hasChanged": false,
@@ -571,7 +571,7 @@
     },
     "upload-kyc-file": {
       "hasChanged": false,
-      "hash": "d5a6e050ac6bdaae4ac77f0945556dbbbb54a1d968713712244c419878b54bac4f679ecc82540efccba46da5dd490be3684671566c418276e4422849f44b6b98"
+      "hash": "944a926033738079691d6e3ca31d202cf1820fa711b6e4afa7e3d1c0b10b038d4f679ecc82540efccba46da5dd490be3684671566c418276e4422849f44b6b98"
     },
     "upload-ticket-attachment": {
       "hasChanged": false,

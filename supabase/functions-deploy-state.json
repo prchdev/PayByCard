@@ -147,7 +147,7 @@
     },
     "admin-review-invoice": {
       "hasChanged": false,
-      "hash": "ccdefdac30f55064e5ac0e168e587e2d96124a644cf8b03dabb1fd05ec8247354f679ecc82540efccba46da5dd490be3684671566c418276e4422849f44b6b98"
+      "hash": "41884265c8d885b79056cd9c294956cde63b622163e7c55ac1f754636efc86b94f679ecc82540efccba46da5dd490be3684671566c418276e4422849f44b6b98"
     },
     "admin-review-kyc": {
       "hasChanged": false,
@@ -339,7 +339,7 @@
     },
     "get-payment-categories-list": {
       "hasChanged": false,
-      "hash": "d5c2b15663cdc598d16a44b84f6d2a65b0b9b762d722d72979f15de73902339b4f679ecc82540efccba46da5dd490be3684671566c418276e4422849f44b6b98"
+      "hash": "c324e774fbd6e169c11ff350e93ddb89b383c4ef3d9f293589908c895cd0f7554f679ecc82540efccba46da5dd490be3684671566c418276e4422849f44b6b98"
     },
     "get-payment-gateways": {
       "hasChanged": false,
@@ -359,7 +359,7 @@
     },
     "get-referral-info": {
       "hasChanged": false,
-      "hash": "2ce59cf273ac31e30b0b8f8add608e8ebd98f984779d061b795471027ff43fc44f679ecc82540efccba46da5dd490be3684671566c418276e4422849f44b6b98"
+      "hash": "6033873e39058446a907225b983778ab514e6b7a2f22c3eec13eab89d8092e064f679ecc82540efccba46da5dd490be3684671566c418276e4422849f44b6b98"
     },
     "get-role-permissions": {
       "hasChanged": false,
@@ -591,7 +591,7 @@
     },
     "validate-coupon": {
       "hasChanged": false,
-      "hash": "2ed74aa9934883d14baeefc3c42fb5e2d6faf95ee586cb7df8bd4677dc213ed84f679ecc82540efccba46da5dd490be3684671566c418276e4422849f44b6b98"
+      "hash": "dde4b3aeca34a0ef926b5797679c34cde6c7f02dd83eb36c5ae470d617030c2f4f679ecc82540efccba46da5dd490be3684671566c418276e4422849f44b6b98"
     },
     "validate-ifsc": {
       "hasChanged": false,

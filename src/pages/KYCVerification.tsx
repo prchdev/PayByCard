@@ -344,13 +344,16 @@ export default function KYCVerification() {
 
                 {/* Manual KYC sections — shown when user picks manual, has no provider, completed
                     DigiLocker, or already has existing KYC data they need to see the status of */}
-                {((effectiveMethod === 'manual' || (!showDigilockerOption && allowManualKyc) || digilockerDone || !!(kycData?.pan || kycData?.address || kycData?.business))) && (
+                {((effectiveMethod === 'manual' || (!showDigilockerOption && allowManualKyc) || digilockerDone || !!(kycData?.pan || kycData?.address))) && (
                   <>
                     <PanSection userId={userId} data={kycData?.pan ?? null} onSaved={refresh} />
                     <AddressSection userId={userId} data={kycData?.address ?? null} onSaved={refresh} />
-                    <BusinessSection userId={userId} data={kycData?.business ?? null} onSaved={refresh} />
                   </>
                 )}
+
+                {/* Business section is always visible — it's optional, manual-only,
+                    and unrelated to DigiLocker verification */}
+                <BusinessSection userId={userId} data={kycData?.business ?? null} onSaved={refresh} />
 
                 <div className="bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-[#8c76f0] rounded-xl px-5 py-4">
                   <p className="text-sm font-semibold text-[#8c76f0] mb-2">Why KYC is Required</p>

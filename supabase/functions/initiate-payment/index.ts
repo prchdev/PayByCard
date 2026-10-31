@@ -61,7 +61,7 @@ Deno.serve(withUserSession(async (req: Request) => {
     if (!userId) return err("Unauthorized: userId is required", 401);
     const { data: userRow, error: userErr } = await supabase
       .from("users")
-      .select("id, is_disabled, full_name, first_name, last_name, email, mobile_number")
+      .select("id, is_disabled, full_name, first_name, last_name, email, mobile_number, kyc_completed")
       .eq("id", userId)
       .maybeSingle();
     if (userErr || !userRow) return err("Unauthorized", 401);
@@ -69,6 +69,14 @@ Deno.serve(withUserSession(async (req: Request) => {
 
     if (!beneficiaryId || !paymentOptionId || !gatewayId || !cardType || !amount || !totalAmount) {
       return err("Required fields are missing");
+    }
+
+    // ── KYC verification gate ────────────────────────────────────────────────
+    // Users must complete KYC before initiating any payment. When allow_manual_kyc
+    // is true, users who haven't completed KYC may still submit it manually — but
+    // they still cannot pay until it is verified.
+    if (!userRow.kyc_completed) {
+      return err("KYC verification is required before making payments. Please complete your KYC first.", 403);
     }
 
     // ── Input validation ──────────────────────────────────────────────────────

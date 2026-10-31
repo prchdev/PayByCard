@@ -295,7 +295,7 @@
     },
     "generate-invoice-html": {
       "hasChanged": false,
-      "hash": "621f5d027a251689eb204d0c45b30cbe87b2aeb25c3fce744b2497f637248155ab1dfd3e8c6f87853fa2bea6d7826d557eeda4e929ed0a130be1bdaa837ed02e"
+      "hash": "d9e6dfc109f095d557320098724be95b17c2f29964cd55d4071426f4e44a0954ab1dfd3e8c6f87853fa2bea6d7826d557eeda4e929ed0a130be1bdaa837ed02e"
     },
     "generate-invoice-pdf": {
       "hasChanged": false,

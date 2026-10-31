@@ -148,24 +148,24 @@ function buildHtml(
     if (s === "INSTANT" || s === "T+0") settlementLabel = "Instant Settlement";
     else if (s === "T+1") settlementLabel = "Transaction + 1 Day";
     else if (s === "T+2") settlementLabel = "Transaction + 2 Days";
-    else settlementLabel = settlementTime;
+    else settlementLabel = escHtml(settlementTime);
   }
 
-  const payinRef = payment.gateway_transaction_id || payment.payment_reference || "&#8212;";
+  const payinRef = escHtml(payment.gateway_transaction_id || payment.payment_reference) || "&#8212;";
   const payinDate = fmtDate(payment.completed_at || payment.created_at);
-  const payinGateway = gatewayName || "&#8212;";
+  const payinGateway = escHtml(gatewayName) || "&#8212;";
 
-  const payoutMode = payment.payout_mode || payout?.transfer_type || "&#8212;";
-  const payoutDate = payout?.completed_at ? fmtDate(payout.completed_at) : (payout?.payout_date ? payout.payout_date : "&#8212;");
-  const payoutRef = payout?.utr_number || payout?.payout_reference_number || "&#8212;";
+  const payoutMode = escHtml(payment.payout_mode || payout?.transfer_type) || "&#8212;";
+  const payoutDate = payout?.completed_at ? fmtDate(payout.completed_at) : (payout?.payout_date ? escHtml(payout.payout_date) : "&#8212;");
+  const payoutRef = escHtml(payout?.utr_number || payout?.payout_reference_number) || "&#8212;";
 
   const secondRowLabel = isRefund ? "Refund Transaction" : "PayOut Transaction";
-  const secondRowMode = isRefund ? (gatewayName || "&#8212;") : payoutMode;
+  const secondRowMode = isRefund ? (escHtml(gatewayName) || "&#8212;") : payoutMode;
   const secondRowDate = isRefund
     ? (payout?.completed_at ? fmtDate(payout.completed_at) : "&#8212;")
     : payoutDate;
   const secondRowRef = isRefund
-    ? (payout?.utr_number || payout?.payout_reference_number || "&#8212;")
+    ? (escHtml(payout?.utr_number || payout?.payout_reference_number) || "&#8212;")
     : payoutRef;
 
   const additionalSection = `
@@ -201,7 +201,7 @@ function buildHtml(
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Invoice &#8211; ${payment.payment_reference || ""}</title>
+<title>Invoice &#8215; ${escHtml(payment.payment_reference)}</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172a; background: #fff; }
@@ -220,9 +220,9 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
       <td style="vertical-align:top;width:55%;">
         ${logoHtml}
         <div style="margin-top:6px;font-size:11px;color:#64748b;line-height:1.6;">
-          ${co.address || ""}<br/>
-          ${co.website_url || ""} &nbsp;|&nbsp; ${co.support_email || ""}<br/>
-          ${co.phone_number || ""}
+          ${escHtml(co.address)}<br/>
+          ${escHtml(co.website_url)} &nbsp;|&nbsp; ${escHtml(co.support_email)}<br/>
+          ${escHtml(co.phone_number)}
         </div>
       </td>
       <td style="vertical-align:top;text-align:right;">
@@ -230,11 +230,11 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
         <table style="border-collapse:collapse;margin-left:auto;font-size:11.5px;">
           ${invoiceNumDisplay ? `<tr>
             <td style="padding:3px 0;color:#64748b;padding-right:12px;">Invoice No.</td>
-            <td style="padding:3px 0;font-weight:700;font-family:Courier New,monospace;">${invoiceNumDisplay}</td>
+            <td style="padding:3px 0;font-weight:700;font-family:Courier New,monospace;">${escHtml(invoiceNumDisplay)}</td>
           </tr>` : ""}
           <tr>
             <td style="padding:3px 0;color:#64748b;padding-right:12px;">Order No.</td>
-            <td style="padding:3px 0;font-weight:700;font-family:Courier New,monospace;">${payment.payment_reference || "&#8212;"}</td>
+            <td style="padding:3px 0;font-weight:700;font-family:Courier New,monospace;">${escHtml(payment.payment_reference) || "&#8212;"}</td>
           </tr>
           <tr>
             <td style="padding:3px 0;color:#64748b;padding-right:12px;">Invoice Date</td>
@@ -243,7 +243,7 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
           ${payment.completed_at ? `<tr><td style="padding:3px 0;color:#64748b;padding-right:12px;">Completed</td><td style="padding:3px 0;">${fmtDate(payment.completed_at)}</td></tr>` : ""}
           <tr>
             <td style="padding:3px 0;color:#64748b;padding-right:12px;">Status</td>
-            <td style="padding:3px 0;"><span style="display:inline-block;padding:2px 10px;border-radius:10px;font-size:10.5px;font-weight:700;background:${statusBg};color:${statusColor};">${statusLabel}</span></td>
+            <td style="padding:3px 0;"><span style="display:inline-block;padding:2px 10px;border-radius:10px;font-size:10.5px;font-weight:700;background:${statusBg};color:${statusColor};">${escHtml(statusLabel)}</span></td>
           </tr>
         </table>
       </td>
@@ -258,26 +258,26 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
     <tr>
       <td style="vertical-align:top;width:50%;padding-right:16px;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:6px;">Bill From</div>
-        <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${coName}</div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escHtml(coName)}</div>
         <div style="font-size:11.5px;color:#475569;line-height:1.7;">
-          GST: ${co.gst_number || ""}<br/>
-          PAN: ${co.pan || ""}<br/>
-          CIN: ${co.cin || ""}
+          GST: ${escHtml(co.gst_number)}<br/>
+          PAN: ${escHtml(co.pan)}<br/>
+          CIN: ${escHtml(co.cin)}
         </div>
       </td>
       <td style="vertical-align:top;padding-left:16px;border-left:1px solid #e2e8f0;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:6px;">Bill To (Payer)</div>
         ${businessKycVerified && bizKyc?.business_name
-          ? `<div style="font-weight:700;font-size:13px;margin-bottom:2px;">${bizKyc.business_name}</div>` : ""}
-        <div style="font-weight:${businessKycVerified ? "600" : "700"};font-size:${businessKycVerified ? "12" : "13"}px;margin-bottom:4px;">${payment.sender_name || "&#8212;"}</div>
+          ? `<div style="font-weight:700;font-size:13px;margin-bottom:2px;">${escHtml(bizKyc.business_name)}</div>` : ""}
+        <div style="font-weight:${businessKycVerified ? "600" : "700"};font-size:${businessKycVerified ? "12" : "13"}px;margin-bottom:4px;">${escHtml(payment.sender_name) || "&#8212;"}</div>
         <div style="font-size:11.5px;color:#475569;line-height:1.7;">
-          ${businessKycVerified && bizKyc?.business_address ? `${bizKyc.business_address}<br/>` : ""}
-          ${!businessKycVerified && senderAddress ? `${senderAddress}<br/>` : ""}
-          ${businessKycVerified && bizKyc?.business_pan ? `Company PAN: ${bizKyc.business_pan}<br/>` : ""}
-          ${businessKycVerified && bizKyc?.gst_number ? `GST: ${bizKyc.gst_number}<br/>` : ""}
-          ${!businessKycVerified && senderPan ? `PAN: ${senderPan}<br/>` : ""}
-          ${payment.sender_email ? `Email: ${payment.sender_email}<br/>` : ""}
-          ${payment.sender_mobile ? `Mobile: ${payment.sender_mobile}` : ""}
+          ${businessKycVerified && bizKyc?.business_address ? `${escHtml(bizKyc.business_address)}<br/>` : ""}
+          ${!businessKycVerified && senderAddress ? `${escHtml(senderAddress)}<br/>` : ""}
+          ${businessKycVerified && bizKyc?.business_pan ? `Company PAN: ${escHtml(bizKyc.business_pan)}<br/>` : ""}
+          ${businessKycVerified && bizKyc?.gst_number ? `GST: ${escHtml(bizKyc.gst_number)}<br/>` : ""}
+          ${!businessKycVerified && senderPan ? `PAN: ${escHtml(senderPan)}<br/>` : ""}
+          ${payment.sender_email ? `Email: ${escHtml(payment.sender_email)}<br/>` : ""}
+          ${payment.sender_mobile ? `Mobile: ${escHtml(payment.sender_mobile)}` : ""}
         </div>
       </td>
     </tr>
@@ -289,23 +289,23 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
       <td style="vertical-align:top;width:58%;padding-right:16px;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Transaction Details</div>
         <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
-          ${row("Category", categoryName)}
+          ${row("Category", escHtml(categoryName) || "&#8212;")}
           ${settlementLabel ? row("Transaction Settlement Time", settlementLabel) : ""}
-          ${row("Payment Option", option)}
-          ${row("Gateway", gatewayName || "&#8212;")}
-          ${payment.gateway_transaction_id ? row("Gateway Tx ID", payment.gateway_transaction_id, true) : ""}
-          ${payment.gateway_environment ? row("Environment", payment.gateway_environment.charAt(0).toUpperCase() + payment.gateway_environment.slice(1)) : ""}
+          ${row("Payment Option", escHtml(option) || "&#8212;")}
+          ${row("Gateway", escHtml(gatewayName) || "&#8212;")}
+          ${payment.gateway_transaction_id ? row("Gateway Tx ID", escHtml(payment.gateway_transaction_id), true) : ""}
+          ${payment.gateway_environment ? row("Environment", escHtml(payment.gateway_environment.charAt(0).toUpperCase() + payment.gateway_environment.slice(1))) : ""}
         </table>
       </td>
       <td style="vertical-align:top;padding-left:16px;border-left:1px solid #e2e8f0;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Beneficiary Details</div>
         <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
           ${row("Name", escHtml(bene.full_name) || "&#8212;", false, true)}
-          ${row("PAN Number", receiverPan || "&#8212;", true)}
+          ${row("PAN Number", escHtml(receiverPan) || "&#8212;", true)}
           ${row("Bank", escHtml(bene.bank_name) || "&#8212;")}
           ${row("Account No.", escHtml(String(bene.bank_account || "")) || "&#8212;", true)}
           ${row("IFSC Code", escHtml(String(bene.ifsc || "")) || "&#8212;", true)}
-          ${bene.city ? row("City", bene.city) : ""}
+          ${bene.city ? row("City", escHtml(bene.city)) : ""}
         </table>
       </td>
     </tr>
@@ -324,7 +324,7 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
       <tbody>
         <tr>
           <td style="padding:7px 8px;font-size:12px;border-bottom:1px solid #e2e8f0;">
-            Platform Fees &#8212; ${categoryName} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
+            Platform Fees &#8212; ${escHtml(categoryName) || "Service"} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
             <span style="font-size:10.5px;color:#64748b;">To: ${escHtml(bene.full_name) || "&#8212;"} &middot; ${escHtml(String(bene.bank_account || ""))} &middot; ${escHtml(String(bene.ifsc || ""))}</span><br/>
             <span style="font-size:10.5px;color:#64748b;">Amount: &#8377;${fmt(baseAmt)}</span>
           </td>
@@ -368,7 +368,7 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #0f172
     <div style="display:table-cell;vertical-align:bottom;">
       <div style="font-size:10.5px;color:#94a3b8;line-height:1.6;">
         This is a computer-generated invoice. No signature required.<br/>
-        For queries: ${co.support_email || ""} &nbsp;|&nbsp; ${co.phone_number || ""}
+        For queries: ${escHtml(co.support_email)} &nbsp;|&nbsp; ${escHtml(co.phone_number)}
       </div>
     </div>
     <div style="display:table-cell;vertical-align:bottom;text-align:right;">

@@ -292,6 +292,16 @@ function isMaharashtraState(stateText: string | null | undefined): boolean {
   return s === 'maharashtra' || s === 'mh';
 }
 
+function escHtml(s: string | null | undefined): string {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): string {
   const bene = r.beneficiary_details || {};
   const ds = r.display_status || r.status;
@@ -340,9 +350,9 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
       <td style="vertical-align:top;width:55%;">
         ${logoHtml}
         <div style="margin-top:6px;font-size:11px;color:#64748b;line-height:1.6;">
-          ${co.address}<br/>
-          ${co.website_url} &nbsp;|&nbsp; ${co.support_email}<br/>
-          ${co.phone_number}
+          ${escHtml(co.address)}<br/>
+          ${escHtml(co.website_url)} &nbsp;|&nbsp; ${escHtml(co.support_email)}<br/>
+          ${escHtml(co.phone_number)}
         </div>
       </td>
       <td style="vertical-align:top;text-align:right;">
@@ -378,27 +388,27 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
     <tr>
       <td style="vertical-align:top;width:50%;padding-right:16px;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:6px;">Bill From</div>
-        <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${co.company_name}</div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escHtml(co.company_name)}</div>
         <div style="font-size:11.5px;color:#475569;line-height:1.7;">
-          GST: ${co.gst_number}<br/>
-          PAN: ${co.pan}<br/>
-          CIN: ${co.cin}
+          GST: ${escHtml(co.gst_number)}<br/>
+          PAN: ${escHtml(co.pan)}<br/>
+          CIN: ${escHtml(co.cin)}
         </div>
       </td>
       <td style="vertical-align:top;padding-left:16px;border-left:1px solid #e2e8f0;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:6px;">Bill To (Payer)</div>
         ${r.business_kyc_verified && r.company_name
-          ? `<div style="font-weight:700;font-size:13px;margin-bottom:2px;">${r.company_name}</div>`
+          ? `<div style="font-weight:700;font-size:13px;margin-bottom:2px;">${escHtml(r.company_name)}</div>`
           : ''}
-        <div style="font-weight:${r.business_kyc_verified ? '600' : '700'};font-size:${r.business_kyc_verified ? '12' : '13'}px;margin-bottom:4px;">${r.sender?.full_name || '—'}</div>
+        <div style="font-weight:${r.business_kyc_verified ? '600' : '700'};font-size:${r.business_kyc_verified ? '12' : '13'}px;margin-bottom:4px;">${escHtml(r.sender?.full_name) || '—'}</div>
         <div style="font-size:11.5px;color:#475569;line-height:1.7;">
-          ${r.business_kyc_verified && r.company_address ? `${r.company_address}<br/>` : ''}
-          ${!r.business_kyc_verified && r.sender_address ? `${r.sender_address}<br/>` : ''}
-          ${r.business_kyc_verified && r.company_pan ? `Company PAN: ${r.company_pan}<br/>` : ''}
-          ${r.business_kyc_verified && r.company_gst ? `GST: ${r.company_gst}<br/>` : ''}
-          ${!r.business_kyc_verified && r.sender_pan ? `PAN: ${r.sender_pan}<br/>` : ''}
-          ${r.sender?.email ? `Email: ${r.sender.email}<br/>` : ''}
-          ${r.sender?.mobile ? `Mobile: ${r.sender.mobile}` : ''}
+          ${r.business_kyc_verified && r.company_address ? `${escHtml(r.company_address)}<br/>` : ''}
+          ${!r.business_kyc_verified && r.sender_address ? `${escHtml(r.sender_address)}<br/>` : ''}
+          ${r.business_kyc_verified && r.company_pan ? `Company PAN: ${escHtml(r.company_pan)}<br/>` : ''}
+          ${r.business_kyc_verified && r.company_gst ? `GST: ${escHtml(r.company_gst)}<br/>` : ''}
+          ${!r.business_kyc_verified && r.sender_pan ? `PAN: ${escHtml(r.sender_pan)}<br/>` : ''}
+          ${r.sender?.email ? `Email: ${escHtml(r.sender.email)}<br/>` : ''}
+          ${r.sender?.mobile ? `Mobile: ${escHtml(r.sender.mobile)}` : ''}
         </div>
       </td>
     </tr>
@@ -411,28 +421,28 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
       <td style="vertical-align:top;width:58%;padding-right:16px;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Transaction Details</div>
         <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
-          ${row('Category', r.category_details?.category_name || '—')}
+          ${row('Category', escHtml(r.category_details?.category_name) || '—')}
           ${r.category_details?.settlement_time ? row('Transaction Settlement Time',
             r.category_details.settlement_time === 'instant' ? 'Instant Settlement'
             : r.category_details.settlement_time === 'T+0' ? 'Transaction + 0 Day'
             : r.category_details.settlement_time === 'T+1' ? 'Transaction + 1 Day'
             : r.category_details.settlement_time === 'T+2' ? 'Transaction + 2 Days'
             : r.category_details.settlement_time) : ''}
-          ${row('Payment Option', option)}
-          ${row('Gateway', r.gateway_name || '—')}
-${r.gateway_environment ? row('Environment', r.gateway_environment.charAt(0).toUpperCase() + r.gateway_environment.slice(1)) : ''}
+          ${row('Payment Option', escHtml(option) || '—')}
+          ${row('Gateway', escHtml(r.gateway_name) || '—')}
+${r.gateway_environment ? row('Environment', escHtml(r.gateway_environment.charAt(0).toUpperCase() + r.gateway_environment.slice(1))) : ''}
         </table>
       </td>
       <!-- Right: Beneficiary -->
       <td style="vertical-align:top;padding-left:16px;border-left:1px solid #e2e8f0;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Beneficiary Details</div>
         <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;overflow:hidden;">
-          ${row('Name', bene.full_name || '—', false, true)}
-          ${row('PAN Number', r.receiver_pan || '—', true)}
-          ${row('Bank', bene.bank_name || '—')}
-          ${row('Account No.', bene.bank_account || '—', true)}
-          ${row('IFSC Code', bene.ifsc || '—', true)}
-          ${bene.city ? row('City', bene.city) : ''}
+          ${row('Name', escHtml(bene.full_name) || '—', false, true)}
+          ${row('PAN Number', escHtml(r.receiver_pan) || '—', true)}
+          ${row('Bank', escHtml(bene.bank_name) || '—')}
+          ${row('Account No.', escHtml(bene.bank_account) || '—', true)}
+          ${row('IFSC Code', escHtml(bene.ifsc) || '—', true)}
+          ${bene.city ? row('City', escHtml(bene.city)) : ''}
         </table>
       </td>
     </tr>
@@ -451,8 +461,8 @@ ${r.gateway_environment ? row('Environment', r.gateway_environment.charAt(0).toU
       <tbody>
         <tr>
           <td style="padding:7px 8px;font-size:12px;border-bottom:1px solid #e2e8f0;">
-            Platform Fees &#8212; ${r.category_details?.category_name || 'Service'} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
-            <span style="font-size:10.5px;color:#64748b;">To: ${bene.full_name || '—'} · ${bene.bank_account || ''} · ${bene.ifsc || ''}</span><br/>
+            Platform Fees &#8212; ${escHtml(r.category_details?.category_name) || 'Service'} &nbsp;<span style="font-size:10px;color:#64748b;font-weight:normal;">HSN/SAC: 998399</span><br/>
+            <span style="font-size:10.5px;color:#64748b;">To: ${escHtml(bene.full_name) || '—'} · ${escHtml(bene.bank_account)} · ${escHtml(bene.ifsc)}</span><br/>
             <span style="font-size:10.5px;color:#64748b;">Amount: ₹${fmt(baseAmt)}</span>
           </td>
           <td style="padding:7px 8px;text-align:right;font-size:12px;border-bottom:1px solid #e2e8f0;">₹${fmt(charges)}</td>
@@ -492,15 +502,15 @@ ${r.gateway_environment ? row('Environment', r.gateway_environment.charAt(0).toU
       <tbody>
         <tr style="border-bottom:1px solid #e2e8f0;">
           <td style="padding:7px 10px;font-size:11.5px;font-weight:600;">PayIn Transaction</td>
-          <td style="padding:7px 10px;font-size:11.5px;">${r.gateway_name || '&#8212;'}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${escHtml(r.gateway_name) || '&#8212;'}</td>
           <td style="padding:7px 10px;font-size:11.5px;">${fmtDate(r.completed_at || r.created_at)}</td>
-          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${r.gateway_transaction_id || r.payment_reference}</td>
+          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${escHtml(r.gateway_transaction_id || r.payment_reference)}</td>
         </tr>
         <tr>
           <td style="padding:7px 10px;font-size:11.5px;font-weight:600;">${isRefund ? 'Refund Transaction' : 'PayOut Transaction'}</td>
-          <td style="padding:7px 10px;font-size:11.5px;">${isRefund ? (r.gateway_name || '&#8212;') : (r.payout_mode ? formatPayoutMode(r.payout_mode) : '&#8212;')}</td>
-          <td style="padding:7px 10px;font-size:11.5px;">${isRefund ? (payout?.completed_at ? fmtDate(payout.completed_at) : '&#8212;') : (payout?.completed_at ? fmtDate(payout.completed_at) : (payout?.payout_date ? payout.payout_date : '&#8212;'))}</td>
-          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${payout?.utr_number || payout?.payout_reference_number || '&#8212;'}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${isRefund ? (escHtml(r.gateway_name) || '&#8212;') : (r.payout_mode ? escHtml(formatPayoutMode(r.payout_mode)) : '&#8212;')}</td>
+          <td style="padding:7px 10px;font-size:11.5px;">${isRefund ? (payout?.completed_at ? fmtDate(payout.completed_at) : '&#8212;') : (payout?.completed_at ? fmtDate(payout.completed_at) : (payout?.payout_date ? escHtml(payout.payout_date) : '&#8212;'))}</td>
+          <td style="padding:7px 10px;font-size:11.5px;font-family:Courier New,monospace;letter-spacing:0.03em;">${escHtml(payout?.utr_number || payout?.payout_reference_number) || '&#8212;'}</td>
         </tr>
       </tbody>
     </table>
@@ -510,11 +520,11 @@ ${r.gateway_environment ? row('Environment', r.gateway_environment.charAt(0).toU
   <div style="border-top:1px solid #e2e8f0;padding-top:16px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
     <div style="font-size:10.5px;color:#94a3b8;line-height:1.6;">
       This is a computer-generated invoice. No signature required.<br/>
-      For queries: ${co.support_email} &nbsp;|&nbsp; ${co.phone_number}
+      For queries: ${escHtml(co.support_email)} &nbsp;|&nbsp; ${escHtml(co.phone_number)}
     </div>
     <div style="font-size:10px;color:#cbd5e1;text-align:right;">
       Generated: ${new Date().toLocaleString('en-IN')}<br/>
-      ${invoiceNo} of __TOTAL__
+      ${escHtml(invoiceNo)} of __TOTAL__
     </div>
   </div>
 

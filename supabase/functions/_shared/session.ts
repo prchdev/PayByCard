@@ -13,7 +13,38 @@
 // request; the guards below verify it and refuse any request whose claimed
 // identifier does not match the token.
 
+import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+
 const encoder = new TextEncoder();
+
+// Cache for user status lookups to avoid hitting the DB on every request.
+// Entries expire after 60 seconds so a disable takes effect within a minute.
+const userStatusCache = new Map<string, { disabled: boolean; restricted: boolean; ts: number }>();
+const USER_STATUS_TTL_MS = 60_000;
+
+async function checkUserStatus(userId: string): Promise<{ disabled: boolean; restricted: boolean } | null> {
+  const cached = userStatusCache.get(userId);
+  if (cached && Date.now() - cached.ts < USER_STATUS_TTL_MS) {
+    return { disabled: cached.disabled, restricted: cached.restricted };
+  }
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const { data, error } = await supabase
+      .from("users")
+      .select("is_disabled, is_restricted")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const status = { disabled: !!data.is_disabled, restricted: !!data.is_restricted };
+    userStatusCache.set(userId, { ...status, ts: Date.now() });
+    return status;
+  } catch {
+    return null;
+  }
+}
 
 export const SESSION_HEADER = "x-pbc-session";
 export const ADMIN_SESSION_HEADER = "x-pbc-admin-session";
@@ -105,6 +136,25 @@ export function withSession(kind: "admin" | "user", idFields: string[]) {
       const header = kind === "admin" ? ADMIN_SESSION_HEADER : SESSION_HEADER;
       const session = await readSessionToken(req.headers.get(header));
       if (!session || session.kind !== kind) return unauthorized();
+
+      // For user sessions, check that the account is not disabled or restricted.
+      // Admin sessions are not checked here — admin disable/enable is handled by
+      // the admin-login flow and individual admin endpoints.
+      if (kind === "user") {
+        const status = await checkUserStatus(session.id);
+        if (status?.disabled) {
+          return new Response(
+            JSON.stringify({ error: "Your account has been disabled. Please contact support.", code: "ACCOUNT_DISABLED" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        if (status?.restricted) {
+          return new Response(
+            JSON.stringify({ error: "Your account is restricted. Please contact support.", code: "ACCOUNT_RESTRICTED" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      }
 
       // Only JSON bodies are re-read and re-serialised. Multipart/binary bodies are
       // forwarded untouched so file uploads are not corrupted; for those the token
@@ -212,6 +262,21 @@ export function serveMixed(
       const user = await readSessionToken(req.headers.get(SESSION_HEADER));
       const admin = await readSessionToken(req.headers.get(ADMIN_SESSION_HEADER));
       if (!user && !admin) return unauthorized();
+      if (user && user.kind === "user") {
+        const status = await checkUserStatus(user.id);
+        if (status?.disabled) {
+          return new Response(
+            JSON.stringify({ error: "Your account has been disabled. Please contact support.", code: "ACCOUNT_DISABLED" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        if (status?.restricted) {
+          return new Response(
+            JSON.stringify({ error: "Your account is restricted. Please contact support.", code: "ACCOUNT_RESTRICTED" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      }
       return handler(req);
     }
     return withAdminSession(handler)(req);

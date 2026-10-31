@@ -198,7 +198,7 @@ serveUser(async (req: Request) => {
 
     const { data: userRecord, error: userCheckError } = await supabase
       .from('users')
-      .select('id, first_name, last_name, full_name, email, mobile_number, kyc_completed')
+      .select('id, first_name, last_name, full_name, email, mobile_number, kyc_completed, is_disabled, is_restricted')
       .eq('id', userId)
       .maybeSingle();
 
@@ -211,6 +211,26 @@ serveUser(async (req: Request) => {
             ...corsHeaders,
             'Content-Type': 'application/json',
           },
+        }
+      );
+    }
+
+    if (userRecord.is_disabled) {
+      return new Response(
+        JSON.stringify({ error: 'Your account has been disabled. Please contact support.' }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    if (userRecord.is_restricted) {
+      return new Response(
+        JSON.stringify({ error: 'Your account is restricted. Please contact support.' }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }

@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { rewriteToPublicHost } from "../_shared/kycUrls.ts";
 
 import { serveAdmin } from "../_shared/session.ts";
 const corsHeaders = {
@@ -95,7 +96,7 @@ serveAdmin(async (req: Request) => {
     const canonicalUrl = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/kyc-documents/${path}`;
 
     return new Response(
-      JSON.stringify({ url: canonicalUrl, signedUrl: signedData?.signedUrl }),
+      JSON.stringify({ url: rewriteToPublicHost(canonicalUrl), signedUrl: signedData?.signedUrl ? rewriteToPublicHost(signedData.signedUrl) : undefined }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

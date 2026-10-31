@@ -2,6 +2,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SESSION_HEADER, readSessionToken } from "../_shared/session.ts";
+import { rewriteToPublicHost } from "../_shared/kycUrls.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -181,7 +182,7 @@ Deno.serve(async (req: Request) => {
 
     return new Response(JSON.stringify({
       fileUrl: path,
-      signedUrl: urlData?.signedUrl || null,
+      signedUrl: urlData?.signedUrl ? rewriteToPublicHost(urlData.signedUrl) : null,
       docType,
       uploadedAt: new Date().toISOString(),
       uploadIp: clientIp,

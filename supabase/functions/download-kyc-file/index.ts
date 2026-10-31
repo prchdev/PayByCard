@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { withAdminSession, isInternalCall } from "../_shared/session.ts";
+import { rewriteToPublicHost } from "../_shared/kycUrls.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,8 +67,11 @@ Deno.serve(withAdminSession(async (req: Request) => {
       );
     }
 
+    // Rewrite internal host to public-facing domain
+    const signedUrl = rewriteToPublicHost(signedUrlData.signedUrl);
+
     return new Response(
-      JSON.stringify({ signedUrl: signedUrlData.signedUrl }),
+      JSON.stringify({ signedUrl }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

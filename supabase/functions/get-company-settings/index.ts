@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { rewriteToPublicHost } from "../_shared/kycUrls.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,7 +34,7 @@ Deno.serve(async (req: Request) => {
           .from(bucket)
           .createSignedUrl(filePath, 3600);
         if (signedData?.signedUrl) {
-          settings.company_logo_url = signedData.signedUrl;
+          settings.company_logo_url = rewriteToPublicHost(signedData.signedUrl);
         }
       }
     }

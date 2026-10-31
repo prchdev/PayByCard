@@ -2,6 +2,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { serveAdmin } from "../_shared/session.ts";
+import { rewriteToPublicHost } from "../_shared/kycUrls.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -73,7 +74,7 @@ serveAdmin(async (req: Request) => {
     }
 
     return new Response(JSON.stringify({
-      signedUrl: urlData.signedUrl,
+      signedUrl: rewriteToPublicHost(urlData.signedUrl),
       documentType: doc.document_type,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

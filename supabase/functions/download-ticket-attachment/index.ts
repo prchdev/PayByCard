@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 import { serveUserOrAdmin } from "../_shared/session.ts";
+import { rewriteToPublicHost } from "../_shared/kycUrls.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -84,8 +85,11 @@ serveUserOrAdmin(async (req: Request) => {
       );
     }
 
+    // Rewrite internal host to public-facing domain
+    const downloadUrl = rewriteToPublicHost(signedUrl.signedUrl);
+
     return new Response(
-      JSON.stringify({ signedUrl: signedUrl.signedUrl }),
+      JSON.stringify({ signedUrl: downloadUrl }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

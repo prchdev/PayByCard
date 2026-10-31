@@ -7,6 +7,7 @@ import {
   CheckCircle,
   ScanFace,
   FileText,
+  Building2,
 } from 'lucide-react';
 import { useKycData } from './kyc/useKycData';
 import PanSection from './kyc/PanSection';
@@ -351,9 +352,24 @@ export default function KYCVerification() {
                   </>
                 )}
 
-                {/* Business section is always visible — it's optional, manual-only,
-                    and unrelated to DigiLocker verification */}
-                <BusinessSection userId={userId} data={kycData?.business ?? null} onSaved={refresh} />
+                {/* Business section — only available after PAN and Address KYC are both verified */}
+                {alreadyVerified ? (
+                  <BusinessSection userId={userId} data={kycData?.business ?? null} onSaved={refresh} />
+                ) : (
+                  <div className="bg-white rounded-2xl border-2 border-gray-200 px-6 py-5 opacity-75">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                        <Building2 className="w-5 h-5 text-gray-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-500">Business Information</h3>
+                        <p className="text-sm text-gray-400">
+                          Complete your PAN and Address verification first to unlock optional business details.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-[#8c76f0] rounded-xl px-5 py-4">
                   <p className="text-sm font-semibold text-[#8c76f0] mb-2">Why KYC is Required</p>

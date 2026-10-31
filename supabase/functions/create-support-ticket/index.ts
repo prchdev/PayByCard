@@ -34,10 +34,10 @@ serveUser(async (req: Request) => {
       );
     }
 
-    // Verify user exists in the users table
+    // Verify user exists and is verified in the users table
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("id")
+      .select("id, is_mobile_verified, is_email_verified, is_disabled")
       .eq("id", userId)
       .maybeSingle();
 
@@ -46,6 +46,20 @@ serveUser(async (req: Request) => {
       return new Response(
         JSON.stringify({ error: "User not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (user.is_disabled) {
+      return new Response(
+        JSON.stringify({ error: "Account is disabled" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!user.is_mobile_verified || !user.is_email_verified) {
+      return new Response(
+        JSON.stringify({ error: "Please verify your mobile and email before creating a support ticket." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

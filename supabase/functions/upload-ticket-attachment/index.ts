@@ -39,9 +39,19 @@ serveUserOrAdmin(async (req: Request) => {
     }
 
     const maxSize = 1048576;
+    const minSize = 100;
     if (file.size > maxSize) {
       return new Response(
         JSON.stringify({ error: "File size must be less than 1MB" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+    if (file.size < minSize) {
+      return new Response(
+        JSON.stringify({ error: "File is too small to be a valid attachment" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -58,6 +68,44 @@ serveUserOrAdmin(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
+    }
+
+    // Validate file magic bytes to prevent disguised content (e.g. text/HTML
+    // with a .png extension used to smuggle API links or phishing payloads).
+    const header = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    const isValidImage =
+      (header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4e && header[3] === 0x47) || // PNG
+      (header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) || // JPEG
+      (header[0] === 0x25 && header[1] === 0x50 && header[2] === 0x44 && header[3] === 0x46); // PDF
+    if (!isValidImage) {
+      return new Response(
+        JSON.stringify({ error: "File content does not match the declared type" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Verify user is mobile/email verified before allowing attachment uploads.
+    if (!isAdmin) {
+      const { data: userRow } = await supabase
+        .from("users")
+        .select("is_mobile_verified, is_email_verified, is_disabled")
+        .eq("id", userId)
+        .maybeSingle();
+      if (!userRow || userRow.is_disabled) {
+        return new Response(
+          JSON.stringify({ error: "Account not authorized" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (!userRow.is_mobile_verified || !userRow.is_email_verified) {
+        return new Response(
+          JSON.stringify({ error: "Please verify your mobile and email before uploading attachments." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     let ticketQuery = supabase

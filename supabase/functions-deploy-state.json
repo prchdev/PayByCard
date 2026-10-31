@@ -271,7 +271,7 @@
     },
     "create-support-ticket": {
       "hasChanged": false,
-      "hash": "b3f45728394686a8bc21e041f2b44769fc5ec9857a5c62bf79c80c684d84d832ab1dfd3e8c6f87853fa2bea6d7826d557eeda4e929ed0a130be1bdaa837ed02e"
+      "hash": "12c3f4135d29b4c7727adcb053314d904721e817e541d46d4f22a8ff80b29decab1dfd3e8c6f87853fa2bea6d7826d557eeda4e929ed0a130be1bdaa837ed02e"
     },
     "dashboard-notifications": {
       "hasChanged": false,
@@ -575,7 +575,7 @@
     },
     "upload-ticket-attachment": {
       "hasChanged": false,
-      "hash": "d8d9d60324ec7a6d0d06fef27c37ada496be909f41a44f6ddeefcf4fec2661f3ab1dfd3e8c6f87853fa2bea6d7826d557eeda4e929ed0a130be1bdaa837ed02e"
+      "hash": "38012253c0391a898c7506348b5c304a0b9c0acee506e986b44ee39582e00752ab1dfd3e8c6f87853fa2bea6d7826d557eeda4e929ed0a130be1bdaa837ed02e"
     },
     "user-forgot-password": {
       "hasChanged": false,

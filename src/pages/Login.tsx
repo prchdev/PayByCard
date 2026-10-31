@@ -82,7 +82,6 @@ export default function Login() {
       }
 
       if (data.needsVerification) {
-        if (data.sessionToken) sessionStorage.setItem('pbc_session', data.sessionToken);
         navigate('/verify-otp', {
           state: {
             userId: data.userId,

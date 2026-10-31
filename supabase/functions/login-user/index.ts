@@ -155,9 +155,13 @@ Deno.serve(async (req: Request) => {
     }
 
     const isFullyVerified = user.is_mobile_verified && user.is_email_verified;
-    const sessionToken = await issueSessionToken("user", user.id);
 
     if (!isFullyVerified) {
+      // Do NOT issue a session token to unverified users. They must complete OTP
+      // verification first; the verify-otp endpoint issues the session token on success.
+      // Issuing a token here would let an attacker bypass OTP and call any authenticated
+      // endpoint (initiate-payment, save-beneficiary, etc.).
+      const sessionToken = null;
       const mobileOTP = generateOTP();
       const emailOTP = generateOTP();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -263,7 +267,6 @@ Deno.serve(async (req: Request) => {
           firstName: user.first_name,
           lastName: user.last_name,
           isVerified: false,
-          sessionToken,
           kycCompleted: user.kyc_completed,
           needsVerification: true,
           message: 'OTPs sent to mobile and email for verification.',
@@ -274,6 +277,8 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
+
+    const sessionToken = await issueSessionToken("user", user.id);
 
     return new Response(
       JSON.stringify({

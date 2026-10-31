@@ -18,7 +18,7 @@ const SIGN_TTL_SECONDS = 3600;
 const INTERNAL_HOST = (() => {
   try { return new URL(Deno.env.get("SUPABASE_URL")!).host; } catch { return ""; }
 })();
-const PUBLIC_HOST = Deno.env.get("PUBLIC_STORAGE_HOST") || "api.paybycard.in";
+const PUBLIC_HOST = "api.paybycard.in";
 
 export function rewriteToPublicHost(url: string): string {
   if (!url || !INTERNAL_HOST) return url;

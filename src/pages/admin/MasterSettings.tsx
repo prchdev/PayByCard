@@ -258,7 +258,16 @@ export default function MasterSettings() {
         setLogoPreview(data.settings.company_logo_url);
       }
       setLogoFile(null);
-      setMessage({ type: 'success', text: 'Master settings saved successfully' });
+
+      let successMsg = 'Master settings saved successfully';
+      if (data.encryption_status) {
+        if (data.encryption_status.re_encrypted) {
+          successMsg = `Master settings saved. Re-encrypted ${data.encryption_status.gateways} gateway(s) and ${data.encryption_status.payouts} payout setting(s) with the new key.`;
+        } else if (data.encryption_status.error) {
+          successMsg = `Master settings saved, but re-encryption failed: ${data.encryption_status.error}. Existing credentials may need manual re-encryption.`;
+        }
+      }
+      setMessage({ type: 'success', text: successMsg });
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to save' });
     } finally {

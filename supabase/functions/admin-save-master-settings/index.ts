@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 import { serveAdmin } from "../_shared/session.ts";
+import { reEncryptAllCredentials } from "../_shared/gatewayCredentials.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -107,9 +108,32 @@ serveAdmin(async (req: Request) => {
 
     const { data: existing } = await supabase
       .from("master_settings")
-      .select("id")
+      .select("id, gateway_encryption_key")
       .limit(1)
       .maybeSingle();
+
+    const oldEncryptionKey = existing?.gateway_encryption_key || null;
+    const isKeyChange = gateway_encryption_key && oldEncryptionKey && gateway_encryption_key !== oldEncryptionKey;
+    const isFirstKey = gateway_encryption_key && !oldEncryptionKey;
+
+    let reEncryptResult: { gateways: number; payouts: number } | null = null;
+    let reEncryptError: string | null = null;
+
+    if (isKeyChange) {
+      try {
+        reEncryptResult = await reEncryptAllCredentials(supabase, oldEncryptionKey, gateway_encryption_key);
+      } catch (e) {
+        console.error("Re-encryption failed:", e);
+        reEncryptError = e instanceof Error ? e.message : "Unknown error";
+      }
+    } else if (isFirstKey) {
+      try {
+        reEncryptResult = await reEncryptAllCredentials(supabase, "", gateway_encryption_key);
+      } catch (e) {
+        console.error("Initial encryption failed:", e);
+        reEncryptError = e instanceof Error ? e.message : "Unknown error";
+      }
+    }
 
     let result;
     if (existing) {
@@ -153,8 +177,23 @@ serveAdmin(async (req: Request) => {
       }
     }
 
+    const response: Record<string, unknown> = { success: true, settings: settingsData };
+    if (reEncryptResult) {
+      response.encryption_status = {
+        re_encrypted: true,
+        gateways: reEncryptResult.gateways,
+        payouts: reEncryptResult.payouts,
+      };
+    }
+    if (reEncryptError) {
+      response.encryption_status = {
+        re_encrypted: false,
+        error: reEncryptError,
+      };
+    }
+
     return new Response(
-      JSON.stringify({ success: true, settings: settingsData }),
+      JSON.stringify(response),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

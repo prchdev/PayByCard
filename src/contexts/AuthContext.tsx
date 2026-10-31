@@ -26,8 +26,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const storedUserId = sessionStorage.getItem('userId');
     const storedEmail = sessionStorage.getItem('userEmail');
+    const sessionToken = sessionStorage.getItem('pbc_session');
 
-    if (storedUserId && storedEmail) {
+    // Require both a userId AND a server-issued session token.
+    // Without a token, API calls will fail anyway — showing the dashboard
+    // would only expose UI without functional access.
+    if (storedUserId && storedEmail && sessionToken) {
       setIsAuthenticated(true);
       setUserId(storedUserId);
       setUserEmail(storedEmail);

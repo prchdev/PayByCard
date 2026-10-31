@@ -39,6 +39,26 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Reject disabled accounts before any OTP processing.
+    const { data: userRow, error: userErr } = await supabase
+      .from('users')
+      .select('is_disabled')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (userErr || !userRow) {
+      return new Response(
+        JSON.stringify({ error: 'User not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (userRow.is_disabled) {
+      return new Response(
+        JSON.stringify({ error: 'Your account has been disabled by our compliance team. Please raise a support ticket for assistance.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data: otpRecord, error: otpFetchError } = await supabase
       .from('otp_verification')
       .select('*')

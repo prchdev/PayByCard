@@ -9,6 +9,7 @@ const corsHeaders = {
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MIN_FILE_SIZE = 100;
 
 const ALLOWED_FILE_KEYS = new Set([
   "pan_photo",
@@ -75,9 +76,31 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (file.size < MIN_FILE_SIZE) {
+      return new Response(JSON.stringify({ error: "File is too small to be a valid document" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const detectedType = file.type || "";
     if (!ALLOWED_MIME_TYPES.has(detectedType)) {
       return new Response(JSON.stringify({ error: "Only JPEG, PNG, WebP, and PDF files are accepted" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Magic byte validation: verify the file content matches its declared type.
+    const header = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    const isValidFile =
+      (header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) || // JPEG
+      (header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4e && header[3] === 0x47) || // PNG
+      (header[0] === 0x25 && header[1] === 0x50 && header[2] === 0x44 && header[3] === 0x46) || // PDF
+      (header[0] === 0x52 && header[1] === 0x49 && header[2] === 0x46 && header[3] === 0x46 && // RIFF (WebP)
+       header[8] === 0x57 && header[9] === 0x45 && header[10] === 0x42 && header[11] === 0x50); // WEBP
+    if (!isValidFile) {
+      return new Response(JSON.stringify({ error: "File content does not match the declared type" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -106,6 +129,28 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // For authenticated users (not merchant-onboarding), verify the account is
+    // not disabled and mobile/email verification is complete.
+    if (sessionUserId) {
+      const { data: userRow } = await supabase
+        .from("users")
+        .select("is_disabled, is_mobile_verified, is_email_verified")
+        .eq("id", sessionUserId)
+        .maybeSingle();
+      if (!userRow || userRow.is_disabled) {
+        return new Response(JSON.stringify({ error: "Authentication required" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!userRow.is_mobile_verified || !userRow.is_email_verified) {
+        return new Response(JSON.stringify({ error: "Please verify your mobile and email before uploading KYC documents." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     const { data: settings } = await supabase
       .from("master_settings")

@@ -487,7 +487,7 @@
     },
     "resend-otp": {
       "hasChanged": false,
-      "hash": "e25bbac6ef50309182e9cb5ed6e2dff277e52e7b368ba8dd9220fa0b785ff15e"
+      "hash": "8a6c686a7dac32ba7281f18a4a250c1652d18fd473aa8fe906d2041b15ac4c93"
     },
     "save-beneficiary": {
       "hasChanged": false,
@@ -571,7 +571,7 @@
     },
     "upload-kyc-file": {
       "hasChanged": false,
-      "hash": "944a926033738079691d6e3ca31d202cf1820fa711b6e4afa7e3d1c0b10b038dab1dfd3e8c6f87853fa2bea6d7826d557eeda4e929ed0a130be1bdaa837ed02e"
+      "hash": "3f9545a8d70c0e3ac0e1b8e53690bc2c33378edfcac538d4c420ba603434af7fab1dfd3e8c6f87853fa2bea6d7826d557eeda4e929ed0a130be1bdaa837ed02e"
     },
     "upload-ticket-attachment": {
       "hasChanged": false,
@@ -599,7 +599,7 @@
     },
     "verify-otp": {
       "hasChanged": false,
-      "hash": "709a71d78f6786230883340300668aba75ea02135e609502512f56bee1e00fecab1dfd3e8c6f87853fa2bea6d7826d557eeda4e929ed0a130be1bdaa837ed02e"
+      "hash": "0f579a775cdfa83797659e3150a322c1012c009962aebaf1b87312b8f5b9cfd2ab1dfd3e8c6f87853fa2bea6d7826d557eeda4e929ed0a130be1bdaa837ed02e"
     },
     "waf-validate": {
       "hasChanged": false,

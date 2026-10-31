@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('email, mobile_number, first_name, last_name')
+      .select('email, mobile_number, first_name, last_name, is_disabled')
       .eq('id', userId)
       .maybeSingle();
 
@@ -54,6 +54,13 @@ Deno.serve(async (req: Request) => {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
+      );
+    }
+
+    if (user.is_disabled) {
+      return new Response(
+        JSON.stringify({ error: 'Your account has been disabled by our compliance team. Please raise a support ticket for assistance.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

@@ -33,7 +33,13 @@ export default function DashboardLayout() {
     navigate('/login', { replace: true });
   };
 
-  if (!userId) return null;
+  // Require a session token to access any dashboard page.
+  // Without it, the user is not truly authenticated even if userId is in sessionStorage.
+  const sessionToken = sessionStorage.getItem('pbc_session');
+  if (!userId || !sessionToken) {
+    navigate('/login', { replace: true });
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

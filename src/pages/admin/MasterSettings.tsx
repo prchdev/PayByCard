@@ -49,6 +49,8 @@ interface MasterSettingsData {
   referral_message: string;
   allow_self_transfer: boolean;
   allow_credit_card_payment: boolean;
+  enable_credit_card_verification: boolean;
+  enable_third_party_card_usage: boolean;
   allow_manual_kyc?: boolean;
 }
 
@@ -77,6 +79,8 @@ const EMPTY_SETTINGS: MasterSettingsData = {
   referral_message: '',
   allow_self_transfer: false,
   allow_credit_card_payment: false,
+  enable_credit_card_verification: false,
+  enable_third_party_card_usage: false,
 };
 
 export default function MasterSettings() {
@@ -851,6 +855,54 @@ export default function MasterSettings() {
                   <span
                     className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
                       settings.allow_credit_card_payment ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between pt-5 border-t border-gray-200">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Enable Credit Card Verification</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    When enabled, the system verifies credit card details before allowing transactions. When disabled, credit card verification is skipped.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.enable_credit_card_verification}
+                  onClick={() => setSettings({ ...settings, enable_credit_card_verification: !settings.enable_credit_card_verification })}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${
+                    settings.enable_credit_card_verification ? 'bg-[#8c76f0]' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                      settings.enable_credit_card_verification ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between pt-5 border-t border-gray-200">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Enable Third Party Card Usage</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    When enabled, users can make payments using credit cards that do not belong to them. When disabled, only the user's own cards may be used.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.enable_third_party_card_usage}
+                  onClick={() => setSettings({ ...settings, enable_third_party_card_usage: !settings.enable_third_party_card_usage })}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${
+                    settings.enable_third_party_card_usage ? 'bg-[#8c76f0]' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                      settings.enable_third_party_card_usage ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>

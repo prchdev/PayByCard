@@ -20,7 +20,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: settings } = await supabase
       .from("master_settings")
-      .select("company_name, address, cin, gst_number, pan, tan, company_logo_url, website_url, support_email, phone_number, allow_self_transfer, allow_credit_card_payment, allow_manual_kyc")
+      .select("company_name, address, cin, gst_number, pan, tan, company_logo_url, website_url, support_email, phone_number, allow_self_transfer, allow_credit_card_payment, allow_manual_kyc, enable_credit_card_verification, enable_third_party_card_usage")
       .limit(1)
       .maybeSingle();
 

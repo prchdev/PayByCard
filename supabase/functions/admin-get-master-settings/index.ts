@@ -52,6 +52,8 @@ serveAdmin(async (req: Request) => {
       settings.allow_self_transfer = settings.allow_self_transfer ?? false;
       settings.allow_credit_card_payment = settings.allow_credit_card_payment ?? false;
       settings.allow_manual_kyc = settings.allow_manual_kyc ?? true;
+      settings.enable_credit_card_verification = settings.enable_credit_card_verification ?? false;
+      settings.enable_third_party_card_usage = settings.enable_third_party_card_usage ?? false;
     }
 
     if (settings?.company_logo_url) {

@@ -41,6 +41,8 @@ serveAdmin(async (req: Request) => {
       allow_self_transfer,
       allow_credit_card_payment,
       allow_manual_kyc,
+      enable_credit_card_verification,
+      enable_third_party_card_usage,
     } = await req.json();
 
     if (!adminId) {
@@ -98,6 +100,8 @@ serveAdmin(async (req: Request) => {
     if (allow_self_transfer !== undefined) payload.allow_self_transfer = !!allow_self_transfer;
     if (allow_credit_card_payment !== undefined) payload.allow_credit_card_payment = !!allow_credit_card_payment;
     if (allow_manual_kyc !== undefined) payload.allow_manual_kyc = !!allow_manual_kyc;
+    if (enable_credit_card_verification !== undefined) payload.enable_credit_card_verification = !!enable_credit_card_verification;
+    if (enable_third_party_card_usage !== undefined) payload.enable_third_party_card_usage = !!enable_third_party_card_usage;
 
     const { data: existing } = await supabase
       .from("master_settings")

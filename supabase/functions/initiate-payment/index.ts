@@ -50,9 +50,6 @@ Deno.serve(withUserSession(async (req: Request) => {
       discount,
       totalAmount,
       billFileUrl,
-      beneficiaryDetails,
-      categoryDetails,
-      paymentOptionDetails,
       couponId,
       couponCode,
     } = await req.json();
@@ -79,6 +76,57 @@ Deno.serve(withUserSession(async (req: Request) => {
       return err("KYC verification is required before making payments. Please complete your KYC first.", 403);
     }
 
+    // ── Fetch beneficiary server-side and verify ownership ───────────────────
+    // Never trust client-sent beneficiaryDetails — fetch from DB and confirm the
+    // beneficiary belongs to the authenticated user.
+    const { data: beneficiary, error: beneError } = await supabase
+      .from("beneficiaries")
+      .select("id, user_id, full_name, bank_account, ifsc, bank_name, branch_name, account_type, email, mobile, pan_number, status")
+      .eq("id", beneficiaryId)
+      .maybeSingle();
+
+    if (beneError || !beneficiary) {
+      return err("Beneficiary not found", 404);
+    }
+    if (beneficiary.user_id !== userId) {
+      return err("Unauthorized: beneficiary does not belong to this user", 403);
+    }
+
+    // ── Fetch payment option and category server-side ───────────────────────
+    // Never trust client-sent categoryDetails or paymentOptionDetails.
+    const { data: payOption, error: payOptionError } = await supabase
+      .from("payment_options")
+      .select("id, category_name, is_enabled, display_order, receiver_kyc_required, refund_after_hours, settlement_time, charges_percentage, discounted_charges_percentage, show_discount, gst_percentage, business_surcharge_percentage, terms_and_conditions, gateway_id, environment")
+      .eq("id", paymentOptionId)
+      .maybeSingle();
+
+    if (payOptionError || !payOption) {
+      return err("Payment option not found", 404);
+    }
+
+    // Build server-validated beneficiary details
+    const serverBeneficiaryDetails = {
+      full_name: beneficiary.full_name,
+      email: beneficiary.email,
+      mobile: beneficiary.mobile,
+      pan_number: beneficiary.pan_number,
+      bank_name: beneficiary.bank_name,
+      branch_name: beneficiary.branch_name,
+      bank_account: beneficiary.bank_account,
+      ifsc: beneficiary.ifsc,
+      account_type: beneficiary.account_type,
+    };
+
+    // Build server-validated category details
+    const serverCategoryDetails = {
+      category_name: payOption.category_name,
+      is_enabled: payOption.is_enabled,
+      display_order: payOption.display_order,
+      receiver_kyc_required: payOption.receiver_kyc_required || false,
+      refund_after_hours: payOption.refund_after_hours || 0,
+      settlement_time: payOption.settlement_time || "",
+    };
+
     // ── Input validation ──────────────────────────────────────────────────────
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount < MIN_AMOUNT || parsedAmount > MAX_AMOUNT) {
@@ -87,13 +135,6 @@ Deno.serve(withUserSession(async (req: Request) => {
     if (billFileUrl && typeof billFileUrl === "string" && billFileUrl.length > MAX_STR) {
       return err("billFileUrl too long");
     }
-    // Ensure nested details are plain objects, not arrays or primitives
-    for (const [key, val] of [["beneficiaryDetails", beneficiaryDetails], ["categoryDetails", categoryDetails], ["paymentOptionDetails", paymentOptionDetails]] as const) {
-      if (val !== null && val !== undefined && (typeof val !== "object" || Array.isArray(val))) {
-        return err(`Invalid ${key}`);
-      }
-    }
-
     // F4: Recompute charges, GST, discount and total server-side — never trust the browser.
     // Fetch the user's KYC business surge charge to fold into platform charges.
     const { data: kycBusiness } = await supabase
@@ -204,48 +245,43 @@ Deno.serve(withUserSession(async (req: Request) => {
     // Block payments to beneficiaries that match the logged-in user's identity,
     // even if the beneficiary was created before the save-beneficiary check.
     const restrictions = await getPaymentRestrictions(supabase);
-    const { data: selfBen } = await supabase
-      .from("beneficiaries")
-      .select("full_name, email, mobile, pan_number, bank_account, ifsc")
-      .eq("id", beneficiaryId)
-      .maybeSingle();
-    if (selfBen) {
+    {
       const normalize = (s: string) => (s || "").trim().toLowerCase().replace(/\s+/g, " ");
       const userFullName = normalize(
         userRow.full_name ||
         `${userRow.first_name || ""} ${userRow.last_name || ""}`.trim()
       );
-      const bName = normalize(selfBen.full_name || "");
+      const bName = normalize(beneficiary.full_name || "");
       const nameMatch = userFullName && bName && userFullName === bName;
 
       const userEmail = normalize(userRow.email || "");
-      const bEmail = normalize(selfBen.email || "");
+      const bEmail = normalize(beneficiary.email || "");
       const emailMatch = userEmail && bEmail && userEmail === bEmail;
 
       const userMobile = (userRow.mobile_number || "").replace(/\D/g, "").slice(-10);
-      const bMobile = (selfBen.mobile || "").replace(/\D/g, "").slice(-10);
+      const bMobile = (beneficiary.mobile || "").replace(/\D/g, "").slice(-10);
       const mobileMatch = userMobile && bMobile && userMobile === bMobile;
 
       let panMatch = false;
-      if (selfBen.pan_number) {
+      if (beneficiary.pan_number) {
         const { data: panRecord } = await supabase
           .from("kyc_pan_verification")
           .select("pan_number")
           .eq("user_id", userId)
           .maybeSingle();
         if (panRecord?.pan_number) {
-          panMatch = panRecord.pan_number.trim().toUpperCase() === selfBen.pan_number.trim().toUpperCase();
+          panMatch = panRecord.pan_number.trim().toUpperCase() === beneficiary.pan_number.trim().toUpperCase();
         }
       }
 
       let bankMatch = false;
-      if (selfBen.bank_account && selfBen.ifsc) {
+      if (beneficiary.bank_account && beneficiary.ifsc) {
         const { data: ownBank } = await supabase
           .from("user_bank_accounts")
           .select("id")
           .eq("user_id", userId)
-          .eq("bank_account_number", selfBen.bank_account)
-          .eq("ifsc_code", selfBen.ifsc)
+          .eq("bank_account_number", beneficiary.bank_account)
+          .eq("ifsc_code", beneficiary.ifsc)
           .maybeSingle();
         bankMatch = !!ownBank;
       }
@@ -269,14 +305,14 @@ Deno.serve(withUserSession(async (req: Request) => {
     }
 
     // ── Credit card payment check ──────────────────────────────────────────
-    if (!restrictions.allow_credit_card_payment && selfBen) {
+    if (!restrictions.allow_credit_card_payment) {
       const CREDIT_CARD_IFSCS = new Set([
         "ICIC0000104","ICIC0000105","ICIC0000106","HDFC0000207","HDFC0000208",
         "SBIN0003833","UTIB0000450","YESB0000001","KKBK0000801","KKBK0000802",
         "SCBL0032001","BARB0VIPCARD","CIUB0000001",
       ]);
-      const isCcIfsc = CREDIT_CARD_IFSCS.has((selfBen.ifsc || "").toUpperCase().trim());
-      const digits = (selfBen.bank_account || "").replace(/[\s-]/g, "");
+      const isCcIfsc = CREDIT_CARD_IFSCS.has((beneficiary.ifsc || "").toUpperCase().trim());
+      const digits = (beneficiary.bank_account || "").replace(/[\s-]/g, "");
       const isCcNumber = /^\d{15,16}$/.test(digits) && ["4","5","6"].includes(digits[0]);
       if (isCcIfsc || isCcNumber) {
         return new Response(
@@ -305,24 +341,22 @@ Deno.serve(withUserSession(async (req: Request) => {
       );
     }
 
-    // Fetch the payment option to get the per-option environment
-    const { data: paymentOption, error: optionError } = await supabase
-      .from("payment_options")
-      .select("id, gateway_id, environment, is_enabled")
-      .eq("id", paymentOptionId)
-      .maybeSingle();
+    // Build server-validated payment option details (needs gatewaySettings)
+    const serverPaymentOptionDetails = {
+      gateway_name: gatewaySettings.gateway_name,
+      category_name: payOption.category_name,
+      card_type: cardType,
+      charges_percentage: payOption.charges_percentage,
+      discounted_charges_percentage: payOption.discounted_charges_percentage,
+      show_discount: payOption.show_discount,
+      gst_percentage: payOption.gst_percentage,
+      business_surcharge_percentage: payOption.business_surcharge_percentage || 0,
+      settlement_time: payOption.settlement_time || "",
+      terms_and_conditions: payOption.terms_and_conditions || "",
+      receiver_kyc_required: payOption.receiver_kyc_required || false,
+    };
 
-    if (optionError || !paymentOption) {
-      return new Response(
-        JSON.stringify({ error: "Payment option not found" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    if (!paymentOption.is_enabled) {
+    if (!payOption.is_enabled) {
       return new Response(
         JSON.stringify({ error: "Selected payment option is not enabled" }),
         {
@@ -333,7 +367,7 @@ Deno.serve(withUserSession(async (req: Request) => {
     }
 
     // Use the environment from the payment option, not from the gateway settings
-    const optionEnvironment = paymentOption.environment || "test";
+    const optionEnvironment = payOption.environment || "test";
 
     const allowedCards = determineAllowedCards(cardType);
 
@@ -392,10 +426,10 @@ Deno.serve(withUserSession(async (req: Request) => {
         status: "pending",
         ip_address: clientIp,
         transaction_summary: transactionSummary,
-        beneficiary_details: beneficiaryDetails || {},
-        category_details: categoryDetails || {},
-        selected_payment_option: paymentOptionDetails || {},
-        payment_option_name: paymentOptionDetails?.category_name || cardType || null,
+        beneficiary_details: serverBeneficiaryDetails,
+        category_details: serverCategoryDetails,
+        selected_payment_option: serverPaymentOptionDetails,
+        payment_option_name: serverPaymentOptionDetails.category_name || cardType || null,
       })
       .select()
       .single();

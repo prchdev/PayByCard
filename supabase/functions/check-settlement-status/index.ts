@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 /**
  * check-settlement-status
@@ -268,11 +269,13 @@ Deno.serve(async (req: Request) => {
       const batch = payments.slice(i, i + CONCURRENCY);
 
       await Promise.all(batch.map(async (payment: any) => {
-        const gateway = payment.payment_gateway_settings;
-        if (!gateway) {
+        const rawGateway = payment.payment_gateway_settings;
+        if (!rawGateway) {
           results.push({ id: payment.id, prevStatus: payment.status, gatewayStatus: "no_gateway", paymentStatusUpdated: false });
           return;
         }
+        const encryptionKey = await getGatewayEncryptionKey(supabase);
+        const gateway = await decryptGateway(rawGateway, encryptionKey);
 
         const { gatewayStatus, shouldRefund } = await checkGateway(payment, gateway);
 

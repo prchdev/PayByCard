@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 
 import { serveMixed } from "../_shared/session.ts";
+import { decryptGateways, getGatewayEncryptionKey, SECRET_MASK } from "../_shared/gatewayCredentials.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -66,14 +67,16 @@ serveMixed((req: Request) => req.method === "GET", async (req: Request) => {
         );
       }
 
-      // Mask secret fields before sending to client
-      const maskedGateways = (gateways || []).map((g: any) => ({
+      // Decrypt then mask secret fields before sending to client
+      const encryptionKey = await getGatewayEncryptionKey(supabase);
+      const decrypted = await decryptGateways(gateways || [], encryptionKey);
+      const maskedGateways = decrypted.map((g: any) => ({
         ...g,
-        test_api_secret: g.test_api_secret ? '••••••••' : null,
-        production_api_secret: g.production_api_secret ? '••••••••' : null,
-        secret_key: g.secret_key ? '••••••••' : null,
-        test_payout_client_secret: g.test_payout_client_secret ? '••••••••' : null,
-        production_payout_client_secret: g.production_payout_client_secret ? '••••••••' : null,
+        test_api_secret: g.test_api_secret ? SECRET_MASK : null,
+        production_api_secret: g.production_api_secret ? SECRET_MASK : null,
+        secret_key: g.secret_key ? SECRET_MASK : null,
+        test_payout_client_secret: g.test_payout_client_secret ? SECRET_MASK : null,
+        production_payout_client_secret: g.production_payout_client_secret ? SECRET_MASK : null,
       }));
 
       return new Response(

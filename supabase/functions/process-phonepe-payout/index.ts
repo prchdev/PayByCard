@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +18,10 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { payoutId, gatewaySettings, environment } = await req.json();
+    const { payoutId, gatewaySettings: rawGatewaySettings, environment } = await req.json();
+
+    const encryptionKey = await getGatewayEncryptionKey(supabase);
+    const gatewaySettings = await decryptGateway(rawGatewaySettings, encryptionKey);
 
     if (!payoutId || !gatewaySettings) {
       return new Response(

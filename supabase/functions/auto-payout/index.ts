@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { isInternalCall } from "../_shared/session.ts";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 /**
  * auto-payout — FIFO batch payout processor (runs every 10 min via pg_cron)
@@ -1226,9 +1227,12 @@ Deno.serve(async (req: Request) => {
     // preserving FIFO order (first confirmed payment gets paid first).
     const insufficientGateways = new Set<string>();
 
+    const encryptionKey = await getGatewayEncryptionKey(supabase);
+
     for (const payment of eligible) {
-      const gateway     = payment.payment_gateway_settings;
+      const rawGateway  = payment.payment_gateway_settings;
       const beneficiary = payment.beneficiaries;
+      const gateway     = await decryptGateway(rawGateway, encryptionKey);
       const amount      = parseFloat(payment.amount ?? "0");
       const payoutMode  = payment.payout_mode ?? globalPayoutMode;
       const env         = payment.gateway_environment ?? globalEnv;
@@ -1724,8 +1728,9 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
         if (!gw) continue;
 
+        const decryptedGw = await decryptGateway(gw, encryptionKey);
         const env = (payout.gateway_environment ?? "production").toLowerCase();
-        const statusResult = await checkGatewayPayoutStatus(gw, env, payout.gateway_transaction_id);
+        const statusResult = await checkGatewayPayoutStatus(decryptedGw, env, payout.gateway_transaction_id);
 
         if (statusResult.utr) {
           await supabase.from("payouts").update({

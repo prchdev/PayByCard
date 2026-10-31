@@ -49,6 +49,8 @@ serveAdmin(async (req: Request) => {
 
     // Ensure the payment-restriction booleans are always present in the response
     if (settings) {
+      settings.has_gateway_encryption_key = !!settings.gateway_encryption_key;
+      delete settings.gateway_encryption_key;
       settings.allow_self_transfer = settings.allow_self_transfer ?? false;
       settings.allow_credit_card_payment = settings.allow_credit_card_payment ?? false;
       settings.allow_manual_kyc = settings.allow_manual_kyc ?? true;

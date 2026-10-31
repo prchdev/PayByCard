@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 import { serveUser } from "../_shared/session.ts";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -267,7 +268,8 @@ serveUser(async (req: Request) => {
     };
 
     if (payment.status === "processing" || payment.status === "pending") {
-      const gateway = payment.payment_gateway_settings;
+      const encryptionKey = await getGatewayEncryptionKey(supabase);
+      const gateway = await decryptGateway(payment.payment_gateway_settings, encryptionKey);
       const isTestMode = payment.gateway_environment === "test";
 
       try {

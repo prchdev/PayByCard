@@ -117,7 +117,17 @@ export default function PayoutSettingsPage() {
       );
       const data = await response.json();
       if (response.ok && data.settings) {
-        setSettings({ ...EMPTY_SETTINGS, ...data.settings });
+        const s = data.settings;
+        // Clear masked secret fields — admin must re-enter to update
+        setSettings({
+          ...EMPTY_SETTINGS, ...s,
+          cashfree_test_client_secret: '',
+          cashfree_production_client_secret: '',
+          razorpay_test_key_secret: '',
+          razorpay_production_key_secret: '',
+          axis_test_client_secret: '',
+          axis_production_client_secret: '',
+        });
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to load payout settings' });
       }
@@ -294,7 +304,7 @@ export default function PayoutSettingsPage() {
                   value={settings.cashfree_test_client_secret}
                   onChange={(e) => update('cashfree_test_client_secret', e.target.value)}
                   className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                  placeholder="Enter Test Payout Client Secret"
+                  placeholder="Enter new secret to update"
                 />
               </div>
             </div>
@@ -324,7 +334,7 @@ export default function PayoutSettingsPage() {
                   value={settings.cashfree_production_client_secret}
                   onChange={(e) => update('cashfree_production_client_secret', e.target.value)}
                   className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                  placeholder="Enter Production Payout Client Secret"
+                  placeholder="Enter new secret to update"
                 />
               </div>
             </div>
@@ -397,7 +407,7 @@ export default function PayoutSettingsPage() {
                   value={settings.razorpay_test_key_secret}
                   onChange={(e) => update('razorpay_test_key_secret', e.target.value)}
                   className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                  placeholder="Enter Test Payout Key Secret"
+                  placeholder="Enter new secret to update"
                 />
               </div>
               <div className="md:col-span-2">
@@ -437,7 +447,7 @@ export default function PayoutSettingsPage() {
                   value={settings.razorpay_production_key_secret}
                   onChange={(e) => update('razorpay_production_key_secret', e.target.value)}
                   className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                  placeholder="Enter Production Payout Key Secret"
+                  placeholder="Enter new secret to update"
                 />
               </div>
               <div className="md:col-span-2">
@@ -521,7 +531,7 @@ export default function PayoutSettingsPage() {
                   value={settings.axis_test_client_secret}
                   onChange={(e) => update('axis_test_client_secret', e.target.value)}
                   className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                  placeholder="Enter Test Client Secret"
+                  placeholder="Enter new secret to update"
                 />
               </div>
               <div>
@@ -571,7 +581,7 @@ export default function PayoutSettingsPage() {
                   value={settings.axis_production_client_secret}
                   onChange={(e) => update('axis_production_client_secret', e.target.value)}
                   className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                  placeholder="Enter Production Client Secret"
+                  placeholder="Enter new secret to update"
                 />
               </div>
               <div>

@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 
 import { serveAdmin } from "../_shared/session.ts";
+import { encryptGatewayFields, getGatewayEncryptionKey, ENCRYPTED_FIELDS, SECRET_MASK } from "../_shared/gatewayCredentials.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -65,7 +66,7 @@ serveAdmin(async (req: Request) => {
 
     const clientIp = ip_address || req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'Unknown';
 
-    const SECRET_MASK = '••••••••';
+    const encryptionKey = await getGatewayEncryptionKey(supabase);
     const secretFields = [
       'secret_key',
       'test_api_secret',
@@ -73,14 +74,18 @@ serveAdmin(async (req: Request) => {
       'test_payout_client_secret',
       'production_payout_client_secret',
     ];
+    const apiKeyFields = [
+      'test_api_key',
+      'production_api_key',
+      'test_payout_client_id',
+      'production_payout_client_id',
+    ];
 
     for (const gateway of gateways) {
       const update: Record<string, any> = {
         environment: gateway.environment,
         is_enabled: gateway.is_enabled,
         app_id: gateway.app_id,
-        test_api_key: gateway.test_api_key?.trim() || null,
-        production_api_key: gateway.production_api_key?.trim() || null,
         supported_cards: gateway.supported_cards,
         instant_settlement_cards: gateway.instant_settlement_cards,
         default_payment_cards: gateway.default_payment_cards,
@@ -88,8 +93,6 @@ serveAdmin(async (req: Request) => {
         payout_mode: gateway.payout_mode,
         registered_name: gateway.registered_name,
         gst_number: gateway.gst_number,
-        test_payout_client_id: gateway.test_payout_client_id,
-        production_payout_client_id: gateway.production_payout_client_id,
         test_payout_account_number: gateway.test_payout_account_number,
         production_payout_account_number: gateway.production_payout_account_number,
         test_cashfree_2fa_public_key: gateway.test_cashfree_2fa_public_key,
@@ -99,12 +102,16 @@ serveAdmin(async (req: Request) => {
         updated_ip: clientIp,
       };
 
-      for (const field of secretFields) {
+      // Collect fields that need encryption (secrets + API keys), then encrypt in batch
+      const toEncrypt: Record<string, string> = {};
+      for (const field of [...secretFields, ...apiKeyFields]) {
         const value = gateway[field];
         if (value !== undefined && value !== null && value !== '' && value !== SECRET_MASK) {
-          update[field] = typeof value === 'string' ? value.trim() : value;
+          toEncrypt[field] = typeof value === 'string' ? value.trim() : value;
         }
       }
+      const encrypted = await encryptGatewayFields(toEncrypt, encryptionKey);
+      Object.assign(update, encrypted);
 
       const { error: updateError } = await supabase
         .from('payment_gateway_settings')

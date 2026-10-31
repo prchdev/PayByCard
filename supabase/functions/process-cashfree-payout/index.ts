@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,16 +125,19 @@ Deno.serve(async (req: Request) => {
       throw new Error("Beneficiary not found or inactive");
     }
 
-    const { data: gateway, error: gatewayError } = await supabase
+    const { data: rawGateway, error: gatewayError } = await supabase
       .from("payment_gateway_settings")
       .select("*")
       .eq("id", gateway_id)
       .eq("status", "active")
       .single();
 
-    if (gatewayError || !gateway) {
+    if (gatewayError || !rawGateway) {
       throw new Error("Gateway not found or inactive");
     }
+
+    const encryptionKey = await getGatewayEncryptionKey(supabase);
+    const gateway = await decryptGateway(rawGateway, encryptionKey);
 
     // Normalize environment — Admin UI saves "Testing"/"Production" (capitalized)
     const rawEnv = (gateway.environment || "").toLowerCase();

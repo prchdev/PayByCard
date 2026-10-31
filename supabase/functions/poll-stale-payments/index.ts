@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 /**
  * poll-stale-payments
@@ -811,8 +812,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const encryptionKey = await getGatewayEncryptionKey(supabase);
+
     for (const payment of stalePayments) {
-      const gateway = payment.payment_gateway_settings;
+      const rawGateway = payment.payment_gateway_settings;
 
       // ── Pessimistic lock: atomically claim this payment for polling ───────────
       // fn_try_claim_for_poll does a single UPDATE that both CHECKS and SETS
@@ -837,11 +840,12 @@ Deno.serve(async (req: Request) => {
       }
 
       try {
-        if (!gateway) {
+        if (!rawGateway) {
           results.push({ id: payment.id, reference: payment.payment_reference, action: "skipped", error: "No gateway settings" });
           continue;
         }
 
+        const gateway = await decryptGateway(rawGateway, encryptionKey);
         const gatewayName = gateway.gateway_name?.toLowerCase();
         const isTest = payment.gateway_environment === "test";
         let gatewayResult: { status: string; transaction_id: string | null; gateway_response: any };

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { decryptPayoutSettings, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -73,13 +74,16 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const isTest = settings.environment === "test";
-    const clientId = isTest ? settings.axis_test_client_id : settings.axis_production_client_id;
-    const clientSecret = isTest ? settings.axis_test_client_secret : settings.axis_production_client_secret;
-    const baseUrl = isTest ? settings.axis_test_base_url : settings.axis_production_base_url;
-    const corpAccNum = isTest ? settings.axis_test_virtual_account : settings.axis_production_virtual_account;
-    const corpCode = settings.axis_corporate_id;
-    const channelId = settings.axis_channel_id || "TXB";
+    const encryptionKey = await getGatewayEncryptionKey(supabase);
+    const decSettings = await decryptPayoutSettings(settings, encryptionKey);
+
+    const isTest = decSettings.environment === "test";
+    const clientId = isTest ? decSettings.axis_test_client_id : decSettings.axis_production_client_id;
+    const clientSecret = isTest ? decSettings.axis_test_client_secret : decSettings.axis_production_client_secret;
+    const baseUrl = isTest ? decSettings.axis_test_base_url : decSettings.axis_production_base_url;
+    const corpAccNum = isTest ? decSettings.axis_test_virtual_account : decSettings.axis_production_virtual_account;
+    const corpCode = decSettings.axis_corporate_id;
+    const channelId = decSettings.axis_channel_id || "TXB";
 
     if (!clientId || !clientSecret) {
       return new Response(JSON.stringify({ error: "Axis Bank API credentials not configured" }), {

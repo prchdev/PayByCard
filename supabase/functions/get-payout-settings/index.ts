@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 import { serveAdmin } from "../_shared/session.ts";
+import { maskPayoutSettings, getGatewayEncryptionKey, SECRET_MASK } from "../_shared/gatewayCredentials.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -49,7 +50,9 @@ serveAdmin(async (req: Request) => {
         });
       }
 
-      return new Response(JSON.stringify({ settings: settings || null }), {
+      const encryptionKey = await getGatewayEncryptionKey(supabase);
+      const masked = settings ? await maskPayoutSettings(settings, encryptionKey) : null;
+      return new Response(JSON.stringify({ settings: masked }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

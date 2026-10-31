@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 /**
  * auto-refund-kyc-expired
@@ -516,7 +517,9 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      const gateway = payment.payment_gateway_settings;
+      const rawGateway = payment.payment_gateway_settings;
+      const encryptionKey = await getGatewayEncryptionKey(supabase);
+      const gateway = await decryptGateway(rawGateway, encryptionKey);
       const refundRef = `RFND-${payment.payment_reference}`;
 
       try {

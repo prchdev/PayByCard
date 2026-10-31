@@ -7,6 +7,7 @@ import {
   disablePaymentOptionsForGateway,
   getPendingSettlement,
 } from "../_shared/settlementApi.ts";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 /**
  * on-demand-settlement
@@ -95,13 +96,13 @@ Deno.serve(async (req: Request) => {
     for (const setting of trackSettings || []) {
       if (TERMINAL_STATUSES.includes(setting.last_settlement_status)) continue;
 
-      const { data: gateway, error: gErr } = await supabase
+      const { data: rawGateway, error: gErr } = await supabase
         .from("payment_gateway_settings")
         .select("*")
         .eq("gateway_name", setting.gateway_name)
         .maybeSingle();
 
-      if (gErr || !gateway) {
+      if (gErr || !rawGateway) {
         trackResults.push({
           gateway: setting.gateway_name,
           previousStatus: setting.last_settlement_status,
@@ -111,6 +112,8 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
+      const encryptionKey = await getGatewayEncryptionKey(supabase);
+      const gateway = await decryptGateway(rawGateway, encryptionKey);
       const env = gateway.environment || "production";
       const { status: currentStatus } = await checkSettlementStatus(setting.gateway_name, gateway, env);
 
@@ -177,17 +180,19 @@ Deno.serve(async (req: Request) => {
     const supportedSettings = [...(initSettings || []), ...(cashfreeSettings || [])];
 
     for (const setting of supportedSettings) {
-      const { data: gateway, error: gErr } = await supabase
+      const { data: rawGateway, error: gErr } = await supabase
         .from("payment_gateway_settings")
         .select("*")
         .eq("gateway_name", setting.gateway_name)
         .maybeSingle();
 
-      if (gErr || !gateway) {
+      if (gErr || !rawGateway) {
         initiateResults.push({ gateway: setting.gateway_name, status: "no_gateway_config", skipped: true });
         continue;
       }
 
+      const encryptionKey = await getGatewayEncryptionKey(supabase);
+      const gateway = await decryptGateway(rawGateway, encryptionKey);
       const env = gateway.environment || "production";
 
       // ── Fetch the actual pending settlement amount from the gateway API ──

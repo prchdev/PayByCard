@@ -19,6 +19,9 @@ import {
   Bot,
   Gift,
   ShieldCheck,
+  KeyRound,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
@@ -52,6 +55,8 @@ interface MasterSettingsData {
   enable_credit_card_verification: boolean;
   enable_third_party_card_usage: boolean;
   allow_manual_kyc?: boolean;
+  gateway_encryption_key?: string;
+  has_gateway_encryption_key?: boolean;
 }
 
 const EMPTY_SETTINGS: MasterSettingsData = {
@@ -103,6 +108,8 @@ export default function MasterSettings() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [ifscLookupLoading, setIfscLookupLoading] = useState(false);
   const [ifscError, setIfscError] = useState('');
+  const [showEncryptionKey, setShowEncryptionKey] = useState(false);
+  const [hasExistingEncryptionKey, setHasExistingEncryptionKey] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -128,6 +135,7 @@ export default function MasterSettings() {
       } else if (data.settings) {
         const merged = { ...EMPTY_SETTINGS, ...data.settings, referral_message: data.settings.referral_message ?? '' };
         setSettings(merged);
+        setHasExistingEncryptionKey(!!data.settings.has_gateway_encryption_key);
         if (merged.company_logo_url) {
           setLogoPreview(merged.company_logo_url);
         }
@@ -236,6 +244,7 @@ export default function MasterSettings() {
             adminId,
             ...settings,
             company_logo_url: logoUrl,
+            gateway_encryption_key: settings.gateway_encryption_key || undefined,
           }),
         }
       );
@@ -243,7 +252,8 @@ export default function MasterSettings() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to save settings');
 
-      setSettings({ ...EMPTY_SETTINGS, ...data.settings, referral_message: data.settings?.referral_message ?? '' });
+      setSettings({ ...EMPTY_SETTINGS, ...data.settings, gateway_encryption_key: '', referral_message: data.settings?.referral_message ?? '' });
+      setHasExistingEncryptionKey(!!data.settings?.has_gateway_encryption_key);
       if (data.settings?.company_logo_url) {
         setLogoPreview(data.settings.company_logo_url);
       }
@@ -939,6 +949,56 @@ export default function MasterSettings() {
               />
               <p className="text-xs text-gray-500 mt-1.5">
                 This message appears after the default referral text and before the referral link when users share via Copy or WhatsApp.
+              </p>
+            </div>
+          </div>
+
+          {/* Gateway Encryption Key */}
+          <div className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] p-6 transition-all hover:shadow-xl">
+            <div className="flex items-center gap-3 pb-4 mb-6 border-b border-gray-200">
+              <div className="w-10 h-10 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl flex items-center justify-center">
+                <KeyRound className="w-5 h-5 text-[#8c76f0]" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Gateway Encryption Key</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Used to encrypt all payment gateway API keys and secrets at rest. Once set, changing it requires re-entering all gateway credentials.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="gateway_encryption_key" className="block text-sm font-medium text-gray-700 mb-2">
+                Encryption Key
+                {hasExistingEncryptionKey && !settings.gateway_encryption_key && (
+                  <span className="ml-2 text-xs text-green-600 font-normal">(configured)</span>
+                )}
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <KeyRound className="w-4 h-4 text-gray-400" />
+                </div>
+                <input
+                  type={showEncryptionKey ? 'text' : 'password'}
+                  id="gateway_encryption_key"
+                  value={settings.gateway_encryption_key || ''}
+                  onChange={(e) => setSettings({ ...settings, gateway_encryption_key: e.target.value })}
+                  className="w-full pl-11 pr-12 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all font-mono"
+                  placeholder={hasExistingEncryptionKey ? 'Enter new key to replace existing' : 'Enter a strong encryption key'}
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowEncryptionKey(!showEncryptionKey)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  {showEncryptionKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1.5">
+                {hasExistingEncryptionKey
+                  ? 'An encryption key is already configured. Leave blank to keep the current key. Enter a new value only if you want to replace it.'
+                  : 'Enter a strong passphrase. This key will be used to encrypt all gateway credentials. Save it securely — it cannot be recovered if lost.'}
               </p>
             </div>
           </div>

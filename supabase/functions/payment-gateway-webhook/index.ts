@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,7 +96,9 @@ async function handleCashFreeWebhook(req: Request, supabase: any, supabaseUrl: s
 
   if (!payment) throw new Error("Payment not found");
 
-  const gateway = payment.payment_gateway_settings;
+  const rawGateway = payment.payment_gateway_settings;
+  const encryptionKey = await getGatewayEncryptionKey(supabase);
+  const gateway = await decryptGateway(rawGateway, encryptionKey);
   const clientSecret = payment.gateway_environment === "test"
     ? gateway.test_api_secret
     : gateway.production_api_secret;
@@ -160,7 +163,9 @@ async function handleRazorPayWebhook(req: Request, supabase: any, supabaseUrl: s
 
   if (!payment) throw new Error("Payment not found");
 
-  const gateway = payment.payment_gateway_settings;
+  const rawGateway = payment.payment_gateway_settings;
+  const encryptionKey = await getGatewayEncryptionKey(supabase);
+  const gateway = await decryptGateway(rawGateway, encryptionKey);
   const keySecret = payment.gateway_environment === "test"
     ? gateway.test_api_secret
     : gateway.production_api_secret;
@@ -219,7 +224,9 @@ async function handlePayUWebhook(req: Request, supabase: any, supabaseUrl: strin
 
   if (!payment) throw new Error("Payment not found");
 
-  const gateway = payment.payment_gateway_settings;
+  const rawGateway = payment.payment_gateway_settings;
+  const encryptionKey = await getGatewayEncryptionKey(supabase);
+  const gateway = await decryptGateway(rawGateway, encryptionKey);
   const salt = payment.gateway_environment === "test"
     ? gateway.test_api_secret
     : gateway.production_api_secret;
@@ -273,7 +280,9 @@ async function handlePhonePeWebhook(req: Request, supabase: any, supabaseUrl: st
 
   if (!payment) throw new Error("Payment not found");
 
-  const gateway = payment.payment_gateway_settings;
+  const rawGateway = payment.payment_gateway_settings;
+  const encryptionKey = await getGatewayEncryptionKey(supabase);
+  const gateway = await decryptGateway(rawGateway, encryptionKey);
   const saltKey = payment.gateway_environment === "test"
     ? gateway.test_api_secret
     : gateway.production_api_secret;

@@ -343,3 +343,6 @@ verify_jwt = false
 
 [functions.get-referral-info]
 verify_jwt = false
+
+[functions.encrypt-existing-credentials]
+verify_jwt = false

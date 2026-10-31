@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { withUserSession } from "../_shared/session.ts";
 import { getPaymentRestrictions } from "../_shared/paymentRestrictions.ts";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -342,6 +343,10 @@ Deno.serve(withUserSession(async (req: Request) => {
       );
     }
 
+    // Decrypt gateway credentials if encryption key is configured
+    const encryptionKey = await getGatewayEncryptionKey(supabase);
+    const decryptedGateway = await decryptGateway(gatewaySettings, encryptionKey);
+
     // Build server-validated payment option details (needs gatewaySettings)
     const serverPaymentOptionDetails = {
       gateway_name: gatewaySettings.gateway_name,
@@ -472,7 +477,7 @@ Deno.serve(withUserSession(async (req: Request) => {
 
     const gatewayConfig = await createGatewayPaymentConfig(
       supabase,
-      gatewaySettings,
+      decryptedGateway,
       payment,
       allowedCards,
       normalizedEnvironment

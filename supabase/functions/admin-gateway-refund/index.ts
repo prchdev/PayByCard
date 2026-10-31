@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 import { serveAdmin } from "../_shared/session.ts";
 const corsHeaders = {
@@ -442,14 +443,17 @@ serveAdmin(async (req: Request) => {
       );
     }
 
-    const gateway = payment.payment_gateway_settings;
+    const rawGateway = payment.payment_gateway_settings;
 
-    if (!gateway) {
+    if (!rawGateway) {
       return new Response(
         JSON.stringify({ error: "No payment gateway found for this payment" }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    const encryptionKey = await getGatewayEncryptionKey(supabase);
+    const gateway = await decryptGateway(rawGateway, encryptionKey);
 
     const isTest = payment.gateway_environment === "test";
     const refundAmount = parseFloat(String(payment.amount));

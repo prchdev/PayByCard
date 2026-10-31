@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 import { serveAdmin } from "../_shared/session.ts";
 const corsHeaders = {
@@ -516,9 +517,12 @@ serveAdmin(async (req: Request) => {
 
     if (action === "refund") {
       const reason = refund_reason || "Refunded by admin";
-      const gateway = payment.payment_gateway_settings;
+      const rawGateway = payment.payment_gateway_settings;
       const refundAmount = parseFloat(String(payment.amount));
       const isTest = payment.gateway_environment === "test";
+
+      const encryptionKey = await getGatewayEncryptionKey(supabase);
+      const gateway = await decryptGateway(rawGateway, encryptionKey);
 
       // Balance check: only required when payment has already been settled at the gateway
       if (gateway && SETTLED_STATUSES.has(payment.gateway_settlement_status)) {

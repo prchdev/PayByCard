@@ -43,6 +43,7 @@ serveAdmin(async (req: Request) => {
       allow_manual_kyc,
       enable_credit_card_verification,
       enable_third_party_card_usage,
+      gateway_encryption_key,
     } = await req.json();
 
     if (!adminId) {
@@ -102,6 +103,7 @@ serveAdmin(async (req: Request) => {
     if (allow_manual_kyc !== undefined) payload.allow_manual_kyc = !!allow_manual_kyc;
     if (enable_credit_card_verification !== undefined) payload.enable_credit_card_verification = !!enable_credit_card_verification;
     if (enable_third_party_card_usage !== undefined) payload.enable_third_party_card_usage = !!enable_third_party_card_usage;
+    if (gateway_encryption_key !== undefined && gateway_encryption_key !== '') payload.gateway_encryption_key = gateway_encryption_key;
 
     const { data: existing } = await supabase
       .from("master_settings")
@@ -134,6 +136,10 @@ serveAdmin(async (req: Request) => {
     }
 
     const settingsData = result.data;
+    if (settingsData) {
+      settingsData.has_gateway_encryption_key = !!settingsData.gateway_encryption_key;
+      delete settingsData.gateway_encryption_key;
+    }
     if (settingsData?.company_logo_url) {
       const bucketMatch = settingsData.company_logo_url.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.*)/);
       if (bucketMatch) {

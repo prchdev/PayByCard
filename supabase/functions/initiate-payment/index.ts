@@ -607,8 +607,14 @@ async function createGatewayPaymentConfig(
       });
 
       if (!orderResponse.ok) {
-        const errorData = await orderResponse.json();
-        throw new Error(errorData.error?.description || "Failed to create Razorpay order");
+        const errorText = await orderResponse.text();
+        console.error("Razorpay order creation failed:", errorText, "key_id:", keyId, "key_len:", keySecret?.length);
+        let errorDesc = "Failed to create Razorpay order";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorDesc = errorData.error?.description || errorDesc;
+        } catch {}
+        throw new Error(errorDesc);
       }
 
       const orderResult = await orderResponse.json();

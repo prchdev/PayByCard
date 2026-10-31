@@ -79,8 +79,8 @@ serveAdmin(async (req: Request) => {
         environment: gateway.environment,
         is_enabled: gateway.is_enabled,
         app_id: gateway.app_id,
-        test_api_key: gateway.test_api_key,
-        production_api_key: gateway.production_api_key,
+        test_api_key: gateway.test_api_key?.trim() || null,
+        production_api_key: gateway.production_api_key?.trim() || null,
         supported_cards: gateway.supported_cards,
         instant_settlement_cards: gateway.instant_settlement_cards,
         default_payment_cards: gateway.default_payment_cards,
@@ -102,7 +102,7 @@ serveAdmin(async (req: Request) => {
       for (const field of secretFields) {
         const value = gateway[field];
         if (value !== undefined && value !== null && value !== '' && value !== SECRET_MASK) {
-          update[field] = value;
+          update[field] = typeof value === 'string' ? value.trim() : value;
         }
       }
 

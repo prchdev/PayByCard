@@ -320,9 +320,9 @@ export default function PaymentGatewaySettings() {
           .map((gw: any) => ({
             ...gw,
             test_api_key: gw.test_api_key || '',
-            test_api_secret: gw.test_api_secret || '',
+            test_api_secret: '',
             production_api_key: gw.production_api_key || '',
-            production_api_secret: gw.production_api_secret || '',
+            production_api_secret: '',
             gst_percentage: gw.gst_percentage || 18,
             registered_name: gw.registered_name || '',
             gst_number: gw.gst_number || '',
@@ -574,7 +574,7 @@ export default function PaymentGatewaySettings() {
                         value={gateway.test_api_secret}
                         onChange={(e) => updateGateway(index, 'test_api_secret', e.target.value)}
                         className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                        placeholder="Enter Test API Secret"
+                        placeholder="Enter new secret to update"
                       />
                     </div>
                   </div>
@@ -607,7 +607,7 @@ export default function PaymentGatewaySettings() {
                         value={gateway.production_api_secret}
                         onChange={(e) => updateGateway(index, 'production_api_secret', e.target.value)}
                         className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-[#8c76f0] focus:ring-4 focus:ring-purple-50 outline-none transition-all"
-                        placeholder="Enter Production API Secret"
+                        placeholder="Enter new secret to update"
                       />
                     </div>
                   </div>

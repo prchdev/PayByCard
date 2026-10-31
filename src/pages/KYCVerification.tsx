@@ -342,8 +342,9 @@ export default function KYCVerification() {
                   />
                 )}
 
-                {/* Manual KYC sections */}
-                {((effectiveMethod === 'manual' || (!showDigilockerOption && allowManualKyc) || digilockerDone)) && (
+                {/* Manual KYC sections — shown when user picks manual, has no provider, completed
+                    DigiLocker, or already has existing KYC data they need to see the status of */}
+                {((effectiveMethod === 'manual' || (!showDigilockerOption && allowManualKyc) || digilockerDone || !!(kycData?.pan || kycData?.address || kycData?.business))) && (
                   <>
                     <PanSection userId={userId} data={kycData?.pan ?? null} onSaved={refresh} />
                     <AddressSection userId={userId} data={kycData?.address ?? null} onSaved={refresh} />

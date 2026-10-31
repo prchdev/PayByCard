@@ -94,7 +94,7 @@
       "hash": "34b7902d5dfdadb3dc570c7f0e885170a9f151564c9ab96658e03fd056fbc3419d3d3ef5f8568dff1e1924a2346cb231ceb02874f3f6831a738f2484b9f4dedf"
     },
     "admin-get-master-settings": {
-      "hasChanged": false,
+      "hasChanged": true,
       "hash": "2ffefbc8152d16fc8ff88e09f483c90eec3d4b164f817fbe431b077c3fb654a89d3d3ef5f8568dff1e1924a2346cb231ceb02874f3f6831a738f2484b9f4dedf"
     },
     "admin-get-merchant-kyc": {

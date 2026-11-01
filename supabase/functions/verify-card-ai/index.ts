@@ -14,14 +14,16 @@ const NAME_MATCH_THRESHOLD = 0.5;
  * verify-card-ai
  *
  * Performs AI-based verification of a user's card submission:
- * 1. Checks that last 4 digits on the uploaded card photo match the
+ * 1. Downloads the front card photo from storage and sends it to an AI vision
+ *    model (OpenAI GPT-4o) to extract the name printed on the card via OCR.
+ * 2. Checks that last 4 digits on the uploaded card photo match the
  *    last 4 digits recorded from the payment gateway.
- * 2. Checks that the name on the card matches the user's KYCed name
- *    (minimum 50% token overlap to pass).
+ * 3. Checks that the name extracted from the card photo matches the user's
+ *    KYCed name (minimum 50% token overlap to pass).
  *
  * If AI verification passes both checks → status = "verified"
  * If last 4 matches but name does NOT match → status = "third_party"
- * If AI cannot determine (e.g. OCR fails) → status = "submitted" (admin review)
+ * If AI cannot read the name (OCR fails) → status = "submitted" (admin review)
  */
 
 function tokenizeName(name: string): Set<string> {
@@ -43,6 +45,71 @@ function nameMatchScore(name1: string, name2: string): number {
     if (tokens2.has(t)) matches++;
   }
   return matches / Math.max(tokens1.size, tokens2.size);
+}
+
+/**
+ * Calls OpenAI GPT-4o vision API to extract the name printed on the card photo.
+ * Returns the extracted name or null if the name could not be read.
+ */
+async function extractNameFromCardPhoto(
+  base64Image: string,
+  mimeType: string,
+): Promise<string | null> {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) {
+    console.error("verify-card-ai: OPENAI_API_KEY not configured");
+    return null;
+  }
+
+  const prompt = `You are an OCR reader for credit/debit card verification.
+Look at this card photo and extract ONLY the name printed on the card (the embossed or printed cardholder name).
+Return the name exactly as it appears on the card.
+If the name is not visible or cannot be read, return exactly "NOT_FOUND".
+Do not include any other text, explanation, or formatting.`;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:${mimeType};base64,${base64Image}`,
+                  detail: "low",
+                },
+              },
+            ],
+          },
+        ],
+        max_tokens: 100,
+        temperature: 0,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("verify-card-ai: OpenAI API error:", response.status, errText);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content?.trim();
+    if (!content || content === "NOT_FOUND") return null;
+    return content;
+  } catch (err) {
+    console.error("verify-card-ai: OpenAI fetch error:", err);
+    return null;
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -103,13 +170,62 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!card.name_on_card) {
+    // Download front photo from storage for AI OCR
+    const { data: photoData, error: downloadErr } = await supabase.storage
+      .from("card-photos")
+      .download(card.front_photo_url);
+
+    if (downloadErr || !photoData) {
       return new Response(
-        JSON.stringify({ error: "Please enter the name on card before verification" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "Could not retrieve card photo for verification" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
+    // Convert photo to base64 for the vision API
+    const photoBuffer = await photoData.arrayBuffer();
+    const base64Image = btoa(String.fromCharCode(...new Uint8Array(photoBuffer)));
+    const mimeType = photoData.type || "image/jpeg";
+
+    // Use AI to extract the name from the card photo
+    const extractedName = await extractNameFromCardPhoto(base64Image, mimeType);
+
+    if (!extractedName) {
+      // OCR could not read the name — submit for manual admin review
+      const aiResult = {
+        ocr_name: null,
+        ocr_status: "failed",
+        last4_match: !!card.card_last_four,
+        name_match_score: 0,
+        name_match_threshold: NAME_MATCH_THRESHOLD,
+        verified: false,
+        is_third_party: false,
+        verified_at: new Date().toISOString(),
+        note: "AI could not read the name from the card photo. Submitted for admin review.",
+      };
+
+      await supabase.from("user_cards").update({
+        status: "submitted",
+        ai_verification_result: aiResult,
+        updated_at: new Date().toISOString(),
+      }).eq("id", cardId);
+
+      await supabase.from("card_payment_links")
+        .update({ verification_status: "submitted" })
+        .eq("user_card_id", cardId);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          status: "submitted",
+          aiResult,
+          message: "Could not read the name from the card photo. Submitted for admin review.",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Fetch user's KYC name for comparison
     const { data: user } = await supabase
       .from("users")
       .select("first_name, middle_name, last_name")
@@ -128,9 +244,8 @@ Deno.serve(async (req: Request) => {
       .join(" ")
       .trim();
 
-    const nameOnCard = card.name_on_card || "";
     const last4Match = !!card.card_last_four;
-    const nameScore = nameMatchScore(nameOnCard, kycName);
+    const nameScore = nameMatchScore(extractedName, kycName);
 
     const verified = last4Match && nameScore >= NAME_MATCH_THRESHOLD;
     const isThirdParty = last4Match && nameScore < NAME_MATCH_THRESHOLD;
@@ -145,10 +260,12 @@ Deno.serve(async (req: Request) => {
     }
 
     const aiResult = {
+      ocr_name: extractedName,
+      ocr_status: "success",
       last4_match: last4Match,
       name_match_score: nameScore,
       name_match_threshold: NAME_MATCH_THRESHOLD,
-      name_on_card: nameOnCard,
+      name_on_card: extractedName,
       kyc_name: kycName,
       verified,
       is_third_party: isThirdParty,
@@ -157,6 +274,7 @@ Deno.serve(async (req: Request) => {
 
     await supabase.from("user_cards").update({
       status: newStatus,
+      name_on_card: extractedName,
       ai_verification_result: aiResult,
       updated_at: new Date().toISOString(),
     }).eq("id", cardId);

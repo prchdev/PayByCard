@@ -84,7 +84,6 @@ export default function MyCards() {
   const [success, setSuccess] = useState('');
   const [selectedCard, setSelectedCard] = useState<UserCard | null>(null);
   const [uploadSide, setUploadSide] = useState<'front' | 'back'>('front');
-  const [nameOnCard, setNameOnCard] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
@@ -123,7 +122,6 @@ export default function MyCards() {
   const handleUploadClick = (card: UserCard, side: 'front' | 'back') => {
     setSelectedCard(card);
     setUploadSide(side);
-    setNameOnCard(card.name_on_card || '');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -162,19 +160,6 @@ export default function MyCards() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
 
-      // Update name on card if provided
-      if (nameOnCard && nameOnCard !== selectedCard.name_on_card) {
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-card-name`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-            'x-pbc-session': sessionStorage.getItem('pbc_session') || localStorage.getItem('pbc_session') || '',
-          },
-          body: JSON.stringify({ userId, cardId: selectedCard.id, nameOnCard }),
-        });
-      }
-
       setSuccess(`${uploadSide === 'front' ? 'Front' : 'Back'} photo uploaded successfully`);
       setSelectedCard(null);
       await fetchCards();
@@ -187,18 +172,6 @@ export default function MyCards() {
 
   const handleVerify = async (card: UserCard) => {
     if (!userId) return;
-    if (!card.name_on_card) {
-      setError('Please enter the name on card before verification. Click the upload button to add it.');
-      return;
-    }
-    if (card.name_on_card.length > 100) {
-      setError('Name on card is too long (maximum 100 characters).');
-      return;
-    }
-    if (!/^[A-Za-z\s.\-']+$/.test(card.name_on_card)) {
-      setError('Name on card contains invalid characters. Only letters, spaces, dots, hyphens, and apostrophes are allowed.');
-      return;
-    }
     try {
       setIsVerifying(true);
       setError('');
@@ -229,27 +202,6 @@ export default function MyCards() {
     }
   };
 
-  const handleSaveName = async (card: UserCard) => {
-    if (!userId || !nameOnCard.trim()) return;
-    try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-card-name`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'x-pbc-session': sessionStorage.getItem('pbc_session') || localStorage.getItem('pbc_session') || '',
-        },
-        body: JSON.stringify({ userId, cardId: card.id, nameOnCard: nameOnCard.trim() }),
-      });
-      if (!res.ok) throw new Error('Failed to save name');
-      setSuccess('Name on card saved');
-      setSelectedCard(null);
-      await fetchCards();
-    } catch (err: any) {
-      setError(err.message || 'Failed to save name');
-    }
-  };
-
   if (isLoading) {
     return (
       <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
@@ -277,7 +229,7 @@ export default function MyCards() {
             <p className="text-sm text-blue-800 leading-relaxed">
               Upload a <strong>masked photo</strong> of your card where only the <strong>last 4 digits</strong> and the <strong>name on card</strong> are clearly visible.
               All other digits, expiry date, and CVV must be <strong>masked/covered</strong>.
-              Our AI will verify that the last 4 digits match the transaction and the name matches your KYC profile.
+              Our AI will automatically read the name from the photo, verify that the last 4 digits match the transaction, and compare the name with your KYC profile.
             </p>
             <div className="mt-3 flex items-center gap-4 text-sm text-blue-700">
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4" /> Last 4 digits visible</span>
@@ -415,7 +367,7 @@ export default function MyCards() {
                     <Camera className="w-4 h-4" />
                     {card.back_photo_url ? 'Back' : 'Back'}
                   </button>
-                  {card.front_photo_url && card.back_photo_url && card.name_on_card && (card.status === 'not_submitted' || card.status === 'submitted' || card.status === 'rejected') && (
+                  {card.front_photo_url && card.back_photo_url && (card.status === 'not_submitted' || card.status === 'submitted' || card.status === 'rejected') && (
                     <button
                       onClick={() => handleVerify(card)}
                       disabled={isVerifying}
@@ -452,21 +404,9 @@ export default function MyCards() {
             <p className="text-sm text-gray-600 mb-4">
               Card ending in <strong>{selectedCard.card_last_four}</strong>
             </p>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name on Card</label>
-              <input
-                type="text"
-                value={nameOnCard}
-                onChange={(e) => setNameOnCard(e.target.value)}
-                placeholder="Enter name as printed on card"
-                maxLength={100}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8c76f0] focus:border-transparent text-sm"
-              />
-              <p className="text-xs text-gray-500 mt-1">This will be compared with your KYC name for verification.</p>
-            </div>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-              <p className="text-xs text-amber-700">
-                Ensure only last 4 digits and name are visible. Mask all other digits, expiry, and CVV before photographing.
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="text-xs text-blue-700">
+                Ensure only last 4 digits and name are visible. Mask all other digits, expiry, and CVV before photographing. The name will be read automatically by our AI.
               </p>
             </div>
             <button

@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { decryptPayoutSettings, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
+import { serveInternal } from "../_shared/session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,7 +34,7 @@ interface AxisPayoutRequest {
   remarks?: string;
 }
 
-Deno.serve(async (req: Request) => {
+serveInternal(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }

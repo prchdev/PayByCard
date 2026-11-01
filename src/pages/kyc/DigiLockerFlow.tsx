@@ -161,6 +161,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
 
   // ── postMessage listener (secondary channel) ─────────────────────────────────
   const handleMessage = useCallback((event: MessageEvent) => {
+    if (event.origin !== window.location.origin) return;
     const d = event.data;
     if (!d || typeof d !== 'object') return;
 

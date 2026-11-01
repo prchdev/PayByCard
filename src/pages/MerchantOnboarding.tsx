@@ -143,6 +143,7 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMessage = useCallback((event: MessageEvent) => {
+    if (event.origin !== window.location.origin) return;
     const d = event.data;
     if (!d || typeof d !== 'object') return;
     const cfId = d.cf_verification_id;
@@ -869,7 +870,7 @@ export default function MerchantOnboarding() {
 
     if (cfId) {
       if (window.opener) {
-        window.opener.postMessage({ cf_verification_id: cfId }, '*');
+        window.opener.postMessage({ cf_verification_id: cfId }, window.location.origin);
         window.close();
       } else {
         sessionStorage.setItem('merchant_cf_verification_id', cfId);
@@ -877,7 +878,7 @@ export default function MerchantOnboarding() {
       }
     } else if (oauthCode) {
       if (window.opener) {
-        window.opener.postMessage({ code: oauthCode }, '*');
+        window.opener.postMessage({ code: oauthCode }, window.location.origin);
         window.close();
       } else {
         sessionStorage.setItem('merchant_digilocker_oauth_code', oauthCode);

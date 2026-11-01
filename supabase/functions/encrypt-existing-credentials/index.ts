@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { encrypt, isEncrypted } from "../_shared/crypto.ts";
 import { PAYOUT_SECRET_FIELDS } from "../_shared/gatewayCredentials.ts";
+import { serveAdmin } from "../_shared/session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,7 +22,7 @@ const ENCRYPTED_FIELDS = [
   "production_payout_client_secret",
 ] as const;
 
-Deno.serve(async (req: Request) => {
+serveAdmin(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }

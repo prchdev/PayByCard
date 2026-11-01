@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
+import { serveInternal } from "../_shared/session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,7 +69,7 @@ async function buildCashfreeHeaders(gateway: any, env: string): Promise<Record<s
   return hdrs;
 }
 
-Deno.serve(async (req: Request) => {
+serveInternal(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }

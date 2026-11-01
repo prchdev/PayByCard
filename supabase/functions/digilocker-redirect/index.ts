@@ -120,7 +120,7 @@ Deno.serve(async (req: Request) => {
 
   if (window.opener && !window.opener.closed) {
     try {
-      window.opener.postMessage({ type: 'digilocker_callback', code: code, state: state, error: error }, '*');
+      window.opener.postMessage({ type: 'digilocker_callback', code: code, state: state, error: error }, appUrl);
       setTimeout(function() {
         try { window.close(); } catch (e) {}
         setTimeout(function() {

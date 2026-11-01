@@ -12,8 +12,18 @@ import {
   Camera,
   ShieldCheck,
   Info,
+  ChevronDown,
 } from 'lucide-react';
 import { useDashboardContext } from '../hooks/useDashboardContext';
+
+interface CardPayment {
+  payment_id: string;
+  payment_reference: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  completed_at: string | null;
+}
 
 interface UserCard {
   id: string;
@@ -31,6 +41,7 @@ interface UserCard {
   created_at: string;
   updated_at: string;
   payment_count: number;
+  payments: CardPayment[];
 }
 
 const STATUS_CONFIG: Record<string, { label: string; badgeClass: string; icon: any }> = {
@@ -40,6 +51,29 @@ const STATUS_CONFIG: Record<string, { label: string; badgeClass: string; icon: a
   third_party: { label: 'Third Party Card', badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200', icon: ShieldCheck },
   rejected: { label: 'Rejected', badgeClass: 'bg-red-50 text-red-700 border border-red-200', icon: XCircle },
 };
+
+const TXN_STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  completed: { label: 'Completed', className: 'bg-green-50 text-green-700 border border-green-200' },
+  failed: { label: 'Failed', className: 'bg-red-50 text-red-700 border border-red-200' },
+  cancelled: { label: 'Failed', className: 'bg-red-50 text-red-700 border border-red-200' },
+  processing: { label: 'Processing', className: 'bg-blue-50 text-blue-700 border border-blue-200' },
+  pending: { label: 'Processing', className: 'bg-blue-50 text-blue-700 border border-blue-200' },
+  settlement_pending: { label: 'Settlement', className: 'bg-blue-50 text-blue-700 border border-blue-200' },
+  settlement_in_progress: { label: 'Settlement', className: 'bg-blue-50 text-blue-700 border border-blue-200' },
+  kyc_pending: { label: 'KYC Pending', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
+  refunded: { label: 'Refunded', className: 'bg-orange-50 text-orange-700 border border-orange-200' },
+  refund_pending: { label: 'Refund Pending', className: 'bg-rose-50 text-rose-700 border border-rose-200' },
+  card_verification_pending: { label: 'Card Verification', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
+};
+
+function TxnStatusBadge({ status }: { status: string }) {
+  const cfg = TXN_STATUS_CONFIG[status] || { label: status, className: 'bg-gray-50 text-gray-700 border border-gray-200' };
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${cfg.className}`}>
+      {cfg.label}
+    </span>
+  );
+}
 
 export default function MyCards() {
   const navigate = useNavigate();
@@ -53,6 +87,7 @@ export default function MyCards() {
   const [nameOnCard, setNameOnCard] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -298,8 +333,42 @@ export default function MyCards() {
                     <StatusIcon className="w-3.5 h-3.5" />
                     {statusCfg.label}
                   </span>
-                  <span className="text-xs text-gray-500">{card.payment_count} transaction{card.payment_count !== 1 ? 's' : ''}</span>
+                  {card.payment_count > 0 && (
+                    <button
+                      onClick={() => setExpandedCard(expandedCard === card.id ? null : card.id)}
+                      className="text-xs text-gray-500 hover:text-[#8c76f0] transition-colors flex items-center gap-1"
+                    >
+                      {card.payment_count} transaction{card.payment_count !== 1 ? 's' : ''}
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expandedCard === card.id ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                  {card.payment_count === 0 && (
+                    <span className="text-xs text-gray-400">No transactions</span>
+                  )}
                 </div>
+
+                {/* Transaction Details */}
+                {expandedCard === card.id && card.payments && card.payments.length > 0 && (
+                  <div className="bg-gray-50 rounded-xl border border-gray-200 p-3 mb-4 max-h-48 overflow-y-auto">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Transaction History</p>
+                    <div className="space-y-2">
+                      {card.payments.map((pmt) => (
+                        <div key={pmt.payment_id} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-gray-700 truncate">{pmt.payment_reference}</p>
+                            <p className="text-xs text-gray-400">
+                              {new Date(pmt.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <TxnStatusBadge status={pmt.status} />
+                            <span className="text-xs font-semibold text-gray-700">₹{pmt.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Deadline */}
                 {card.card_verification_deadline && card.status === 'not_submitted' && (

@@ -118,7 +118,7 @@ serveUser(async (req: Request) => {
     const hasFront = side === "front" ? true : !!updatedCard?.front_photo_url;
     const hasBack = side === "back" ? true : !!updatedCard?.back_photo_url;
 
-    if (hasFront && hasBack && card.status === "not_submitted") {
+    if (hasFront && hasBack && (card.status === "not_submitted" || card.status === "rejected")) {
       updateData.status = "submitted";
     }
 
@@ -129,7 +129,7 @@ serveUser(async (req: Request) => {
         success: true,
         photoUrl,
         side,
-        cardStatus: hasFront && hasBack ? "submitted" : (card.status === "not_submitted" ? "not_submitted" : card.status),
+        cardStatus: hasFront && hasBack ? "submitted" : (card.status === "rejected" ? "not_submitted" : card.status),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

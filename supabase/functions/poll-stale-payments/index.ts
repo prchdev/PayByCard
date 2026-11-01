@@ -754,15 +754,17 @@ async function processSuccessfulPayment(supabase: any, payment: any, gatewayResu
         return;
       }
 
-      // Check 2: Card not yet verified → hold and send email with 12h deadline
-      if (cardStatus === "not_submitted" || cardStatus === "submitted") {
+      // Check 2: Card not yet verified or was rejected → hold for verification
+      // Rejected cards allow re-upload, so treat like not_submitted
+      if (cardStatus === "not_submitted" || cardStatus === "submitted" || cardStatus === "rejected") {
         const now = new Date();
         const deadline = new Date(now.getTime() + 12 * 60 * 60 * 1000);
 
-        // Set deadline on card if not already set
-        if (!userCard.card_verification_deadline) {
+        // Set deadline on card if not already set, or reset if card was rejected
+        if (!userCard.card_verification_deadline || cardStatus === "rejected") {
           await supabase.from("user_cards").update({
             card_verification_deadline: deadline.toISOString(),
+            status: "not_submitted",
             updated_at: now.toISOString(),
           }).eq("id", userCard.id);
         } else {

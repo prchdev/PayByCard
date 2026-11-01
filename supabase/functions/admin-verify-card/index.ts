@@ -138,6 +138,42 @@ serveAdmin(async (req: Request) => {
       }
     }
 
+    // Send rejection email to user with reason
+    if (action === "reject") {
+      EdgeRuntime.waitUntil(
+        (async () => {
+          const { data: user } = await supabase
+            .from("users")
+            .select("email, first_name, last_name")
+            .eq("id", card.user_id)
+            .maybeSingle();
+          if (user?.email) {
+            const appUrl = (Deno.env.get("APP_URL") || "https://paybycard.in").trim();
+            const reasonText = rejectionReason || "Card verification rejected by admin";
+            await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-email`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                to: user.email,
+                subject: `Card Verification Rejected – Card ending in ${card.card_last_four}`,
+                body: `<p>Dear ${user.first_name} ${user.last_name},</p>
+                  <p>Your card verification for the card ending in <strong>${card.card_last_four}</strong> has been <strong>rejected</strong>.</p>
+                  <p><strong>Reason:</strong> ${reasonText}</p>
+                  <p>You can re-upload your card photos with the necessary corrections from the <strong>My Cards</strong> section in your dashboard.</p>`,
+                body_type: "html",
+                use_template: true,
+                button_text: "Go to My Cards",
+                button_link: `${appUrl}/dashboard/my-cards`,
+              }),
+            });
+          }
+        })()
+      );
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

@@ -303,7 +303,9 @@ export default function MyCards() {
                 {/* Admin rejection reason */}
                 {card.status === 'rejected' && card.admin_rejection_reason && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                    <p className="text-xs text-red-700">{card.admin_rejection_reason}</p>
+                    <p className="text-xs font-medium text-red-700 mb-1">Rejection Reason:</p>
+                    <p className="text-xs text-red-600">{card.admin_rejection_reason}</p>
+                    <p className="text-xs text-red-500 mt-2">Please re-upload corrected photos and verify again.</p>
                   </div>
                 )}
 
@@ -333,7 +335,7 @@ export default function MyCards() {
                     <Camera className="w-4 h-4" />
                     {card.back_photo_url ? 'Back' : 'Back'}
                   </button>
-                  {card.front_photo_url && card.back_photo_url && card.name_on_card && (card.status === 'not_submitted' || card.status === 'submitted') && (
+                  {card.front_photo_url && card.back_photo_url && card.name_on_card && (card.status === 'not_submitted' || card.status === 'submitted' || card.status === 'rejected') && (
                     <button
                       onClick={() => handleVerify(card)}
                       disabled={isVerifying}

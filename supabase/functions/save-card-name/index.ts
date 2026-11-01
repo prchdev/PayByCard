@@ -38,6 +38,13 @@ serveUser(async (req: Request) => {
       );
     }
 
+    if (!/^[A-Za-z\s.\-']+$/.test(nameOnCard)) {
+      return new Response(
+        JSON.stringify({ error: "Name on card contains invalid characters" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,

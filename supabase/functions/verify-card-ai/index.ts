@@ -63,7 +63,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const { cardId, userId } = body;
 
-    if (!cardId || !userId) {
+    if (!cardId || typeof cardId !== "string" || !userId || typeof userId !== "string") {
       return new Response(
         JSON.stringify({ error: "cardId and userId are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -86,6 +86,13 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ error: "Card not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (card.status === "verified" || card.status === "third_party") {
+      return new Response(
+        JSON.stringify({ error: "This card is already verified", status: card.status }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 

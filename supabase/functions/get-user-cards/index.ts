@@ -13,6 +13,7 @@ const corsHeaders = {
  *
  * Returns all cards associated with the authenticated user, including
  * verification status, card details, and payment count per card.
+ * Uses a single query with an embedded join to avoid N+1 patterns.
  */
 serveUser(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -23,11 +24,19 @@ serveUser(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const userId = body.userId;
 
+    if (!userId || typeof userId !== "string") {
+      return new Response(
+        JSON.stringify({ error: "userId is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // Single query with embedded join to get payment counts in one round trip
     const { data: cards, error } = await supabase
       .from("user_cards")
       .select(`
@@ -44,32 +53,30 @@ serveUser(async (req: Request) => {
         admin_rejection_reason,
         card_verification_deadline,
         created_at,
-        updated_at
+        updated_at,
+        card_payment_links!inner ( id )
       `)
       .eq("user_id", userId)
       .order("updated_at", { ascending: false });
 
     if (error) throw error;
 
-    // Get payment counts per card
-    const cardIds = (cards || []).map((c: any) => c.id);
-    let paymentCounts: Record<string, number> = {};
-    if (cardIds.length > 0) {
-      const { data: links } = await supabase
-        .from("card_payment_links")
-        .select("user_card_id")
-        .in("user_card_id", cardIds);
-
-      if (links) {
-        for (const link of links) {
-          paymentCounts[link.user_card_id] = (paymentCounts[link.user_card_id] || 0) + 1;
-        }
-      }
-    }
-
     const result = (cards || []).map((card: any) => ({
-      ...card,
-      payment_count: paymentCounts[card.id] || 0,
+      id: card.id,
+      card_last_four: card.card_last_four,
+      card_network: card.card_network,
+      card_type: card.card_type,
+      bank_name: card.bank_name,
+      name_on_card: card.name_on_card,
+      front_photo_url: card.front_photo_url,
+      back_photo_url: card.back_photo_url,
+      status: card.status,
+      ai_verification_result: card.ai_verification_result,
+      admin_rejection_reason: card.admin_rejection_reason,
+      card_verification_deadline: card.card_verification_deadline,
+      created_at: card.created_at,
+      updated_at: card.updated_at,
+      payment_count: card.card_payment_links?.length || 0,
     }));
 
     return new Response(

@@ -395,7 +395,7 @@
     },
     "get-user-cards": {
       "hasChanged": false,
-      "hash": "d2e48d4616784cc792784cbd40a395d7c6af6999bc08abff8d41a984388c7052d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "4e956a624f087fad821b73ed052b9c0abfba455fb71794abf86fbcfb3c55c4c2d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "get-user-permission-overrides": {
       "hasChanged": false,
@@ -515,7 +515,7 @@
     },
     "save-card-name": {
       "hasChanged": false,
-      "hash": "0c63229fd9f4da9f93f3cf581233a0f2c4bb8f4f04d9e6fa0c21b1837b0dbf10d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "6324d2e74e05dd61b2182466194ae89c907abc35eefd33d5d3647f7c7fbc579ed2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "save-kyc-data": {
       "hasChanged": false,
@@ -627,7 +627,7 @@
     },
     "verify-card-ai": {
       "hasChanged": false,
-      "hash": "f9b2fced424b052ccfb721b3494446ba1ba00dd839c6b5bcc9ea8cc397f6318ad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "15ed868d1d41602554e3d0a8092c8b5d233400a7f3f3cbb3dc25d0fc8a741cf9d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "verify-otp": {
       "hasChanged": false,

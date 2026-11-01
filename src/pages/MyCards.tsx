@@ -33,12 +33,12 @@ interface UserCard {
   payment_count: number;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  not_submitted: { label: 'Not Submitted', color: 'gray', icon: AlertCircle },
-  submitted: { label: 'Submitted for Review', color: 'blue', icon: Clock },
-  verified: { label: 'Verified', color: 'green', icon: CheckCircle },
-  third_party: { label: 'Third Party Card', color: 'amber', icon: ShieldCheck },
-  rejected: { label: 'Rejected', color: 'red', icon: XCircle },
+const STATUS_CONFIG: Record<string, { label: string; badgeClass: string; icon: any }> = {
+  not_submitted: { label: 'Not Submitted', badgeClass: 'bg-gray-50 text-gray-700 border border-gray-200', icon: AlertCircle },
+  submitted: { label: 'Submitted for Review', badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200', icon: Clock },
+  verified: { label: 'Verified', badgeClass: 'bg-green-50 text-green-700 border border-green-200', icon: CheckCircle },
+  third_party: { label: 'Third Party Card', badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200', icon: ShieldCheck },
+  rejected: { label: 'Rejected', badgeClass: 'bg-red-50 text-red-700 border border-red-200', icon: XCircle },
 };
 
 export default function MyCards() {
@@ -156,6 +156,14 @@ export default function MyCards() {
       setError('Please enter the name on card before verification. Click the upload button to add it.');
       return;
     }
+    if (card.name_on_card.length > 100) {
+      setError('Name on card is too long (maximum 100 characters).');
+      return;
+    }
+    if (!/^[A-Za-z\s.\-']+$/.test(card.name_on_card)) {
+      setError('Name on card contains invalid characters. Only letters, spaces, dots, hyphens, and apostrophes are allowed.');
+      return;
+    }
     try {
       setIsVerifying(true);
       setError('');
@@ -209,17 +217,20 @@ export default function MyCards() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#8c76f0]" />
-      </div>
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="w-8 h-8 animate-spin text-[#8c76f0]" />
+        </div>
+      </main>
     );
   }
 
   return (
-    <div>
+    <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8 overflow-y-auto">
+      <div className="max-w-6xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">My Cards</h1>
-        <p className="text-gray-600 mt-1">Manage and verify cards used for your transactions</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Cards</h1>
+        <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage and verify cards used for your transactions</p>
       </div>
 
       {/* Instructions Banner */}
@@ -283,7 +294,7 @@ export default function MyCards() {
 
                 {/* Status Badge */}
                 <div className="flex items-center justify-between mb-4">
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-${statusCfg.color}-50 text-${statusCfg.color}-700 border border-${statusCfg.color}-200`}>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusCfg.badgeClass}`}>
                     <StatusIcon className="w-3.5 h-3.5" />
                     {statusCfg.label}
                   </span>
@@ -364,7 +375,7 @@ export default function MyCards() {
       {/* Upload Modal */}
       {selectedCard && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedCard(null)}>
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">Upload {uploadSide === 'front' ? 'Front' : 'Back'} Photo</h3>
               <button onClick={() => setSelectedCard(null)}><X className="w-5 h-5 text-gray-400" /></button>
@@ -379,6 +390,7 @@ export default function MyCards() {
                 value={nameOnCard}
                 onChange={(e) => setNameOnCard(e.target.value)}
                 placeholder="Enter name as printed on card"
+                maxLength={100}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8c76f0] focus:border-transparent text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">This will be compared with your KYC name for verification.</p>
@@ -399,6 +411,7 @@ export default function MyCards() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </main>
   );
 }

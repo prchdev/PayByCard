@@ -85,6 +85,31 @@ serveUser(async (req: Request) => {
       );
     }
 
+    // Block uploads for cards that are already verified, flagged third-party, or in admin review
+    if (card.status === "verified" || card.status === "third_party") {
+      return new Response(
+        JSON.stringify({ error: "This card has already been verified. Uploads are no longer accepted." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (card.status === "submitted") {
+      // Allow re-upload only if AI verification hasn't produced a result yet
+      // (e.g. both photos exist but verify hasn't been called). Once an AI
+      // result exists, the card is in admin review and uploads are locked.
+      const { data: cardFull } = await supabase
+        .from("user_cards")
+        .select("ai_verification_result")
+        .eq("id", cardId)
+        .maybeSingle();
+
+      if (cardFull?.ai_verification_result) {
+        return new Response(
+          JSON.stringify({ error: "This card is under review. Uploads are no longer accepted." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
     // Upload to storage
     const ext = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
     const filePath = `${userId}/${cardId}/${side}.${ext}`;

@@ -97,6 +97,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (card.status === "submitted" && card.ai_verification_result) {
+      return new Response(
+        JSON.stringify({ error: "This card is already under admin review", status: card.status }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     if (!card.front_photo_url || !card.back_photo_url) {
       return new Response(
         JSON.stringify({ error: "Please upload both front and back photos before verification" }),

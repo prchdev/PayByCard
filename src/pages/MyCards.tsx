@@ -442,23 +442,24 @@ export default function MyCards() {
                   </div>
                 )}
 
-                {/* Actions */}
+                {/* Actions — hidden once card is in review or verified */}
+                {(card.status === 'not_submitted' || card.status === 'rejected' || (card.status === 'submitted' && !card.ai_verification_result)) && (
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleUploadClick(card, 'front')}
                     className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 flex items-center justify-center gap-1.5"
                   >
                     <Camera className="w-4 h-4" />
-                    {card.front_photo_url ? 'Front' : 'Front'}
+                    Front
                   </button>
                   <button
                     onClick={() => handleUploadClick(card, 'back')}
                     className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 flex items-center justify-center gap-1.5"
                   >
                     <Camera className="w-4 h-4" />
-                    {card.back_photo_url ? 'Back' : 'Back'}
+                    Back
                   </button>
-                  {card.front_photo_url && card.back_photo_url && (card.status === 'not_submitted' || card.status === 'submitted' || card.status === 'rejected') && (
+                  {card.front_photo_url && card.back_photo_url && (
                     <button
                       onClick={() => handleVerify(card)}
                       disabled={isVerifying}
@@ -469,6 +470,7 @@ export default function MyCards() {
                     </button>
                   )}
                 </div>
+                )}
               </div>
             );
           })}

@@ -62,6 +62,18 @@ function extractCardholderName(rawText: string): string | null {
   return null;
 }
 
+function extractLastFourDigits(rawText: string): string | null {
+  const digitGroups = rawText
+    .replace(/\s/g, '')
+    .match(/\d{4,}/g);
+
+  if (!digitGroups || digitGroups.length === 0) return null;
+
+  const lastGroup = digitGroups[digitGroups.length - 1];
+  if (lastGroup.length < 4) return null;
+  return lastGroup.slice(-4);
+}
+
 interface CardPayment {
   payment_id: string;
   payment_reference: string;
@@ -191,6 +203,7 @@ export default function MyCards() {
       setError('');
 
       let extractedName: string | null = null;
+      let extractedLastFour: string | null = null;
 
       if (uploadSide === 'front') {
         setOcrStatus('Reading name from card photo...');
@@ -200,6 +213,7 @@ export default function MyCards() {
             logger: () => {},
           });
           extractedName = extractCardholderName(text);
+          extractedLastFour = extractLastFourDigits(text);
         } catch (ocrErr) {
           console.warn('OCR failed, proceeding without name extraction:', ocrErr);
         }
@@ -213,6 +227,9 @@ export default function MyCards() {
       formData.append('file', file);
       if (extractedName) {
         formData.append('extractedName', extractedName);
+      }
+      if (extractedLastFour) {
+        formData.append('extractedLastFour', extractedLastFour);
       }
 
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-card-photo`, {

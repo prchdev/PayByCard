@@ -106,12 +106,19 @@ Deno.serve(async (req: Request) => {
 
     // Use the name extracted by in-browser OCR at upload time
     const extractedName = card.name_on_card;
+    const ocrLastFour = card.ocr_last_four;
+    const dbLastFour = card.card_last_four;
+
+    // Compare the last 4 digits read from the photo against the gateway record
+    const last4Match = !!(ocrLastFour && dbLastFour && ocrLastFour === dbLastFour);
 
     if (!extractedName) {
       const aiResult = {
         ocr_name: null,
         ocr_status: "failed",
-        last4_match: !!card.card_last_four,
+        ocr_last_four: ocrLastFour,
+        db_last_four: dbLastFour,
+        last4_match: last4Match,
         name_match_score: 0,
         name_match_threshold: NAME_MATCH_THRESHOLD,
         verified: false,
@@ -160,7 +167,6 @@ Deno.serve(async (req: Request) => {
       .join(" ")
       .trim();
 
-    const last4Match = !!card.card_last_four;
     const nameScore = nameMatchScore(extractedName, kycName);
 
     const verified = last4Match && nameScore >= NAME_MATCH_THRESHOLD;
@@ -178,6 +184,8 @@ Deno.serve(async (req: Request) => {
     const aiResult = {
       ocr_name: extractedName,
       ocr_status: "success",
+      ocr_last_four: ocrLastFour,
+      db_last_four: dbLastFour,
       last4_match: last4Match,
       name_match_score: nameScore,
       name_match_threshold: NAME_MATCH_THRESHOLD,

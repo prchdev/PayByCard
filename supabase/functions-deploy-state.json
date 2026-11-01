@@ -595,7 +595,7 @@
     },
     "upload-card-photo": {
       "hasChanged": false,
-      "hash": "0233dd84f431966c0f9c6da4a770ebee040f604dac32b44f66fb839549fa09bad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "db59b0cf66145ab67031c157aa3a9471bb370d59429b0e4a19a320befdf44cd6d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "upload-kyc-file": {
       "hasChanged": false,
@@ -627,7 +627,7 @@
     },
     "verify-card-ai": {
       "hasChanged": false,
-      "hash": "cadf79d33d8bedb3462cd7507170f476341bccd33f2b270f48e2d68aa5361747d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "4e0d3a6bd7d2840b544d23a33ec13df52fc01a8f77b53678ce201c5a2052aaf1d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "verify-otp": {
       "hasChanged": false,

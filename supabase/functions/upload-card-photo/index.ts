@@ -35,6 +35,7 @@ serveUser(async (req: Request) => {
     const side = formData.get("side") as string;
     const file = formData.get("file") as File | null;
     const extractedName = formData.get("extractedName") as string | null;
+    const extractedLastFour = formData.get("extractedLastFour") as string | null;
 
     if (!userId || !cardId || !side || !file) {
       return new Response(
@@ -107,6 +108,9 @@ serveUser(async (req: Request) => {
       updateData.front_photo_url = filePath;
       if (extractedName && extractedName.trim().length >= 4) {
         updateData.name_on_card = extractedName.trim();
+      }
+      if (extractedLastFour && /^\d{4}$/.test(extractedLastFour)) {
+        updateData.ocr_last_four = extractedLastFour;
       }
     } else {
       updateData.back_photo_url = filePath;

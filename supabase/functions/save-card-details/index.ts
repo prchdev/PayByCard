@@ -174,7 +174,9 @@ async function fetchRazorpayCardDetails(
   if (!keyId || !keySecret) return null;
 
   const auth = btoa(`${keyId}:${keySecret}`);
-  const res = await fetch(`https://api.razorpay.com/v1/payments/${razorpayPaymentId}`, {
+  // Use expand[]=card so Razorpay returns the full card entity inline
+  // (last4, network, issuer, type) instead of just a card_id reference.
+  const res = await fetch(`https://api.razorpay.com/v1/payments/${razorpayPaymentId}?expand[]=card`, {
     headers: { Authorization: `Basic ${auth}` },
   });
   const data = await res.json();
@@ -228,6 +230,7 @@ Deno.serve(async (req: Request) => {
     if (!card.card_last_four && !card.card_network && !card.bank_name) {
       const razorpayPaymentId =
         gatewayResponse?.razorpay_payment_id ??
+        gatewayResponse?.payment?.id ??
         (typeof gatewayResponse === "object" && gatewayResponse?.id?.startsWith("pay_") ? gatewayResponse.id : null);
       if (razorpayPaymentId) {
         try {

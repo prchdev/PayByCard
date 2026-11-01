@@ -82,10 +82,24 @@ async function checkRazorPayStatus(payment: any, gateway: any, isTest: boolean) 
       const captured = payments.find((p: any) => p.status === "captured");
       const authorized = payments.find((p: any) => p.status === "authorized");
       const latest = captured || authorized || payments[0];
+      let latestWithCard = latest;
+
+      // Razorpay's /payments list doesn't include card details.
+      // If the payment has a card_id, re-fetch with expand[]=card to get last4 etc.
+      if (latest?.card_id && !latest.card) {
+        try {
+          const cardRes = await fetch(`${base}/payments/${latest.id}?expand[]=card`, { headers });
+          const cardData = await cardRes.json();
+          if (cardData && !cardData.error && cardData.card) {
+            latestWithCard = cardData;
+          }
+        } catch { /* ignore — card details will be fetched by save-card-details fallback */ }
+      }
+
       return {
         status: "completed" as const,
         transaction_id: latest?.id ?? orderId,
-        gateway_response: { order, payment: latest ?? null },
+        gateway_response: { order, payment: latestWithCard ?? null },
       };
     }
 
@@ -121,7 +135,8 @@ async function checkRazorPayStatus(payment: any, gateway: any, isTest: boolean) 
 
   // Case 2: gateway_transaction_id is a Razorpay Payment ID (pay_xxx)
   if (payment.gateway_transaction_id?.startsWith("pay_")) {
-    const res = await fetch(`${base}/payments/${payment.gateway_transaction_id}`, { headers });
+    // Use expand[]=card so Razorpay returns the full card entity inline
+    const res = await fetch(`${base}/payments/${payment.gateway_transaction_id}?expand[]=card`, { headers });
     const data = await res.json();
     const status =
       data.status === "captured" ? "completed" :

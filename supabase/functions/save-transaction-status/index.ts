@@ -714,9 +714,10 @@ serveUser(async (req: Request) => {
         const isEligibleForPayout = isVerifiedMerchant || !kycRequired;
         const payoutMode = fullPayment.payment_gateway_settings?.payout_mode || "manual";
 
-        // Extract and save card details from gateway response
-        EdgeRuntime.waitUntil(
-          fetch(`${SUPABASE_URL()}/functions/v1/save-card-details`, {
+        // Extract and save card details from gateway response — await so card_last_four
+        // is populated before downstream logic (card verification, notifications) runs.
+        try {
+          await fetch(`${SUPABASE_URL()}/functions/v1/save-card-details`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
             body: JSON.stringify({
@@ -725,10 +726,10 @@ serveUser(async (req: Request) => {
               gatewayName: fullPayment.payment_gateway_settings?.gateway_name ?? gatewayName,
               gatewayResponse: gatewayResponse,
             }),
-          }).catch((e) => console.error("save-card-details call failed:", e))
-        );
+          });
+        } catch (e) { console.error("save-card-details call failed:", e); }
 
-        // Re-fetch with updated status for emails
+        // Re-fetch with updated status and card details for emails
         const { data: updatedPayment } = await supabase
           .from("payments")
           .select("*")

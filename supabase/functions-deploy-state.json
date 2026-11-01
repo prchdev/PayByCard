@@ -447,7 +447,7 @@
     },
     "poll-stale-payments": {
       "hasChanged": false,
-      "hash": "8d29694eecab4295e1f6fc957ce0efd64a60d93b4ed6882e0bad027d1f3e060dd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "988c0f2419f7ecc4adfc53846eb69d14331c6be3284e3ee9239564daf265317cd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "process-axis-payout": {
       "hasChanged": false,
@@ -511,7 +511,7 @@
     },
     "save-card-details": {
       "hasChanged": false,
-      "hash": "f30697923c4fd38c79ecbfe04cc22c4898d470ad16596931aaa2e1767972efbdd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "e84300bb6455526d289628a30298cc4ab205f9c3f585164ac786dd0f06f070b9d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "save-card-name": {
       "hasChanged": false,
@@ -551,7 +551,7 @@
     },
     "save-transaction-status": {
       "hasChanged": false,
-      "hash": "f16b081c8430be75ea2b3c01ad03c900f204cd8f1464da6deaaeeb1c9579b03cd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "9ff02079bcbf8cc80ca879540b0d2a015214d4079b787d9d42d7e5b296129865d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "save-user-bank-account": {
       "hasChanged": false,

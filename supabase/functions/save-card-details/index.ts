@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { isInternalCall, unauthorized } from "../_shared/session.ts";
+import { decryptGateway, getGatewayEncryptionKey } from "../_shared/gatewayCredentials.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -146,6 +147,54 @@ function mapEasebuzzCardType(type: string): string | null {
   return type;
 }
 
+/**
+ * When the gateway response from a Razorpay client callback only contains
+ * razorpay_payment_id / razorpay_order_id (no card entity), fetch the full
+ * payment object from the Razorpay API to extract card details.
+ */
+async function fetchRazorpayCardDetails(
+  supabase: any,
+  paymentId: string,
+  razorpayPaymentId: string,
+): Promise<CardDetails | null> {
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("*, payment_gateway_settings(*)")
+    .eq("id", paymentId)
+    .maybeSingle();
+
+  if (!payment?.payment_gateway_settings) return null;
+
+  const encryptionKey = await getGatewayEncryptionKey(supabase);
+  const gateway = await decryptGateway(payment.payment_gateway_settings, encryptionKey);
+  const isTestMode = payment.gateway_environment === "test";
+  const keyId = isTestMode ? gateway.test_api_key : gateway.production_api_key;
+  const keySecret = isTestMode ? gateway.test_api_secret : gateway.production_api_secret;
+
+  if (!keyId || !keySecret) return null;
+
+  const auth = btoa(`${keyId}:${keySecret}`);
+  const res = await fetch(`https://api.razorpay.com/v1/payments/${razorpayPaymentId}`, {
+    headers: { Authorization: `Basic ${auth}` },
+  });
+  const data = await res.json();
+
+  if (!data || data.error) return null;
+
+  const card = data.card;
+  if (!card) return null;
+
+  return {
+    card_last_four: card.last4 ?? null,
+    card_network: card.network ?? null,
+    card_type: card.type ?? null,
+    bank_name: card.issuer ?? null,
+    card_id: card.id ?? null,
+    auth_code: data.auth_code ? String(data.auth_code) : null,
+    name_on_card: data.name_on_card ?? null,
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -166,7 +215,29 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const card = extractCardDetails(gatewayName, gatewayResponse);
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    let card = extractCardDetails(gatewayName, gatewayResponse);
+
+    // If no card details were found in the gateway response (common with
+    // Razorpay client callbacks that only carry IDs), try fetching from the
+    // Razorpay API using the payment_id from the gateway response.
+    if (!card.card_last_four && !card.card_network && !card.bank_name) {
+      const razorpayPaymentId =
+        gatewayResponse?.razorpay_payment_id ??
+        (typeof gatewayResponse === "object" && gatewayResponse?.id?.startsWith("pay_") ? gatewayResponse.id : null);
+      if (razorpayPaymentId) {
+        try {
+          const fetched = await fetchRazorpayCardDetails(supabase, paymentId, razorpayPaymentId);
+          if (fetched) card = fetched;
+        } catch (e) {
+          console.error("fetchRazorpayCardDetails fallback failed:", e);
+        }
+      }
+    }
 
     // Only proceed if we found card-related data
     if (!card.card_last_four && !card.card_network && !card.bank_name) {
@@ -175,11 +246,6 @@ Deno.serve(async (req: Request) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
 
     // Update payment record with card details
     await supabase.from("payments").update({

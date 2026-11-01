@@ -10,13 +10,14 @@ const PAGE_MAP: Record<string, DashboardSidebarPropsPage> = {
   '/kyc-verification': 'kyc',
   '/my-beneficiaries': 'beneficiaries',
   '/my-bank-accounts': 'bank-accounts',
+  '/my-cards': 'my-cards',
   '/make-payment': 'make-payment',
   '/my-transactions': 'my-transactions',
   '/change-password': 'change-password',
   '/help-support': 'help',
 };
 
-type DashboardSidebarPropsPage = 'dashboard' | 'kyc' | 'beneficiaries' | 'bank-accounts' | 'change-password' | 'settings' | 'help' | 'make-payment' | 'my-transactions';
+type DashboardSidebarPropsPage = 'dashboard' | 'kyc' | 'beneficiaries' | 'bank-accounts' | 'change-password' | 'settings' | 'help' | 'make-payment' | 'my-transactions' | 'my-cards';
 
 export default function DashboardLayout() {
   const location = useLocation();

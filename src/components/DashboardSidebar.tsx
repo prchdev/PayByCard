@@ -89,8 +89,8 @@ export default function DashboardSidebar({
       icon: CreditCard,
       label: 'My Cards',
       page: 'my-cards',
-      path: '/dashboard/my-cards',
-      onClick: () => handleNavigation('/dashboard/my-cards', 'my-cards')
+      path: '/my-cards',
+      onClick: () => handleNavigation('/my-cards', 'my-cards')
     },
     {
       icon: Lock,

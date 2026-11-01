@@ -146,7 +146,7 @@ function App() {
             <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/my-bank-accounts" element={<MyBankAccounts />} />
             <Route path="/my-beneficiaries" element={<MyBeneficiaries />} />
-            <Route path="/dashboard/my-cards" element={<MyCards />} />
+            <Route path="/my-cards" element={<MyCards />} />
             <Route path="/make-payment" element={<MakePayment />} />
             <Route path="/my-transactions" element={<MyTransactions />} />
             <Route path="/help-support" element={<HelpSupport />} />

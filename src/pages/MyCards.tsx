@@ -335,7 +335,7 @@ export default function MyCards() {
           <p className="text-gray-500 mt-1">Cards used in your transactions will appear here automatically.</p>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
           {cards.map((card) => {
             const statusCfg = STATUS_CONFIG[card.status] || STATUS_CONFIG.not_submitted;
             const StatusIcon = statusCfg.icon;

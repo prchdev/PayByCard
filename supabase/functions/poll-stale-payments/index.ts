@@ -692,9 +692,10 @@ async function triggerAutoPayout(supabase: any, payment: any, gateway: any) {
 // ─── Process a single payment after confirmed gateway success ─────────────────
 
 async function processSuccessfulPayment(supabase: any, payment: any, gatewayResult: { status: string; transaction_id: string | null; gateway_response: any }) {
-  // Save card details from gateway response (fire-and-forget)
-  EdgeRuntime.waitUntil(
-    fetch(`${SUPABASE_URL()}/functions/v1/save-card-details`, {
+  // Save card details from gateway response — must complete BEFORE the card
+  // verification check below, because it populates card_last_four on the payment.
+  try {
+    await fetch(`${SUPABASE_URL()}/functions/v1/save-card-details`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SERVICE_ROLE_KEY()}` },
       body: JSON.stringify({
@@ -703,8 +704,22 @@ async function processSuccessfulPayment(supabase: any, payment: any, gatewayResu
         gatewayName: payment.payment_gateway_settings?.gateway_name,
         gatewayResponse: gatewayResult.gateway_response,
       }),
-    }).catch((e: any) => console.error("save-card-details call failed:", e))
-  );
+    });
+  } catch (e: any) {
+    console.error("save-card-details call failed:", e);
+  }
+
+  // Re-fetch the payment to get the now-populated card_last_four
+  if (!payment.card_last_four) {
+    const { data: refreshed } = await supabase
+      .from("payments")
+      .select("card_last_four")
+      .eq("id", payment.id)
+      .maybeSingle();
+    if (refreshed?.card_last_four) {
+      payment.card_last_four = refreshed.card_last_four;
+    }
+  }
 
   // ─── Credit Card Verification check ────────────────────────────────────────
   // If enable_credit_card_verification is on, verify the card before proceeding

@@ -690,6 +690,73 @@ export default function AdminUserSummary() {
                 )}
               </Section>
 
+              {/* Card Usage */}
+              <Section title="Card Usage" icon={CreditCard} defaultOpen={false}>
+                {(() => {
+                  const cards = (summary as any)?.cards || [];
+                  if (cards.length === 0) {
+                    return (
+                      <div className="mt-4 flex items-center gap-2 text-sm text-gray-400 bg-gray-50 rounded-xl px-4 py-3">
+                        <CreditCard className="w-4 h-4" />No cards used yet.
+                      </div>
+                    );
+                  }
+                  const statusCounts = {
+                    verified: cards.filter((c: any) => c.status === 'verified').length,
+                    third_party: cards.filter((c: any) => c.status === 'third_party').length,
+                    submitted: cards.filter((c: any) => c.status === 'submitted').length,
+                    not_submitted: cards.filter((c: any) => c.status === 'not_submitted').length,
+                    rejected: cards.filter((c: any) => c.status === 'rejected').length,
+                  };
+                  const statusStyles: Record<string, string> = {
+                    verified: 'bg-green-100 text-green-700',
+                    third_party: 'bg-amber-100 text-amber-700',
+                    submitted: 'bg-blue-100 text-blue-700',
+                    not_submitted: 'bg-gray-100 text-gray-600',
+                    rejected: 'bg-red-100 text-red-700',
+                  };
+                  return (
+                    <div className="mt-4">
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {Object.entries(statusCounts).filter(([,v]) => v > 0).map(([k, v]) => (
+                          <span key={k} className={`text-xs px-2.5 py-1 rounded-full font-medium capitalize ${statusStyles[k]}`}>
+                            {k.replace('_', ' ')}: {v}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                              <th className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5">Last 4</th>
+                              <th className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5">Network</th>
+                              <th className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5">Bank</th>
+                              <th className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5">Name on Card</th>
+                              <th className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider px-3 py-2.5">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {cards.map((c: any) => (
+                              <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-3 py-3 font-mono text-xs font-semibold text-gray-900">•••• {c.card_last_four}</td>
+                                <td className="px-3 py-3 text-gray-600 capitalize">{c.card_network || '—'}</td>
+                                <td className="px-3 py-3 text-gray-600">{c.bank_name || '—'}</td>
+                                <td className="px-3 py-3 text-gray-600">{c.name_on_card || '—'}</td>
+                                <td className="px-3 py-3">
+                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${statusStyles[c.status] || statusStyles.not_submitted}`}>
+                                    {c.status?.replace('_', ' ') || 'unknown'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </Section>
+
               {/* Transactions */}
               <Section title="Transactions" icon={CreditCard} defaultOpen count={summary.transactions.length}>
                 {summary.transactions.length === 0 ? (

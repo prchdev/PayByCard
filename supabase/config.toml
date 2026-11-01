@@ -346,3 +346,24 @@ verify_jwt = false
 
 [functions.encrypt-existing-credentials]
 verify_jwt = false
+
+[functions.save-card-details]
+verify_jwt = false
+
+[functions.get-user-cards]
+verify_jwt = false
+
+[functions.upload-card-photo]
+verify_jwt = false
+
+[functions.verify-card-ai]
+verify_jwt = false
+
+[functions.admin-get-cards]
+verify_jwt = false
+
+[functions.admin-verify-card]
+verify_jwt = false
+
+[functions.save-card-name]
+verify_jwt = false

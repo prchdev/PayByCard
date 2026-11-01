@@ -123,7 +123,7 @@
     },
     "admin-get-user-summary": {
       "hasChanged": false,
-      "hash": "d3e6a140c5cfe2eaf899ad949553371f95ed5d6e53340b6977a875c4ae2d468cd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "41fc319fbd2e3c5a6b34b15f5a5faccac7284fb3dc5a925d0bd7b6ef09a84d3dd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "admin-get-users": {
       "hasChanged": false,
@@ -435,7 +435,7 @@
     },
     "poll-stale-payments": {
       "hasChanged": false,
-      "hash": "c2018e28ea032a52882984a0fa3eeb1eb0aac39bb363fc4b94618850a0c7f345d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "be21de4713548614adbd21df2c44c4b67bc4e1f588de3bf36be79bd0bc65c744d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "process-axis-payout": {
       "hasChanged": false,
@@ -531,7 +531,7 @@
     },
     "save-transaction-status": {
       "hasChanged": false,
-      "hash": "49f24e13d123fffb581e36a0dbadece5fcb3215829fb0de259be174333da7d56d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "f16b081c8430be75ea2b3c01ad03c900f204cd8f1464da6deaaeeb1c9579b03cd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "save-user-bank-account": {
       "hasChanged": false,
@@ -608,6 +608,34 @@
     "waf-validate": {
       "hasChanged": false,
       "hash": "78d21943b3213525f4d2f6ab768cc10144e1bb96f60cab01efce391730ff80ec"
+    },
+    "admin-get-cards": {
+      "hasChanged": false,
+      "hash": "8d4a14dbc04a330f77f33b6f4fc736da0c274bf78e4ae178db9198dac40d3b4dd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+    },
+    "admin-verify-card": {
+      "hasChanged": false,
+      "hash": "1e61ba418f0c5dc40c18d61541780d29d5d90f6a09ccadab1ded501ce593f673d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+    },
+    "get-user-cards": {
+      "hasChanged": false,
+      "hash": "d2e48d4616784cc792784cbd40a395d7c6af6999bc08abff8d41a984388c7052d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+    },
+    "save-card-details": {
+      "hasChanged": false,
+      "hash": "d3dc6063c047f5e1107d4f053f31ad10a515269a37261f2cdd57543c34a3a0d0d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+    },
+    "save-card-name": {
+      "hasChanged": false,
+      "hash": "0c63229fd9f4da9f93f3cf581233a0f2c4bb8f4f04d9e6fa0c21b1837b0dbf10d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+    },
+    "upload-card-photo": {
+      "hasChanged": false,
+      "hash": "bd79ba3bda85adc249004f153a951b333f99fd7169d47c0b5672dc95fe27dcd3d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+    },
+    "verify-card-ai": {
+      "hasChanged": false,
+      "hash": "f9b2fced424b052ccfb721b3494446ba1ba00dd839c6b5bcc9ea8cc397f6318ad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     }
   }
 }

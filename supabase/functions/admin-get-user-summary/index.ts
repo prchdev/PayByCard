@@ -130,6 +130,7 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
       bankAccountsResult,
       paymentsResult,
       supportTicketsResult,
+      cardsResult,
     ] = await Promise.all([
       supabase
         .from("kyc_pan_verification")
@@ -179,6 +180,12 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
         .select("id, ticket_number, category, sub_category, description, status, priority, created_at, updated_at, closed_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false }),
+
+      supabase
+        .from("user_cards")
+        .select("id, card_last_four, card_network, card_type, bank_name, name_on_card, status, ai_verification_result, created_at, updated_at")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false }),
     ]);
 
     const payments = paymentsResult.data || [];
@@ -232,6 +239,7 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
         bankAccounts: bankAccountsResult.data || [],
         transactions: enrichedPayments,
         supportTickets: supportTicketsResult.data || [],
+        cards: cardsResult.data || [],
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

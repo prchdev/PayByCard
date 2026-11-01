@@ -10,6 +10,7 @@ import {
   Send,
   Landmark,
   History,
+  CreditCard,
 } from 'lucide-react';
 import { useSessionTimeout } from '../hooks/useSessionTimeout';
 import SessionTimeoutModal from './SessionTimeoutModal';
@@ -17,7 +18,7 @@ import SessionTimeoutModal from './SessionTimeoutModal';
 interface DashboardSidebarProps {
   userId: string;
   userEmail: string;
-  currentPage: 'dashboard' | 'kyc' | 'beneficiaries' | 'bank-accounts' | 'change-password' | 'settings' | 'help' | 'make-payment' | 'my-transactions';
+  currentPage: 'dashboard' | 'kyc' | 'beneficiaries' | 'bank-accounts' | 'change-password' | 'settings' | 'help' | 'make-payment' | 'my-transactions' | 'my-cards';
   isMobileMenuOpen: boolean;
   onClose: () => void;
   onLogout: () => void;
@@ -83,6 +84,13 @@ export default function DashboardSidebar({
       page: 'my-transactions',
       path: '/my-transactions',
       onClick: () => handleNavigation('/my-transactions', 'my-transactions')
+    },
+    {
+      icon: CreditCard,
+      label: 'My Cards',
+      page: 'my-cards',
+      path: '/dashboard/my-cards',
+      onClick: () => handleNavigation('/dashboard/my-cards', 'my-cards')
     },
     {
       icon: Lock,

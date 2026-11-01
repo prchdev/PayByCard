@@ -66,6 +66,7 @@ const MENU_SECTIONS: MenuSection[] = [
     items: [
       { key: 'kyc', name: 'KYC Verification', path: '/admin/kyc-verification', icon: 'FileCheck' },
       { key: 'merchant-kyc', name: 'Merchant KYC', path: '/admin/merchant-kyc', icon: 'ScanFace' },
+      { key: 'verify-cards', name: 'Verify Cards', path: '/admin/verify-cards', icon: 'CreditCard' },
       { key: 'user-summary', name: 'User Summary', path: '/admin/user-summary', icon: 'UserSearch' },
       { key: 'manual-payout', name: 'Manual Payout', path: '/admin/manual-payout', icon: 'Wallet' },
       { key: 'reports', name: 'Reports', path: '/admin/reports', icon: 'BarChart2' },

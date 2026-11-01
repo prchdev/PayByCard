@@ -692,6 +692,117 @@ async function triggerAutoPayout(supabase: any, payment: any, gateway: any) {
 // ─── Process a single payment after confirmed gateway success ─────────────────
 
 async function processSuccessfulPayment(supabase: any, payment: any, gatewayResult: { status: string; transaction_id: string | null; gateway_response: any }) {
+  // Save card details from gateway response (fire-and-forget)
+  EdgeRuntime.waitUntil(
+    fetch(`${SUPABASE_URL()}/functions/v1/save-card-details`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SERVICE_ROLE_KEY()}` },
+      body: JSON.stringify({
+        paymentId: payment.id,
+        userId: payment.user_id,
+        gatewayName: payment.payment_gateway_settings?.gateway_name,
+        gatewayResponse: gatewayResult.gateway_response,
+      }),
+    }).catch((e: any) => console.error("save-card-details call failed:", e))
+  );
+
+  // ─── Credit Card Verification check ────────────────────────────────────────
+  // If enable_credit_card_verification is on, verify the card before proceeding
+  // to merchant KYC. If card is not verified, hold payment and send email with
+  // 12h deadline. If third party card usage is disabled and card is third party,
+  // initiate refund.
+  const { data: settings } = await supabase
+    .from("master_settings")
+    .select("enable_credit_card_verification, enable_third_party_card_usage")
+    .limit(1)
+    .maybeSingle();
+
+  const cardVerificationEnabled = settings?.enable_credit_card_verification === true;
+  const thirdPartyAllowed = settings?.enable_third_party_card_usage === true;
+
+  if (cardVerificationEnabled && payment.card_last_four) {
+    // Find the user_card for this payment
+    const { data: userCard } = await supabase
+      .from("user_cards")
+      .select("id, status, card_verification_deadline")
+      .eq("user_id", payment.user_id)
+      .eq("card_last_four", payment.card_last_four)
+      .maybeSingle();
+
+    if (userCard) {
+      // Link payment to card if not already linked
+      const { data: existingLink } = await supabase
+        .from("card_payment_links")
+        .select("id")
+        .eq("payment_id", payment.id)
+        .maybeSingle();
+
+      if (!existingLink) {
+        await supabase.from("card_payment_links").insert({
+          payment_id: payment.id,
+          user_card_id: userCard.id,
+          user_id: payment.user_id,
+          verification_status: userCard.status,
+        });
+      }
+
+      const cardStatus = userCard.status;
+
+      // Check 1: Third party card when not allowed → refund
+      if (cardStatus === "third_party" && !thirdPartyAllowed) {
+        await refundPaymentForCardVerification(supabase, payment, "Third party card usage is not allowed");
+        return;
+      }
+
+      // Check 2: Card not yet verified → hold and send email with 12h deadline
+      if (cardStatus === "not_submitted" || cardStatus === "submitted") {
+        const now = new Date();
+        const deadline = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+
+        // Set deadline on card if not already set
+        if (!userCard.card_verification_deadline) {
+          await supabase.from("user_cards").update({
+            card_verification_deadline: deadline.toISOString(),
+            updated_at: now.toISOString(),
+          }).eq("id", userCard.id);
+        } else {
+          // Check if deadline has passed
+          const existingDeadline = new Date(userCard.card_verification_deadline);
+          if (existingDeadline < now) {
+            // Deadline passed — refund
+            await refundPaymentForCardVerification(supabase, payment, "Card verification deadline expired (12 hours)");
+            return;
+          }
+        }
+
+        // Hold payment in card_verification_pending
+        await supabase.from("payments").update({
+          status: "card_verification_pending",
+          card_verification_status: cardStatus,
+          updated_at: now.toISOString(),
+          gateway_response: gatewayResult.gateway_response,
+          last_polled_at: now.toISOString(),
+        }).eq("id", payment.id);
+
+        await supabase.from("payment_logs").insert({
+          payment_id: payment.id,
+          status: "card_verification_pending",
+          message: `Payment held for card verification. Card status: ${cardStatus}. Deadline: ${deadline.toISOString()}`,
+          metadata: { card_id: userCard.id, card_status: cardStatus, deadline: deadline.toISOString() },
+        });
+
+        // Send verification email to user
+        EdgeRuntime.waitUntil(sendCardVerificationEmail(supabase, payment, deadline));
+        return;
+      }
+
+      // Check 3: Card verified or third party allowed → proceed
+      // If card is "verified" or ("third_party" and allowed), continue to normal flow
+    }
+  }
+
+  // ─── End card verification check ───────────────────────────────────────────
+
   // Check live beneficiary KYC status — the payment snapshot may be stale if the
   // beneficiary became a verified merchant after this payment was created.
   let isVerifiedMerchant = payment.beneficiary_details?.is_verified_merchant === true;
@@ -777,6 +888,85 @@ async function processSuccessfulPayment(supabase: any, payment: any, gatewayResu
   }
 }
 
+// ─── Card verification helpers ────────────────────────────────────────────────
+
+async function refundPaymentForCardVerification(supabase: any, payment: any, reason: string) {
+  const now = new Date().toISOString();
+  await supabase.from("payments").update({
+    status: "refunded",
+    failure_reason: reason,
+    card_verification_status: "rejected",
+    updated_at: now,
+  }).eq("id", payment.id);
+
+  await supabase.from("payment_logs").insert({
+    payment_id: payment.id,
+    status: "refunded",
+    message: `Payment refunded: ${reason}`,
+    metadata: { reason, source: "card_verification_check" },
+  });
+
+  // Trigger gateway refund
+  try {
+    await fetch(`${SUPABASE_URL()}/functions/v1/admin-gateway-refund`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SERVICE_ROLE_KEY()}` },
+      body: JSON.stringify({ paymentId: payment.id, reason }),
+    });
+  } catch (e) {
+    console.error("Gateway refund failed:", e);
+  }
+
+  // Send email
+  EdgeRuntime.waitUntil(
+    (async () => {
+      const { data: user } = await supabase
+        .from("users")
+        .select("email, first_name, last_name")
+        .eq("id", payment.user_id)
+        .maybeSingle();
+      if (user?.email) {
+        await sendEmail(
+          user.email,
+          `Payment Refunded – Card Verification – Ref: ${payment.payment_reference}`,
+          `<p>Dear ${user.first_name} ${user.last_name},</p>
+           <p>Your payment of ${formatCurrency(payment.amount)} has been refunded.</p>
+           <p><strong>Reason:</strong> ${reason}</p>
+           <p>The refund will be processed back to your original payment method.</p>`,
+        );
+      }
+    })()
+  );
+}
+
+async function sendCardVerificationEmail(supabase: any, payment: any, deadline: Date) {
+  try {
+    const { data: user } = await supabase
+      .from("users")
+      .select("email, first_name, last_name")
+      .eq("id", payment.user_id)
+      .maybeSingle();
+    if (!user?.email) return;
+
+    const appUrl = (Deno.env.get("APP_URL") || "https://paybycard.in").trim();
+    const deadlineStr = deadline.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" });
+
+    await sendEmail(
+      user.email,
+      `Action Required: Verify Your Card – Ref: ${payment.payment_reference}`,
+      `<p>Dear ${user.first_name} ${user.last_name},</p>
+       <p>Your payment of <strong>${formatCurrency(payment.amount)}</strong> is on hold pending credit card verification.</p>
+       <p>Please upload your card photos from the <strong>My Cards</strong> section in your dashboard.</p>
+       <p><strong>Deadline:</strong> ${deadlineStr}</p>
+       <p style="color:#d97706;font-weight:600;">If card verification is not completed within 12 hours, the payment will be refunded.</p>`,
+      "Verify Card Now",
+      `${appUrl}/dashboard/my-cards`,
+    );
+  } catch (e) {
+    console.error("sendCardVerificationEmail error:", e);
+  }
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -795,7 +985,7 @@ Deno.serve(async (req: Request) => {
     const { data: stalePayments, error: fetchErr } = await supabase
       .from("payments")
       .select("*, payment_gateway_settings(*)")
-      .in("status", ["pending", "processing"])
+      .in("status", ["pending", "processing", "card_verification_pending"])
       .lt("poll_count", MAX_POLL_ATTEMPTS)
       .or(`last_polled_at.is.null,last_polled_at.lt.${rePollBefore}`)
       .order("created_at", { ascending: true })

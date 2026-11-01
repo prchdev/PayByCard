@@ -31,6 +31,7 @@ import KYCVerification from './pages/KYCVerification';
 import Dashboard from './pages/Dashboard';
 import ChangePassword from './pages/ChangePassword';
 import MyBeneficiaries from './pages/MyBeneficiaries';
+import MyCards from './pages/MyCards';
 import MyBankAccounts from './pages/MyBankAccounts';
 import MakePayment from './pages/MakePayment';
 import PaymentGateway from './pages/PaymentGateway';
@@ -69,6 +70,7 @@ import DatabaseBackup from './pages/admin/DatabaseBackup';
 import PaymentGatewaySettlement from './pages/admin/PaymentGatewaySettlement';
 import AdminOffers from './pages/admin/AdminOffers';
 import AdminCoupons from './pages/admin/AdminCoupons';
+import AdminVerifyCards from './pages/admin/AdminVerifyCards';
 import Offers from './pages/Offers';
 function MainLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -144,6 +146,7 @@ function App() {
             <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/my-bank-accounts" element={<MyBankAccounts />} />
             <Route path="/my-beneficiaries" element={<MyBeneficiaries />} />
+            <Route path="/dashboard/my-cards" element={<MyCards />} />
             <Route path="/make-payment" element={<MakePayment />} />
             <Route path="/my-transactions" element={<MyTransactions />} />
             <Route path="/help-support" element={<HelpSupport />} />
@@ -181,6 +184,7 @@ function App() {
           <Route path="/admin/gateway-settlement" element={<PaymentGatewaySettlement />} />
           <Route path="/admin/offers" element={<AdminOffers />} />
           <Route path="/admin/coupons" element={<AdminCoupons />} />
+          <Route path="/admin/verify-cards" element={<AdminVerifyCards />} />
           <Route path="/merchant-onboarding" element={<MerchantOnboarding />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

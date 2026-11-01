@@ -419,7 +419,7 @@
     },
     "initiate-payment": {
       "hasChanged": false,
-      "hash": "a6e26091355e384a2a2d1cb1fa78b746320aa4321648bc0bf66cd2e694091f39d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "45152a2b3e77581cb7b5334f24c416ef9b28a5365ecb6675d7afc3cb54a6afaed2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "log-digilocker-event": {
       "hasChanged": false,
@@ -581,6 +581,10 @@
       "hasChanged": false,
       "hash": "5363dd0d1931834c07ef79aa7aba70355dff90cee6d8d1414100ae7d7e59b39bd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
+    "trigger-merchant-kyc": {
+      "hasChanged": false,
+      "hash": "72f623d744126b2d4ab882272b82d0f59cc5907431c486079c4c15d057da27da"
+    },
     "update-role-permissions": {
       "hasChanged": false,
       "hash": "557e7dc0db907e30cef94ba30c52f2a99c0d9065151a678c6acccd1620320bccd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
@@ -636,10 +640,6 @@
     "waf-validate": {
       "hasChanged": false,
       "hash": "78d21943b3213525f4d2f6ab768cc10144e1bb96f60cab01efce391730ff80ec"
-    },
-    "trigger-merchant-kyc": {
-      "hasChanged": false,
-      "hash": "72f623d744126b2d4ab882272b82d0f59cc5907431c486079c4c15d057da27da"
     }
   }
 }

@@ -510,7 +510,9 @@ Deno.serve(withUserSession(async (req: Request) => {
       decryptedGateway,
       payment,
       allowedCards,
-      normalizedEnvironment
+      normalizedEnvironment,
+      paymentOptionId,
+      cardType
     );
 
     return new Response(
@@ -579,7 +581,9 @@ async function createGatewayPaymentConfig(
   gatewaySettings: any,
   payment: any,
   allowedCards: string[],
-  environment: string
+  environment: string,
+  paymentOptionId: string,
+  cardType: string
 ): Promise<any> {
   const gatewayName = gatewaySettings.gateway_name.toLowerCase();
   const isTestMode = environment === "test";

@@ -94,8 +94,8 @@ Deno.serve(withUserSession(async (req: Request) => {
       return err("Unauthorized: beneficiary does not belong to this user", 403);
     }
 
-    // ── Fetch payment option and category server-side ───────────────────────
-    // Never trust client-sent categoryDetails or paymentOptionDetails.
+    // ── Fetch payment option server-side ────────────────────────────────────
+    // Never trust client-sent paymentOptionDetails.
     const { data: payOption, error: payOptionError } = await supabase
       .from("payment_options")
       .select("id, category_name, is_enabled, display_order, receiver_kyc_required, refund_after_hours, settlement_time, charges_percentage, discounted_charges_percentage, show_discount, gst_percentage, business_surcharge_percentage, terms_and_conditions, gateway_id, environment")
@@ -104,6 +104,25 @@ Deno.serve(withUserSession(async (req: Request) => {
 
     if (payOptionError || !payOption) {
       return err("Payment option not found", 404);
+    }
+
+    // ── Fetch payment category server-side ──────────────────────────────────
+    // businessCategoryId is the actual payment_categories row the user selected.
+    // The payment_option is a card-type choice, NOT the business category.
+    let payCategory: { id: string; category_name: string; is_enabled: boolean; display_order: number; receiver_kyc_required: boolean; refund_after_hours: number; settlement_time: string } | null = null;
+    if (businessCategoryId) {
+      const { data: catRow, error: catError } = await supabase
+        .from("payment_categories")
+        .select("id, category_name, is_enabled, display_order, receiver_kyc_required, refund_after_hours, settlement_time")
+        .eq("id", businessCategoryId)
+        .maybeSingle();
+      if (catError) {
+        return err("Failed to fetch payment category", 500);
+      }
+      if (!catRow) {
+        return err("Payment category not found", 404);
+      }
+      payCategory = catRow;
     }
 
     // Build server-validated beneficiary details
@@ -119,15 +138,26 @@ Deno.serve(withUserSession(async (req: Request) => {
       account_type: beneficiary.account_type,
     };
 
-    // Build server-validated category details
-    const serverCategoryDetails = {
-      category_name: payOption.category_name,
-      is_enabled: payOption.is_enabled,
-      display_order: payOption.display_order,
-      receiver_kyc_required: payOption.receiver_kyc_required || false,
-      refund_after_hours: payOption.refund_after_hours || 0,
-      settlement_time: payOption.settlement_time || "",
-    };
+    // Build server-validated category details from the actual payment_categories
+    // row — NOT from the payment option.  The category's receiver_kyc_required
+    // drives the merchant KYC flow in save-transaction-status.
+    const serverCategoryDetails = payCategory
+      ? {
+          category_name: payCategory.category_name,
+          is_enabled: payCategory.is_enabled,
+          display_order: payCategory.display_order,
+          receiver_kyc_required: payCategory.receiver_kyc_required || false,
+          refund_after_hours: payCategory.refund_after_hours || 0,
+          settlement_time: payCategory.settlement_time || "",
+        }
+      : {
+          category_name: payOption.category_name,
+          is_enabled: payOption.is_enabled,
+          display_order: payOption.display_order,
+          receiver_kyc_required: payOption.receiver_kyc_required || false,
+          refund_after_hours: payOption.refund_after_hours || 0,
+          settlement_time: payOption.settlement_time || "",
+        };
 
     // ── Input validation ──────────────────────────────────────────────────────
     const parsedAmount = parseFloat(amount);
@@ -576,12 +606,12 @@ async function createGatewayPaymentConfig(
 
       // Look up per-payment-option Razorpay configuration
       let razorpayConfig: { methods: string[]; allowed_card_networks: string[]; card_types: string[]; card_sub_types: string[] } | null = null;
-      if (payment.payment_category_id) {
+      if (paymentOptionId) {
         const { data: rzConfig } = await supabase
           .from("razorpay_payment_configs")
           .select("methods, allowed_card_networks, card_types, card_sub_types")
           .eq("payment_gateway_id", gatewaySettings.id)
-          .eq("payment_option_id", payment.payment_category_id)
+          .eq("payment_option_id", paymentOptionId)
           .eq("is_active", true)
           .maybeSingle();
 

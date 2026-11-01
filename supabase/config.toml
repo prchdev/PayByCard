@@ -367,3 +367,6 @@ verify_jwt = false
 
 [functions.save-card-name]
 verify_jwt = false
+
+[functions.trigger-merchant-kyc]
+verify_jwt = false

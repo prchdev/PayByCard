@@ -419,7 +419,7 @@
     },
     "initiate-payment": {
       "hasChanged": false,
-      "hash": "2dffc27adc7d3ab3347224bffaaa98cfda61a6b15bca47a5f2edcd9db74acd06d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "a6e26091355e384a2a2d1cb1fa78b746320aa4321648bc0bf66cd2e694091f39d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "log-digilocker-event": {
       "hasChanged": false,
@@ -636,6 +636,10 @@
     "waf-validate": {
       "hasChanged": false,
       "hash": "78d21943b3213525f4d2f6ab768cc10144e1bb96f60cab01efce391730ff80ec"
+    },
+    "trigger-merchant-kyc": {
+      "hasChanged": false,
+      "hash": "72f623d744126b2d4ab882272b82d0f59cc5907431c486079c4c15d057da27da"
     }
   }
 }

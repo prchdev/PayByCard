@@ -13,8 +13,54 @@ import {
   ShieldCheck,
   Info,
   ChevronDown,
+  ScanLine,
 } from 'lucide-react';
+import Tesseract from 'tesseract.js';
 import { useDashboardContext } from '../hooks/useDashboardContext';
+
+function extractCardholderName(rawText: string): string | null {
+  const lines = rawText
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  for (const line of lines) {
+    const upperCount = line.replace(/[^A-Z]/g, '').length;
+    const letterCount = line.replace(/[^A-Za-z]/g, '').length;
+    const hasDigits = /\d/.test(line);
+
+    if (hasDigits) continue;
+    if (letterCount < 4) continue;
+    if (upperCount / letterCount < 0.7) continue;
+
+    if (/valid|thru|expires|cvv|debit|credit|bank|card|visa|mastercard|rupay|amex|maestro|rupay| platinum| signature| global| debit/i.test(line)) continue;
+
+    const cleanName = line
+      .replace(/[^A-Za-z\s]/g, '')
+      .split(/\s+/)
+      .filter((w) => w.length >= 2)
+      .join(' ');
+
+    if (cleanName.length >= 4 && /^([A-Z]{2,}\s+)+[A-Z]{2,}$/i.test(cleanName)) {
+      return cleanName;
+    }
+  }
+
+  for (const line of lines) {
+    const hasDigits = /\d/.test(line);
+    if (hasDigits) continue;
+    const cleanName = line
+      .replace(/[^A-Za-z\s]/g, '')
+      .split(/\s+/)
+      .filter((w) => w.length >= 2)
+      .join(' ');
+    if (cleanName.length >= 4 && cleanName.split(/\s+/).length >= 2) {
+      return cleanName;
+    }
+  }
+
+  return null;
+}
 
 interface CardPayment {
   payment_id: string;
@@ -86,6 +132,7 @@ export default function MyCards() {
   const [uploadSide, setUploadSide] = useState<'front' | 'back'>('front');
   const [isUploading, setIsUploading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [ocrStatus, setOcrStatus] = useState<string>('');
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -142,11 +189,31 @@ export default function MyCards() {
     try {
       setIsUploading(true);
       setError('');
+
+      let extractedName: string | null = null;
+
+      if (uploadSide === 'front') {
+        setOcrStatus('Reading name from card photo...');
+        try {
+          const imageDataUrl = await fileToDataUrl(file);
+          const { data: { text } } = await Tesseract.recognize(imageDataUrl, 'eng', {
+            logger: () => {},
+          });
+          extractedName = extractCardholderName(text);
+        } catch (ocrErr) {
+          console.warn('OCR failed, proceeding without name extraction:', ocrErr);
+        }
+        setOcrStatus('');
+      }
+
       const formData = new FormData();
       formData.append('userId', userId);
       formData.append('cardId', selectedCard.id);
       formData.append('side', uploadSide);
       formData.append('file', file);
+      if (extractedName) {
+        formData.append('extractedName', extractedName);
+      }
 
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-card-photo`, {
         method: 'POST',
@@ -160,13 +227,20 @@ export default function MyCards() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
 
-      setSuccess(`${uploadSide === 'front' ? 'Front' : 'Back'} photo uploaded successfully`);
+      if (uploadSide === 'front' && !data.extractedName) {
+        setSuccess('Front photo uploaded. Name could not be read automatically — it will be checked during verification.');
+      } else if (uploadSide === 'front' && data.extractedName) {
+        setSuccess(`Front photo uploaded. Name detected: ${data.extractedName}`);
+      } else {
+        setSuccess('Back photo uploaded successfully');
+      }
       setSelectedCard(null);
       await fetchCards();
     } catch (err: any) {
       setError(err.message || 'Upload failed');
     } finally {
       setIsUploading(false);
+      setOcrStatus('');
     }
   };
 
@@ -406,7 +480,7 @@ export default function MyCards() {
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <p className="text-xs text-blue-700">
-                Ensure only last 4 digits and name are visible. Mask all other digits, expiry, and CVV before photographing. The name will be read automatically by our AI.
+                Ensure only last 4 digits and name are visible. Mask all other digits, expiry, and CVV before photographing. The name will be read automatically using in-browser OCR.
               </p>
             </div>
             <button
@@ -414,8 +488,8 @@ export default function MyCards() {
               disabled={isUploading}
               className="w-full px-4 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-medium rounded-xl hover:from-[#7a66e0] hover:to-purple-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-              {isUploading ? 'Uploading...' : 'Select Photo'}
+              {isUploading ? (ocrStatus ? <ScanLine className="w-5 h-5 animate-pulse" /> : <Loader2 className="w-5 h-5 animate-spin" />) : <Upload className="w-5 h-5" />}
+              {isUploading ? (ocrStatus || 'Uploading...') : 'Select Photo'}
             </button>
           </div>
         </div>
@@ -423,4 +497,13 @@ export default function MyCards() {
       </div>
     </main>
   );
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }

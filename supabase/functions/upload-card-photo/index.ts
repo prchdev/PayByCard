@@ -34,6 +34,7 @@ serveUser(async (req: Request) => {
     const cardId = formData.get("cardId") as string;
     const side = formData.get("side") as string;
     const file = formData.get("file") as File | null;
+    const extractedName = formData.get("extractedName") as string | null;
 
     if (!userId || !cardId || !side || !file) {
       return new Response(
@@ -104,6 +105,9 @@ serveUser(async (req: Request) => {
     const updateData: any = { updated_at: new Date().toISOString() };
     if (side === "front") {
       updateData.front_photo_url = filePath;
+      if (extractedName && extractedName.trim().length >= 4) {
+        updateData.name_on_card = extractedName.trim();
+      }
     } else {
       updateData.back_photo_url = filePath;
     }
@@ -129,6 +133,7 @@ serveUser(async (req: Request) => {
         success: true,
         photoUrl,
         side,
+        extractedName: (side === "front" && extractedName && extractedName.trim().length >= 4) ? extractedName.trim() : null,
         cardStatus: hasFront && hasBack ? "submitted" : (card.status === "rejected" ? "not_submitted" : card.status),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

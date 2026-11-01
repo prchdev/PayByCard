@@ -268,15 +268,15 @@ export default function MyCards() {
             return (
               <div key={card.id} className="bg-white rounded-2xl border-2 border-gray-200 hover:border-[#8c76f0] hover:shadow-xl transition-all p-6">
                 {/* Card Visual */}
-                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 mb-4 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16" />
-                  <div className="flex items-center justify-between mb-8">
-                    <span className="text-white/60 text-xs uppercase tracking-wide">{card.card_type?.replace('_', ' ') || 'Card'}</span>
-                    {card.card_network && <span className="text-white font-semibold text-sm capitalize">{card.card_network}</span>}
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 mb-4 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-24 -mt-24" />
+                  <div className="flex items-center justify-between mb-12">
+                    <span className="text-white/60 text-base uppercase tracking-wide">{card.card_type?.replace('_', ' ') || 'Card'}</span>
+                    {card.card_network && <span className="text-white font-semibold text-xl capitalize">{card.card_network}</span>}
                   </div>
-                  <p className="text-white/80 text-sm tracking-widest mb-3">•••• •••• •••• {card.card_last_four}</p>
-                  <p className="text-white/70 text-xs uppercase">{card.name_on_card || 'Name not set'}</p>
-                  {card.bank_name && <p className="text-white/50 text-xs mt-1">{card.bank_name}</p>}
+                  <p className="text-white/80 text-xl tracking-widest mb-4">•••• •••• •••• {card.card_last_four}</p>
+                  <p className="text-white/70 text-lg uppercase">{card.name_on_card || 'Name not set'}</p>
+                  {card.bank_name && <p className="text-white/50 text-base mt-1">{card.bank_name}</p>}
                 </div>
 
                 {/* Status Badge */}

@@ -365,7 +365,11 @@ export default function MyCards() {
                     <span className="text-white/60 text-base uppercase tracking-wide">{card.card_type?.replace('_', ' ') || 'Card'}</span>
                     {card.card_network && <span className="text-white font-semibold text-xl capitalize">{card.card_network}</span>}
                   </div>
-                  <p className="text-white/80 text-xl tracking-widest mb-4">•••• •••• •••• {card.card_last_four}</p>
+                  <p className="text-white/80 text-xl tracking-widest mb-4">
+                    {card.card_last_four && card.card_last_four !== '????'
+                      ? `•••• •••• •••• ${card.card_last_four}`
+                      : '•••• •••• •••• ••••'}
+                  </p>
                   <p className="text-white/70 text-lg uppercase">{card.name_on_card || 'Name not set'}</p>
                   {card.bank_name && <p className="text-white/50 text-base mt-1">{card.bank_name}</p>}
                 </div>
@@ -495,7 +499,7 @@ export default function MyCards() {
               <button onClick={() => setSelectedCard(null)}><X className="w-5 h-5 text-gray-400" /></button>
             </div>
             <p className="text-sm text-gray-600 mb-4">
-              Card ending in <strong>{selectedCard.card_last_four}</strong>
+              Card ending in <strong>{selectedCard.card_last_four && selectedCard.card_last_four !== '????' ? selectedCard.card_last_four : 'unknown'}</strong>
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <p className="text-xs text-blue-700">

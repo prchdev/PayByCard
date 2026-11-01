@@ -143,7 +143,14 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMessage = useCallback((event: MessageEvent) => {
-    if (event.origin !== window.location.origin) return;
+    // Allow messages from the app origin and the Supabase edge function origin
+    // (the digilocker-redirect bridge page is served from the Supabase domain).
+    const allowedOrigins: string[] = [window.location.origin];
+    try {
+      const sbOrigin = new URL(SUPABASE_URL).origin;
+      if (sbOrigin !== window.location.origin) allowedOrigins.push(sbOrigin);
+    } catch { /* ignore */ }
+    if (!allowedOrigins.includes(event.origin)) return;
     const d = event.data;
     if (!d || typeof d !== 'object') return;
     const cfId = d.cf_verification_id;

@@ -94,8 +94,7 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
   const [redirectUri, setRedirectUri] = useState('');
   const [pollCount, setPollCount] = useState(0);
   const [panMismatch, setPanMismatch] = useState<{ expected: string; fetched: string } | null>(null);
-  const [showManualInput, setShowManualInput] = useState(false);
-  const [manualCode, setManualCode] = useState('');
+
 
   const popupRef = useRef<Window | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -213,17 +212,21 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
     const interval = setInterval(() => {
       if (popupRef.current && popupRef.current.closed) {
         clearInterval(interval);
+        // Wait 3s before declaring the popup closed — the bridge page may still
+        // be sending a postMessage or the redirect-back may restore the session.
         setTimeout(() => {
           const code = localStorage.getItem('merchant_digilocker_code');
           if (code) { handleCode(code); return; }
           if (codeReceivedRef.current) return;
+          const oauthCode = sessionStorage.getItem('merchant_digilocker_oauth_code');
+          if (oauthCode) { sessionStorage.removeItem('merchant_digilocker_oauth_code'); runAutoApprove(oauthCode); return; }
           if (isCashFree(providerName) && vidRef.current) {
             startPolling(vidRef.current);
           } else if (!isCashFree(providerName) && stepRef.current === 'waiting_popup') {
             setStep('error');
             setError('DigiLocker authorization window was closed before completing. Please try again.');
           }
-        }, 1500);
+        }, 3000);
       }
     }, 600);
     return () => clearInterval(interval);
@@ -231,7 +234,7 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
 
   const startAuth = async () => {
     setStep('loading_url');
-    setError(''); setPanMismatch(null); setManualCode(''); setShowManualInput(false);
+    setError(''); setPanMismatch(null);
     try {
       // Generate PKCE code_verifier (96 random bytes → base64url)
       const array = new Uint8Array(96);
@@ -269,7 +272,7 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
         // No noopener — callback page must be able to close the tab
         window.open(url, '_blank');
         logMerchantEvent(token, providerName, 'popup_blocked_new_tab', true, {});
-        setStep('waiting_popup'); setShowManualInput(true);
+        setStep('waiting_popup');
       } else {
         popupRef.current = popup;
         logMerchantEvent(token, providerName, 'popup_opened', true, {});
@@ -576,28 +579,7 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
                 I've completed authorization — check status now
               </button>
             )}
-            {showManualInput && (
-              <div className="space-y-2 pt-1">
-                <p className="text-xs text-gray-500">
-                  If the popup was blocked, complete authorization in the new tab then paste the
-                  {isCashFree(providerName) ? ' verification ID' : ' authorization code'} below:
-                </p>
-                <input
-                  type="text" value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value.trim())}
-                  placeholder={isCashFree(providerName) ? 'Paste verification ID' : 'Paste authorization code'}
-                  className="w-full px-3.5 py-2.5 border-2 border-gray-300 rounded-xl text-sm focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 outline-none transition-colors font-mono"
-                  onKeyDown={(e) => { if (e.key === 'Enter' && manualCode) runAutoApprove(manualCode); }}
-                />
-                <button
-                  onClick={() => runAutoApprove(manualCode)}
-                  disabled={!manualCode.trim()}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-sm shadow-purple-500/20"
-                >
-                  <ShieldCheck className="w-4 h-4" />Verify KYC
-                </button>
-              </div>
-            )}
+
             <button onClick={retry} className="text-xs text-gray-400 hover:text-gray-600 transition-colors underline w-full text-center">Cancel</button>
           </div>
         )}

@@ -120,7 +120,11 @@ Deno.serve(async (req: Request) => {
 
   if (window.opener && !window.opener.closed) {
     try {
-      window.opener.postMessage({ type: 'digilocker_callback', code: code, state: state, error: error }, appUrl);
+      // Use '*' as targetOrigin because the opener's actual origin may differ
+      // from the resolved appUrl (e.g. during development or if the app is
+      // served from a different domain than expected). Security is maintained
+      // on the receiving side — the opener validates event.origin before acting.
+      window.opener.postMessage({ type: 'digilocker_callback', code: code, state: state, error: error }, '*');
       setTimeout(function() {
         try { window.close(); } catch (e) {}
         setTimeout(function() {

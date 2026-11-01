@@ -284,6 +284,13 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
             logEvent(userId, providerName, 'popup_closed_polling', true, {});
             startPolling(verificationIdRef.current);
           } else if (!isCashFree(providerName) && stepRef.current === 'waiting_popup') {
+            // Check sessionStorage for oauth code (redirect-back fallback)
+            const oauthCode = sessionStorage.getItem('digilocker_oauth_code');
+            if (oauthCode) {
+              sessionStorage.removeItem('digilocker_oauth_code');
+              runAutoApprove(oauthCode);
+              return;
+            }
             logEvent(userId, providerName, 'popup_closed_no_code', false, {
               error_code: 'POPUP_CLOSED',
               error_message: 'Popup closed without completing authorization',
@@ -291,7 +298,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
             setStep('error');
             setError('DigiLocker authorization window was closed before completing. Please try again.');
           }
-        }, 1500);
+        }, 3000);
       }
     }, 600);
     return () => clearInterval(interval);
@@ -835,31 +842,6 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
                 <ShieldCheck className="w-4 h-4" />
                 I've completed authorization — check status now
               </button>
-            )}
-
-            {showManualInput && (
-              <div className="space-y-2 pt-1">
-                <p className="text-xs text-gray-500">
-                  If the popup was blocked, complete authorization in the new tab then paste the
-                  {isCashFree(providerName) ? ' verification ID' : ' authorization code'} below:
-                </p>
-                <input
-                  type="text"
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value.trim())}
-                  placeholder={isCashFree(providerName) ? 'Paste verification ID' : 'Paste authorization code'}
-                  className="w-full px-3.5 py-2.5 border-2 border-gray-300 rounded-xl text-sm focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 outline-none transition-colors font-mono"
-                  onKeyDown={(e) => { if (e.key === 'Enter' && manualCode.trim()) runAutoApprove(manualCode); }}
-                />
-                <button
-                  onClick={() => runAutoApprove(manualCode)}
-                  disabled={!manualCode.trim()}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-sm shadow-purple-500/20"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  Verify KYC
-                </button>
-              </div>
             )}
 
             <button

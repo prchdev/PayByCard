@@ -16,7 +16,7 @@ async function generateInvoicePdf(paymentId: string, invoiceType: "settlement" |
     const res = await fetch(`${SUPABASE_URL()}/functions/v1/generate-invoice-html`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY()}`,
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ payment_id: paymentId, invoice_type: invoiceType }),
@@ -44,7 +44,7 @@ async function sendEmail(
     await fetch(`${SUPABASE_URL()}/functions/v1/send-email`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY()}`,
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

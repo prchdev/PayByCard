@@ -220,7 +220,7 @@ async function generateInvoicePdf(payload: Record<string, any>): Promise<string 
   try {
     const res = await fetch(`${SUPABASE_URL()}/functions/v1/generate-invoice-html`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY()}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY()}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
@@ -232,7 +232,7 @@ async function sendEmail(to: string, subject: string, body: string, btnText?: st
   try {
     await fetch(`${SUPABASE_URL()}/functions/v1/send-email`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY()}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY()}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         to, subject, body, body_type: "html", use_template: true,
         ...(cc ? { cc } : {}),

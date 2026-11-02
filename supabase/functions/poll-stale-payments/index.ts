@@ -228,13 +228,14 @@ async function generateInvoicePdf(payload: Record<string, any>): Promise<string 
   } catch (err) { console.error("Invoice generation error:", err); return null; }
 }
 
-async function sendEmail(to: string, subject: string, body: string, btnText?: string, btnLink?: string, pdfBase64?: string | null, pdfFilename?: string) {
+async function sendEmail(to: string, subject: string, body: string, btnText?: string, btnLink?: string, pdfBase64?: string | null, pdfFilename?: string, cc?: string) {
   try {
     await fetch(`${SUPABASE_URL()}/functions/v1/send-email`, {
       method: "POST",
       headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY()}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         to, subject, body, body_type: "html", use_template: true,
+        ...(cc ? { cc } : {}),
         ...(btnText && btnLink ? { button_text: btnText, button_link: btnLink } : {}),
         ...(pdfBase64 ? { attachment_base64: pdfBase64, attachment_filename: pdfFilename || "invoice.pdf" } : {}),
       }),
@@ -543,10 +544,11 @@ async function sendKycRequestEmails(supabase: any, payment: any): Promise<boolea
     }
     // ── End auto-reuse ────────────────────────────────────────────────────
 
-    const { data: senderUser } = await supabase.from("users").select("first_name,last_name,middle_name").eq("id", payment.user_id).maybeSingle();
+    const { data: senderUser } = await supabase.from("users").select("first_name,last_name,middle_name,email").eq("id", payment.user_id).maybeSingle();
     const senderName = senderUser
       ? [senderUser.first_name, senderUser.middle_name, senderUser.last_name].filter(Boolean).join(" ").trim()
       : "Sender";
+    const senderEmail = senderUser?.email || undefined;
 
     const categoryName = payment.category_details?.category_name || payment.selected_payment_option?.card_type || "Payment";
     const refundHours = payment.category_details?.refund_after_hours || payment.selected_payment_option?.refund_after_hours;
@@ -592,7 +594,7 @@ async function sendKycRequestEmails(supabase: any, payment: any): Promise<boolea
           ["Link Expires", new Date(expiresAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })],
         ])}
         ${refundNote}`;
-      await sendEmail(receiverEmail, `Action Required: Complete KYC – Ref: ${payment.payment_reference}`, body, "Complete KYC Verification", link);
+      await sendEmail(receiverEmail, `Action Required: Complete KYC – Ref: ${payment.payment_reference}`, body, "Complete KYC Verification", link, undefined, undefined, senderEmail);
     }
 
     if (receiverMobile) {

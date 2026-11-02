@@ -963,6 +963,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // ── Beneficiary name match: the KYC name must match the beneficiary name ──
+      const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
       const beneficiaryName = normalize(beneficiaryDetails?.full_name || record.full_name || '');
       const kycName = normalize(kycData.full_name || '');
       const namePartsMatch = beneficiaryName && kycName && (
@@ -999,7 +1000,6 @@ Deno.serve(async (req: Request) => {
 
       // ── Self-transfer check: merchant must not be the same person as the sender ──
       const restrictions = await getPaymentRestrictions(supabase);
-      const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
       const merchantFullName = normalize(kycData.full_name || record.full_name || '');
       const merchantPan = normalizePan(kycData.pan_number);
       const merchantEmail = normalize(record.email || '');

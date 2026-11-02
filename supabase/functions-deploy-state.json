@@ -431,7 +431,7 @@
     },
     "merchant-digilocker-kyc": {
       "hasChanged": false,
-      "hash": "f863a2dea9370dd2fb4d951e2b9c967295be11d92d6e1c4d5048a86077aa49c4d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "1bdb3160923ad5bdb9a73f4073c5342b6ea2bc3dbe59406492f9d5e8ed918807d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "on-demand-settlement": {
       "hasChanged": false,
@@ -447,7 +447,7 @@
     },
     "poll-stale-payments": {
       "hasChanged": false,
-      "hash": "f19d013a0ff041348c7965f03070fcc7dbb3569d12eef461871d470ec3d2168dd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "e65e35ea36ed02197672e2bb4ac4c48cdf468d31710e9d3a4a0f0f61224664f4d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "process-axis-payout": {
       "hasChanged": false,
@@ -551,7 +551,7 @@
     },
     "save-transaction-status": {
       "hasChanged": false,
-      "hash": "d18e946ae2fd7e961b3d335794d306af553244f915b2f5615b8f0480f80ae27fd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "51d0a87ba7b31b31bbc54ad960b35571eced21ffc963a42b9b788795e4f2dd27d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "save-user-bank-account": {
       "hasChanged": false,

@@ -71,7 +71,7 @@ interface KycData {
 type KycMethod = 'digilocker' | 'manual' | null;
 
 // ── Inline DigiLocker flow (token-based, not userId-based) ──────────────────
-type DlStep = 'idle' | 'loading_url' | 'waiting_popup' | 'polling' | 'verifying' | 'success' | 'error' | 'pan_mismatch';
+type DlStep = 'idle' | 'loading_url' | 'waiting_popup' | 'polling' | 'verifying' | 'success' | 'error' | 'pan_mismatch' | 'name_mismatch';
 
 const POLL_INTERVAL = 3000;
 const MAX_POLLS = 100;
@@ -94,6 +94,7 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
   const [redirectUri, setRedirectUri] = useState('');
   const [pollCount, setPollCount] = useState(0);
   const [panMismatch, setPanMismatch] = useState<{ expected: string; fetched: string } | null>(null);
+  const [nameMismatch, setNameMismatch] = useState<{ expected: string; fetched: string } | null>(null);
 
 
   const popupRef = useRef<Window | null>(null);
@@ -354,6 +355,14 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
         logMerchantEvent(token, providerName, 'auto_approve_success', true, { duration_ms });
         setStep('success');
         onSuccess(data.kycData);
+      } else if (data.nameMismatch) {
+        logMerchantEvent(token, providerName, 'auto_approve_name_mismatch', false, {
+          error_code: 'NAME_MISMATCH',
+          error_message: `Expected: ${data.expectedName}, got: ${data.fetchedName}`,
+          duration_ms,
+        });
+        setNameMismatch({ expected: data.expectedName, fetched: data.fetchedName });
+        setStep('name_mismatch');
       } else if (data.panMismatch) {
         logMerchantEvent(token, providerName, 'auto_approve_pan_mismatch', false, {
           error_code: 'PAN_MISMATCH',
@@ -387,7 +396,7 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
   const retry = () => {
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     setStep('idle'); setError(''); setManualCode(''); setShowManualInput(false);
-    setPanMismatch(null); setVerificationId(''); setRedirectUri('');
+    setPanMismatch(null); setNameMismatch(null); setVerificationId(''); setRedirectUri('');
     redirectUriRef.current = '';
     setPollCount(0); popupRef.current = null; codeReceivedRef.current = false;
     localStorage.removeItem('merchant_digilocker_code');
@@ -396,6 +405,49 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
     sessionStorage.removeItem('merchant_digilocker_redirect_uri');
     sessionStorage.removeItem('merchant_digilocker_oauth_code');
   };
+
+  // Name mismatch
+  if (step === 'name_mismatch' && nameMismatch) {
+    return (
+      <div className="bg-white border-2 border-red-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-5 py-4 bg-red-50 border-b border-red-200 flex items-start gap-3">
+          <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <ShieldAlert className="w-5 h-5 text-red-600" />
+          </div>
+          <div>
+            <p className="font-semibold text-red-800 text-sm">Beneficiary Name Mismatch</p>
+            <p className="text-xs text-red-600 mt-0.5">The name from your DigiLocker does not match the beneficiary name for this payment.</p>
+          </div>
+        </div>
+        <div className="px-5 py-5 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Expected (Beneficiary)</p>
+              <p className="font-bold text-gray-900 text-sm">{nameMismatch.expected || '—'}</p>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+              <p className="text-[11px] font-semibold text-red-500 uppercase tracking-wide mb-1.5">Your DigiLocker Name</p>
+              <p className="font-bold text-red-800 text-sm">{nameMismatch.fetched || '—'}</p>
+            </div>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+            <p className="font-medium mb-1">Only the beneficiary can complete this KYC</p>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              The KYC verification must be completed by the person receiving the payment. The name on your DigiLocker account does not match the beneficiary name on record.
+              Please ask the beneficiary to complete the KYC, or contact support if you believe this is an error.
+            </p>
+          </div>
+          <button
+            onClick={retry}
+            className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 border border-gray-300 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // PAN mismatch
   if (step === 'pan_mismatch' && panMismatch) {

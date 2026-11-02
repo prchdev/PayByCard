@@ -501,6 +501,7 @@ async function sendKycRequestEmails(supabase: any, payment: any): Promise<boolea
           full_name: receiverName,
           email: receiverEmail || "",
           mobile: receiverMobile,
+          pan_number: beneficiaryDetails.pan_number || null,
           sender_name: senderName,
           category_name: categoryName,
           token: token,

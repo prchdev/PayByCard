@@ -933,7 +933,20 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const expectedPan = normalizePan(record.pan_number);
+      // Fetch beneficiary details from the payment so we can validate the KYC
+      // name/PAN against the actual beneficiary, not just the onboarding record
+      // (which may have been created without a PAN).
+      let beneficiaryDetails: { full_name?: string; pan_number?: string } | null = null;
+      if (record.payment_id) {
+        const { data: pay } = await supabase
+          .from('payments')
+          .select('beneficiary_details')
+          .eq('id', record.payment_id)
+          .maybeSingle();
+        beneficiaryDetails = pay?.beneficiary_details || null;
+      }
+
+      const expectedPan = normalizePan(record.pan_number || beneficiaryDetails?.pan_number || '');
       const fetchedPan = normalizePan(kycData.pan_number);
       const panMatches = !expectedPan || expectedPan === fetchedPan;
 
@@ -944,6 +957,41 @@ Deno.serve(async (req: Request) => {
             success: false, autoApproved: false, panMismatch: true,
             expectedPan, fetchedPan, kycData,
             error: `PAN mismatch: expected ${expectedPan}, got ${fetchedPan}. Please use Manual KYC.`,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // ── Beneficiary name match: the KYC name must match the beneficiary name ──
+      const beneficiaryName = normalize(beneficiaryDetails?.full_name || record.full_name || '');
+      const kycName = normalize(kycData.full_name || '');
+      const namePartsMatch = beneficiaryName && kycName && (
+        beneficiaryName === kycName ||
+        // Allow partial match: last name + first name tokens overlap (handles
+        // middle-name differences like "Shraddha Pravin Chalke" vs "SHRADDHA CHALKE")
+        (() => {
+          const beneParts = beneficiaryName.split(' ').filter(Boolean);
+          const kycParts = kycName.split(' ').filter(Boolean);
+          if (beneParts.length < 2 || kycParts.length < 2) return false;
+          const beneLast = beneParts[beneParts.length - 1];
+          const kycLast = kycParts[kycParts.length - 1];
+          if (beneLast !== kycLast) return false; // last name must match
+          const beneFirst = beneParts[0];
+          const kycFirst = kycParts[0];
+          return beneFirst === kycFirst; // first name must match too
+        })()
+      );
+
+      if (!namePartsMatch) {
+        if (record.mobile) await sendSms(supabaseUrl, supabaseKey, record.mobile, 'kyc_rejected');
+        return new Response(
+          JSON.stringify({
+            success: false, autoApproved: false,
+            nameMismatch: true,
+            expectedName: beneficiaryDetails?.full_name || record.full_name || '',
+            fetchedName: kycData.full_name || '',
+            kycData,
+            error: `Name mismatch: the KYC name "${kycData.full_name}" does not match the beneficiary name "${beneficiaryDetails?.full_name || record.full_name}". Only the beneficiary can complete this KYC.`,
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

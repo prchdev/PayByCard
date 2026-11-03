@@ -32,6 +32,7 @@ import Dashboard from './pages/Dashboard';
 import ChangePassword from './pages/ChangePassword';
 import MyBeneficiaries from './pages/MyBeneficiaries';
 import MyCards from './pages/MyCards';
+import BusinessIntegration from './pages/BusinessIntegration';
 import MyBankAccounts from './pages/MyBankAccounts';
 import MakePayment from './pages/MakePayment';
 import PaymentGateway from './pages/PaymentGateway';
@@ -147,6 +148,7 @@ function App() {
             <Route path="/my-bank-accounts" element={<MyBankAccounts />} />
             <Route path="/my-beneficiaries" element={<MyBeneficiaries />} />
             <Route path="/my-cards" element={<MyCards />} />
+            <Route path="/business-integration" element={<BusinessIntegration />} />
             <Route path="/make-payment" element={<MakePayment />} />
             <Route path="/my-transactions" element={<MyTransactions />} />
             <Route path="/help-support" element={<HelpSupport />} />

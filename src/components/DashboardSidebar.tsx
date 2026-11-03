@@ -11,6 +11,7 @@ import {
   Landmark,
   History,
   CreditCard,
+  Briefcase,
 } from 'lucide-react';
 import { useSessionTimeout } from '../hooks/useSessionTimeout';
 import SessionTimeoutModal from './SessionTimeoutModal';
@@ -18,7 +19,7 @@ import SessionTimeoutModal from './SessionTimeoutModal';
 interface DashboardSidebarProps {
   userId: string;
   userEmail: string;
-  currentPage: 'dashboard' | 'kyc' | 'beneficiaries' | 'bank-accounts' | 'change-password' | 'settings' | 'help' | 'make-payment' | 'my-transactions' | 'my-cards';
+  currentPage: 'dashboard' | 'kyc' | 'beneficiaries' | 'bank-accounts' | 'change-password' | 'settings' | 'help' | 'make-payment' | 'my-transactions' | 'my-cards' | 'business-integration';
   isMobileMenuOpen: boolean;
   onClose: () => void;
   onLogout: () => void;
@@ -92,6 +93,19 @@ export default function DashboardSidebar({
       path: '/my-cards',
       onClick: () => handleNavigation('/my-cards', 'my-cards')
     },
+  ];
+
+  const businessMenuItems = [
+    {
+      icon: Briefcase,
+      label: 'Apply For Business Integration',
+      page: 'business-integration',
+      path: '/business-integration',
+      onClick: () => handleNavigation('/business-integration', 'business-integration')
+    },
+  ];
+
+  const accountMenuItems = [
     {
       icon: Lock,
       label: 'Change Password',
@@ -137,6 +151,56 @@ export default function DashboardSidebar({
             return (
               <button
                 key={index}
+                onClick={item.onClick}
+                className={`
+                  w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors
+                  ${active
+                    ? 'bg-gradient-to-r from-purple-50 to-violet-50 text-[#8c76f0] border-2 border-[#8c76f0]'
+                    : 'text-gray-700 hover:bg-gray-50 border-2 border-transparent'
+                  }
+                `}
+              >
+                <item.icon className="w-5 h-5" />
+                {item.label}
+              </button>
+            );
+          })}
+
+          {/* Business Section Separator */}
+          <div className="pt-5 pb-1">
+            <p className="px-4 text-xs font-semibold uppercase tracking-wider text-gray-400">Business</p>
+          </div>
+
+          {businessMenuItems.map((item, index) => {
+            const active = currentPage === item.page;
+            return (
+              <button
+                key={`biz-${index}`}
+                onClick={item.onClick}
+                className={`
+                  w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors
+                  ${active
+                    ? 'bg-gradient-to-r from-purple-50 to-violet-50 text-[#8c76f0] border-2 border-[#8c76f0]'
+                    : 'text-gray-700 hover:bg-gray-50 border-2 border-transparent'
+                  }
+                `}
+              >
+                <item.icon className="w-5 h-5" />
+                {item.label}
+              </button>
+            );
+          })}
+
+          {/* Account Section Separator */}
+          <div className="pt-5 pb-1">
+            <p className="px-4 text-xs font-semibold uppercase tracking-wider text-gray-400">Account</p>
+          </div>
+
+          {accountMenuItems.map((item, index) => {
+            const active = currentPage === item.page;
+            return (
+              <button
+                key={`acct-${index}`}
                 onClick={item.onClick}
                 className={`
                   w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors

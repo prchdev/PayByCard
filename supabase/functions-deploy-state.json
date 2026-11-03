@@ -640,6 +640,14 @@
     "waf-validate": {
       "hasChanged": false,
       "hash": "78d21943b3213525f4d2f6ab768cc10144e1bb96f60cab01efce391730ff80ec"
+    },
+    "get-business-integration": {
+      "hasChanged": false,
+      "hash": "faab3489066ee44863d90e8bc0dbe8df463c5c963935f589c4cc7723047ccd11d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+    },
+    "save-business-integration": {
+      "hasChanged": false,
+      "hash": "58a902c085c13ce11f72e759b87660053387a9f38604b0c5cfd34fbbbe429c31d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     }
   }
 }

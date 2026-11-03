@@ -34,13 +34,6 @@ const COMPANY_TYPES = [
   'Public Limited Company',
 ];
 
-const COMPANY_TYPES_REQUIRING_INC_CERT = [
-  'Limited Liability Partnership (LLP)',
-  'Private Limited Company',
-  'One Person Company (OPC)',
-  'Public Limited Company',
-];
-
 interface BusinessIntegrationApplication {
   id: string;
   company_type: string;
@@ -199,7 +192,6 @@ export default function BusinessIntegration() {
     }
   };
 
-  const requiresIncCert = COMPANY_TYPES_REQUIRING_INC_CERT.includes(companyType);
   const requiresGstCert = gstNumber.trim().length > 0;
 
   const isLocked = application != null && (application.status === 'pending' || application.status === 'in_review' || application.status === 'approved');
@@ -237,8 +229,8 @@ export default function BusinessIntegration() {
     if (!businessPhone.trim()) { setError('Business Phone Number is required.'); return; }
     if (!/^[0-9]{10}$/.test(businessPhone)) { setError('Business Phone Number must be exactly 10 digits.'); return; }
 
-    if (requiresIncCert && !incCertFile && !application?.incorporation_certificate_url) {
-      setError('Business / Company Incorporation Certificate is required for ' + companyType + '.'); return;
+    if (!incCertFile && !application?.incorporation_certificate_url) {
+      setError('Business / Company Incorporation Certificate is required.'); return;
     }
     if (!companyPanFile && !application?.company_pan_photo_url) {
       setError('Company PAN Photo is required.'); return;
@@ -619,7 +611,7 @@ export default function BusinessIntegration() {
                   file={incCertFile}
                   onChange={setIncCertFile}
                   disabled={isLocked && !isRejected}
-                  required={requiresIncCert}
+                  required={true}
                 />
                 <BizFileUpload
                   label="Company PAN Photo"

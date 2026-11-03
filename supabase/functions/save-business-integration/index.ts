@@ -78,6 +78,9 @@ serveUser(async (req: Request) => {
     if (!businessPhone?.trim() || !/^[0-9]{10}$/.test(businessPhone)) {
       return new Response(JSON.stringify({ error: "Business Phone Number must be exactly 10 digits." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    if (!incorporationCertificateUrl) {
+      return new Response(JSON.stringify({ error: "Business / Company Incorporation Certificate is required." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     if (!companyPanPhotoUrl) {
       return new Response(JSON.stringify({ error: "Company PAN Photo is required." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

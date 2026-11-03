@@ -98,7 +98,7 @@ export default function DashboardSidebar({
   const businessMenuItems = [
     {
       icon: Briefcase,
-      label: 'Apply For Business Integration',
+      label: 'Apply for API Access',
       page: 'business-integration',
       path: '/business-integration',
       onClick: () => handleNavigation('/business-integration', 'business-integration')

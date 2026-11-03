@@ -376,7 +376,7 @@ export default function BusinessIntegration() {
             <Briefcase className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Apply For Business Integration</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Apply for API Access</h1>
             <p className="text-sm text-gray-500">Unlock PayByCard's full business capabilities</p>
           </div>
         </div>

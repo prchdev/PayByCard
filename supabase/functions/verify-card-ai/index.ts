@@ -33,9 +33,9 @@ function nameMatchScore(name1: string, name2: string): number {
  * verify-card-ai
  *
  * Submits the card for admin review. No automatic AI verification is performed.
- * The cardholder name (entered manually by the user) and last 4 digits are
- * compared against the user's KYC name and gateway-recorded last 4 digits,
- * and the comparison result is stored for the admin to review.
+ * The admin will enter the cardholder name from the uploaded photo and verify
+ * that the last 4 digits match the transaction and that the name matches the
+ * user's KYC profile.
  */
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -101,13 +101,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!card.name_on_card || card.name_on_card.trim().length < 4) {
-      return new Response(
-        JSON.stringify({ error: "Please enter the name on card before submitting for verification" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
     const dbLastFour = card.card_last_four;
     const last4Match = !!(dbLastFour && dbLastFour !== "????" && dbLastFour.length === 4);
 
@@ -129,16 +122,12 @@ Deno.serve(async (req: Request) => {
       .join(" ")
       .trim();
 
-    const nameScore = nameMatchScore(card.name_on_card, kycName);
-
     const reviewResult = {
-      name_on_card: card.name_on_card,
       kyc_name: kycName,
-      name_match_score: nameScore,
       last4_match: last4Match,
       db_last_four: dbLastFour,
       submitted_at: new Date().toISOString(),
-      note: "Submitted for admin review. Admin to verify last 4 digits match and name match.",
+      note: "Submitted for admin review. Admin to enter name on card from photo, verify last 4 digits match and name match.",
     };
 
     await supabase.from("user_cards").update({

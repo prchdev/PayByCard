@@ -231,7 +231,7 @@
     },
     "admin-verify-card": {
       "hasChanged": false,
-      "hash": "19c7f8170aa67f1676bbbd6fcc0d5bd54f3e91f57d52206b9975e00542624613d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "3259223ad5d62d904d1a3130cd8882d5951fda3c65af81bbe6659b71d2f88511d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "admin-verify-login-otp": {
       "hasChanged": false,
@@ -639,7 +639,7 @@
     },
     "verify-card-ai": {
       "hasChanged": false,
-      "hash": "17dc4a6ce697821dc4156dfb6057b3d48f1751ec33dae04f0665a890255c466bd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "b3abee78c99a78b8909de3e72e20d36fb2df3b6e70df0c2d0d8590170c4b8921d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "verify-otp": {
       "hasChanged": false,

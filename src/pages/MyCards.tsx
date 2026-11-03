@@ -87,8 +87,6 @@ export default function MyCards() {
   const [isUploading, setIsUploading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
-  const [cardNameInput, setCardNameInput] = useState('');
-  const [nameError, setNameError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -124,8 +122,6 @@ export default function MyCards() {
   const handleUploadClick = (card: UserCard, side: 'front' | 'back') => {
     setSelectedCard(card);
     setUploadSide(side);
-    setCardNameInput(card.name_on_card || '');
-    setNameError('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -152,9 +148,6 @@ export default function MyCards() {
       formData.append('cardId', selectedCard.id);
       formData.append('side', uploadSide);
       formData.append('file', file);
-      if (uploadSide === 'front' && cardNameInput.trim()) {
-        formData.append('extractedName', cardNameInput.trim());
-      }
 
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-card-photo`, {
         method: 'POST',
@@ -168,12 +161,7 @@ export default function MyCards() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
 
-      if (uploadSide === 'front' && cardNameInput.trim()) {
-        setSuccess(`Front photo uploaded. Name on card: ${cardNameInput.trim()}`);
-        setCardNameInput('');
-      } else {
-        setSuccess('Back photo uploaded successfully');
-      }
+      setSuccess(`${uploadSide === 'front' ? 'Front' : 'Back'} photo uploaded successfully`);
       setSelectedCard(null);
       await fetchCards();
     } catch (err: any) {
@@ -185,10 +173,6 @@ export default function MyCards() {
 
   const handleVerify = async (card: UserCard) => {
     if (!userId) return;
-    if (!card.name_on_card || card.name_on_card.trim().length < 4) {
-      setNameError('Please enter the name on card before verifying.');
-      return;
-    }
     try {
       setIsVerifying(true);
       setError('');
@@ -240,7 +224,7 @@ export default function MyCards() {
             <p className="text-sm text-blue-800 leading-relaxed">
               Upload a <strong>masked photo</strong> of your card where only the <strong>last 4 digits</strong> and the <strong>name on card</strong> are clearly visible.
               All other digits, expiry date, and CVV must be <strong>masked/covered</strong>.
-              Enter the name on card manually when uploading the front photo. An admin will verify that the last 4 digits match the transaction and that the name matches your KYC profile.
+              An admin will review the uploaded photos, enter the name on card, verify that the last 4 digits match the transaction, and confirm the name matches your KYC profile.
             </p>
             <div className="mt-3 flex items-center gap-4 text-sm text-blue-700">
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4" /> Last 4 digits visible</span>
@@ -426,25 +410,6 @@ export default function MyCards() {
                 Ensure only last 4 digits and name are visible. Mask all other digits, expiry, and CVV before photographing.
               </p>
             </div>
-            {uploadSide === 'front' && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Name on Card <span className="text-red-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={cardNameInput}
-                  onChange={(e) => {
-                    setCardNameInput(e.target.value.replace(/[^A-Za-z\s]/g, ''));
-                    setNameError('');
-                  }}
-                  maxLength={50}
-                  placeholder="Enter the name exactly as printed on the card"
-                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl text-sm focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 outline-none transition-colors"
-                />
-                {nameError && <p className="text-xs text-red-600 mt-1">{nameError}</p>}
-              </div>
-            )}
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}

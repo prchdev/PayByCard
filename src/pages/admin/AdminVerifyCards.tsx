@@ -76,6 +76,7 @@ export default function AdminVerifyCards() {
   const [isThirdParty, setIsThirdParty] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [success, setSuccess] = useState('');
+  const [adminCardName, setAdminCardName] = useState('');
 
   useEffect(() => {
     if (!adminId) {
@@ -124,6 +125,7 @@ export default function AdminVerifyCards() {
           action,
           isThirdParty: action === 'approve' ? isThirdParty : false,
           rejectionReason: action === 'reject' ? rejectionReason : undefined,
+          adminCardName: action === 'approve' ? adminCardName.trim() : undefined,
         }),
       });
       const data = await res.json();
@@ -133,6 +135,7 @@ export default function AdminVerifyCards() {
       setSelectedCard(null);
       setIsThirdParty(false);
       setRejectionReason('');
+      setAdminCardName('');
       await fetchCards();
     } catch (err: any) {
       setError(err.message || 'Action failed');
@@ -296,6 +299,7 @@ export default function AdminVerifyCards() {
                               setSelectedCard(card);
                               setIsThirdParty(card.status === 'third_party');
                               setRejectionReason('');
+                              setAdminCardName(card.name_on_card || '');
                             }}
                             disabled={!canEdit && card.status !== 'submitted' && card.status !== 'not_submitted' && card.status !== 'third_party'}
                             className="px-3 py-1.5 text-sm font-medium text-[#8c76f0] hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -414,10 +418,38 @@ export default function AdminVerifyCards() {
                 </div>
               )}
 
-              {/* Name on card */}
+              {/* Name on card — admin enters from photo */}
               <div className="mb-6">
-                <p className="text-sm font-medium text-gray-700">Name on Card</p>
-                <p className="text-gray-900 mt-1">{selectedCard.name_on_card || 'Not provided'}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Name on Card <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={adminCardName}
+                  onChange={(e) => setAdminCardName(e.target.value.replace(/[^A-Za-z\s]/g, ''))}
+                  maxLength={50}
+                  placeholder="Read the name from the card photo and enter it here"
+                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl text-sm focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 outline-none transition-colors"
+                />
+                {(() => {
+                  const kycName = selectedCard.user?.full_name || '';
+                  const score = (() => {
+                    if (!adminCardName.trim() || !kycName.trim()) return 0;
+                    const t1 = new Set(adminCardName.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter((w) => w.length >= 2));
+                    const t2 = new Set(kycName.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter((w) => w.length >= 2));
+                    if (t1.size === 0 || t2.size === 0) return 0;
+                    let m = 0;
+                    t1.forEach((t) => { if (t2.has(t)) m++; });
+                    return m / Math.max(t1.size, t2.size);
+                  })();
+                  const pct = Math.round(score * 100);
+                  return (
+                    <div className="mt-2 flex items-center gap-4 text-sm">
+                      <span className="text-gray-500">KYC Name: <span className="font-medium text-gray-700">{kycName}</span></span>
+                      <span className={`font-medium ${pct >= 50 ? 'text-green-600' : 'text-red-600'}`}>Name Match: {pct}%</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Actions */}

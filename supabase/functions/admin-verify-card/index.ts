@@ -8,6 +8,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-admin-session",
 };
 
+function tokenizeName(name: string): Set<string> {
+  return new Set(
+    name.toLowerCase()
+      .replace(/[^a-z\s]/g, "")
+      .split(/\s+/)
+      .filter((w) => w.length >= 2),
+  );
+}
+
+function nameMatchScore(name1: string, name2: string): number {
+  if (!name1 || !name2) return 0;
+  const tokens1 = tokenizeName(name1);
+  const tokens2 = tokenizeName(name2);
+  if (tokens1.size === 0 || tokens2.size === 0) return 0;
+  let matches = 0;
+  for (const t of tokens1) {
+    if (tokens2.has(t)) matches++;
+  }
+  return matches / Math.max(tokens1.size, tokens2.size);
+}
+
 /**
  * admin-verify-card
  *
@@ -32,7 +53,7 @@ serveAdmin(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { adminId, cardId, action, isThirdParty, rejectionReason } = body;
+    const { adminId, cardId, action, isThirdParty, rejectionReason, adminCardName } = body;
 
     if (!adminId || !cardId || !action) {
       return new Response(
@@ -44,6 +65,13 @@ serveAdmin(async (req: Request) => {
     if (!["approve", "reject"].includes(action)) {
       return new Response(
         JSON.stringify({ error: "action must be 'approve' or 'reject'" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (action === "approve" && (!adminCardName || adminCardName.trim().length < 4)) {
+      return new Response(
+        JSON.stringify({ error: "Admin must enter the name on card (at least 4 characters) before approving" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -83,21 +111,50 @@ serveAdmin(async (req: Request) => {
 
     const now = new Date().toISOString();
     let newStatus: string;
+    let cardNameUpdate: string | null = null;
+    let matchScore: number | null = null;
 
     if (action === "approve") {
       newStatus = isThirdParty ? "third_party" : "verified";
+      cardNameUpdate = adminCardName.trim();
+      // Compute name match score against KYC name
+      const { data: user } = await supabase
+        .from("users")
+        .select("first_name, middle_name, last_name")
+        .eq("id", card.user_id)
+        .maybeSingle();
+      const kycName = user ? [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(" ").trim() : "";
+      matchScore = nameMatchScore(cardNameUpdate, kycName);
+
+      // Update ai_verification_result with admin-entered name and score
+      const existingResult = card.ai_verification_result || {};
+      const updatedResult = {
+        ...existingResult,
+        name_on_card: cardNameUpdate,
+        kyc_name: kycName,
+        name_match_score: matchScore,
+        admin_entered_name: true,
+        admin_verified_at: now,
+      };
+      await supabase.from("user_cards").update({
+        status: newStatus,
+        name_on_card: cardNameUpdate,
+        admin_verified_by: adminId,
+        admin_verified_at: now,
+        admin_rejection_reason: null,
+        ai_verification_result: updatedResult,
+        updated_at: now,
+      }).eq("id", cardId);
     } else {
       newStatus = "rejected";
+      await supabase.from("user_cards").update({
+        status: newStatus,
+        admin_verified_by: adminId,
+        admin_verified_at: now,
+        admin_rejection_reason: rejectionReason || "Rejected by admin",
+        updated_at: now,
+      }).eq("id", cardId);
     }
-
-    // Update card
-    await supabase.from("user_cards").update({
-      status: newStatus,
-      admin_verified_by: adminId,
-      admin_verified_at: now,
-      admin_rejection_reason: action === "reject" ? (rejectionReason || "Rejected by admin") : null,
-      updated_at: now,
-    }).eq("id", cardId);
 
     // Update card_payment_links
     await supabase.from("card_payment_links")

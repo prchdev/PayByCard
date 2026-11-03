@@ -37,6 +37,12 @@ serveUser(async (req: Request) => {
       companyPanPhotoUrl,
       gstCertificateUrl,
       loaUrl,
+      bankAccountName,
+      bankIfsc,
+      bankAccountNumber,
+      bankAccountType,
+      cancelChequeUrl,
+      bankStatementUrl,
     } = body;
 
     if (!userId) {
@@ -78,6 +84,31 @@ serveUser(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Letter of Authorization (LoA) is required." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Bank details validation
+    if (!bankAccountName?.trim()) {
+      return new Response(JSON.stringify({ error: "Bank Account Name is required." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (!bankIfsc?.trim() || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfsc.toUpperCase())) {
+      return new Response(JSON.stringify({ error: "Valid IFSC code is required (format: AAAA0XXXXXX)." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (!bankAccountNumber?.trim()) {
+      return new Response(JSON.stringify({ error: "Bank Account Number is required." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const cleanAcctNum = bankAccountNumber.replace(/[\s-]/g, '');
+    if (cleanAcctNum.length < 6 || cleanAcctNum.length > 20) {
+      return new Response(JSON.stringify({ error: "Bank Account Number must be 6–20 alphanumeric characters." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const VALID_ACCOUNT_TYPES = ["Saving", "Current", "NRE", "NRO"];
+    if (!bankAccountType || !VALID_ACCOUNT_TYPES.includes(bankAccountType)) {
+      return new Response(JSON.stringify({ error: "Valid Account Type is required." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (!cancelChequeUrl) {
+      return new Response(JSON.stringify({ error: "Cancelled Cheque is required." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (!bankStatementUrl) {
+      return new Response(JSON.stringify({ error: "Bank Account Statement is required." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -113,6 +144,12 @@ serveUser(async (req: Request) => {
       company_pan_photo_url: companyPanPhotoUrl || null,
       gst_certificate_url: gstCertificateUrl || null,
       loa_url: loaUrl || null,
+      bank_account_name: bankAccountName.trim(),
+      bank_ifsc: bankIfsc.toUpperCase(),
+      bank_account_number: bankAccountNumber.trim(),
+      bank_account_type: bankAccountType,
+      cancel_cheque_url: cancelChequeUrl || null,
+      bank_statement_url: bankStatementUrl || null,
       status: "pending",
       rejection_reason: null,
       reviewed_by_admin_id: null,

@@ -17,6 +17,8 @@ import {
   X,
   FileText as FileIcon,
   ExternalLink,
+  Building2,
+  CheckCircle2,
 } from 'lucide-react';
 import { useDashboardContext } from '../hooks/useDashboardContext';
 import { uploadKycFile } from './kyc/useKycData';
@@ -53,6 +55,12 @@ interface BusinessIntegrationApplication {
   company_pan_photo_url: string | null;
   gst_certificate_url: string | null;
   loa_url: string | null;
+  bank_account_name: string | null;
+  bank_ifsc: string | null;
+  bank_account_number: string | null;
+  bank_account_type: string | null;
+  cancel_cheque_url: string | null;
+  bank_statement_url: string | null;
   status: 'pending' | 'in_review' | 'approved' | 'rejected';
   rejection_reason: string | null;
   submitted_at: string;
@@ -112,6 +120,21 @@ export default function BusinessIntegration() {
   const [gstCertFile, setGstCertFile] = useState<File | null>(null);
   const [loaFile, setLoaFile] = useState<File | null>(null);
 
+  // Bank fields
+  const [bankAccountName, setBankAccountName] = useState('');
+  const [bankIfsc, setBankIfsc] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankAccountType, setBankAccountType] = useState('Current');
+  const [cancelChequeFile, setCancelChequeFile] = useState<File | null>(null);
+  const [bankStatementFile, setBankStatementFile] = useState<File | null>(null);
+
+  // IFSC lookup
+  const [ifscFetching, setIfscFetching] = useState(false);
+  const [ifscBankName, setIfscBankName] = useState('');
+  const [ifscBranchName, setIfscBranchName] = useState('');
+  const [ifscError, setIfscError] = useState<string | null>(null);
+  const [ifscVerified, setIfscVerified] = useState(false);
+
   const sessionHeader = sessionStorage.getItem('pbc_session') || localStorage.getItem('pbc_session') || '';
 
   useEffect(() => {
@@ -149,6 +172,14 @@ export default function BusinessIntegration() {
         setBusinessAddress(app.business_address);
         setBusinessEmail(app.business_email);
         setBusinessPhone(app.business_phone);
+        setBankAccountName(app.bank_account_name ?? '');
+        setBankIfsc(app.bank_ifsc ?? '');
+        setBankAccountNumber(app.bank_account_number ?? '');
+        setBankAccountType(app.bank_account_type ?? 'Current');
+        if (app.bank_ifsc) {
+          setIfscVerified(true);
+          setIfscBankName(app.bank_ifsc);
+        }
         // If approved, go straight to step 2 (read-only)
         // If rejected, go to step 2 with editable form
         // If pending/in_review, go to step 2 (read-only)
@@ -221,6 +252,19 @@ export default function BusinessIntegration() {
     if (!validateFileSize(gstCertFile, 1)) { setError('GST Certificate file must be less than 1 MB.'); return; }
     if (!validateFileSize(loaFile, 1)) { setError('LoA file must be less than 1 MB.'); return; }
 
+    // Bank details validation
+    if (!bankAccountName.trim()) { setError('Bank Account Name is required.'); return; }
+    if (!bankIfsc.trim() || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfsc.toUpperCase())) { setError('Valid IFSC code is required (format: AAAA0XXXXXX).'); return; }
+    if (!ifscVerified) { setError('Please verify the IFSC code before submitting.'); return; }
+    if (!bankAccountNumber.trim()) { setError('Bank Account Number is required.'); return; }
+    const cleanAcctNum = bankAccountNumber.replace(/[\s-]/g, '');
+    if (cleanAcctNum.length < 6 || cleanAcctNum.length > 20) { setError('Bank Account Number must be 6–20 alphanumeric characters.'); return; }
+    if (!['Saving', 'Current', 'NRE', 'NRO'].includes(bankAccountType)) { setError('Please select a valid Account Type.'); return; }
+    if (!cancelChequeFile && !application?.cancel_cheque_url) { setError('Cancelled Cheque is required.'); return; }
+    if (!bankStatementFile && !application?.bank_statement_url) { setError('Bank Account Statement is required.'); return; }
+    if (!validateFileSize(cancelChequeFile, 1)) { setError('Cancelled Cheque file must be less than 1 MB.'); return; }
+    if (!validateFileSize(bankStatementFile, 1)) { setError('Bank Statement file must be less than 1 MB.'); return; }
+
     setSaving(true);
     try {
       let incCertUrl = application?.incorporation_certificate_url ?? null;
@@ -232,6 +276,11 @@ export default function BusinessIntegration() {
       if (companyPanFile) companyPanUrl = await uploadKycFile(companyPanFile, userId!, 'biz_company_pan');
       if (gstCertFile) gstCertUrl = await uploadKycFile(gstCertFile, userId!, 'biz_gst_certificate');
       if (loaFile) loaUrl = await uploadKycFile(loaFile, userId!, 'biz_loa');
+
+      let cancelChequeUrl = application?.cancel_cheque_url ?? null;
+      let bankStatementUrl = application?.bank_statement_url ?? null;
+      if (cancelChequeFile) cancelChequeUrl = await uploadKycFile(cancelChequeFile, userId!, 'biz_cancel_cheque');
+      if (bankStatementFile) bankStatementUrl = await uploadKycFile(bankStatementFile, userId!, 'biz_bank_statement');
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/save-business-integration`, {
         method: 'POST',
@@ -254,6 +303,12 @@ export default function BusinessIntegration() {
           companyPanPhotoUrl: companyPanUrl,
           gstCertificateUrl: gstCertUrl,
           loaUrl: loaUrl,
+          bankAccountName: bankAccountName.trim(),
+          bankIfsc: bankIfsc.toUpperCase(),
+          bankAccountNumber: bankAccountNumber.trim(),
+          bankAccountType,
+          cancelChequeUrl,
+          bankStatementUrl,
         }),
       });
 
@@ -271,6 +326,32 @@ export default function BusinessIntegration() {
 
   const inputClass = 'w-full px-4 py-2.5 rounded-xl border-2 border-gray-300 text-sm focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 outline-none transition-colors';
   const lockedClass = `${inputClass} bg-gray-50 text-gray-500 cursor-not-allowed`;
+
+  const fetchIfsc = async (ifscCode: string) => {
+    if (ifscCode.length !== 11) return;
+    setIfscFetching(true);
+    setIfscError(null);
+    setIfscVerified(false);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/validate-ifsc`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ifsc: ifscCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Invalid IFSC code');
+      setIfscBankName(data.bank);
+      setIfscBranchName(data.branch);
+      setIfscVerified(true);
+    } catch (e) {
+      setIfscError(e instanceof Error ? e.message : 'Failed to verify IFSC');
+      setIfscBankName('');
+      setIfscBranchName('');
+      setIfscVerified(false);
+    } finally {
+      setIfscFetching(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -566,6 +647,126 @@ export default function BusinessIntegration() {
                   disabled={isLocked && !isRejected}
                   required
                 />
+              </div>
+
+              {/* Company Bank Details Section */}
+              <div className="pt-2">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                  <Building2 className="w-5 h-5 text-[#8c76f0]" />
+                  <h4 className="font-semibold text-gray-900">Company Bank Details</h4>
+                </div>
+
+                {/* Account Name */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Account Name <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={bankAccountName}
+                    onChange={(e) => setBankAccountName(e.target.value.replace(/[^A-Za-z0-9&.\- ]/g, ''))}
+                    disabled={isLocked && !isRejected}
+                    maxLength={100}
+                    placeholder="Name as per bank account"
+                    className={isLocked && !isRejected ? lockedClass : inputClass}
+                  />
+                </div>
+
+                {/* IFSC + Account Number */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      IFSC <span className="text-red-600">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={bankIfsc}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 11);
+                          setBankIfsc(val);
+                          setIfscVerified(false);
+                          setIfscBankName('');
+                          setIfscBranchName('');
+                          setIfscError(null);
+                          if (val.length === 11) fetchIfsc(val);
+                        }}
+                        disabled={isLocked && !isRejected}
+                        maxLength={11}
+                        placeholder="AAAA0XXXXXX"
+                        className={`${isLocked && !isRejected ? lockedClass : inputClass} font-mono tracking-wider pr-10`}
+                      />
+                      {ifscFetching && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[#8c76f0]" />
+                      )}
+                      {!ifscFetching && ifscVerified && (
+                        <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                      )}
+                    </div>
+                    {ifscVerified && (
+                      <p className="mt-1.5 text-xs text-green-600">
+                        {ifscBankName} — {ifscBranchName}
+                      </p>
+                    )}
+                    {ifscError && (
+                      <p className="mt-1.5 text-xs text-red-600">{ifscError}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Account Number <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={bankAccountNumber}
+                      onChange={(e) => setBankAccountNumber(e.target.value.replace(/[^A-Za-z0-9\- ]/g, ''))}
+                      disabled={isLocked && !isRejected}
+                      maxLength={20}
+                      placeholder="6–20 digit account number"
+                      className={`${isLocked && !isRejected ? lockedClass : inputClass} font-mono`}
+                    />
+                  </div>
+                </div>
+
+                {/* Account Type */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Type of Account <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    value={bankAccountType}
+                    onChange={(e) => setBankAccountType(e.target.value)}
+                    disabled={isLocked && !isRejected}
+                    className={`${inputClass} ${isLocked && !isRejected ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
+                  >
+                    <option value="Current">Current</option>
+                    <option value="Saving">Saving</option>
+                    <option value="NRE">NRE</option>
+                    <option value="NRO">NRO</option>
+                  </select>
+                </div>
+
+                {/* Bank file uploads */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <BizFileUpload
+                    label="Cancelled Cheque"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    existingUrl={application?.cancel_cheque_url ?? null}
+                    file={cancelChequeFile}
+                    onChange={setCancelChequeFile}
+                    disabled={isLocked && !isRejected}
+                    required
+                  />
+                  <BizFileUpload
+                    label="Bank Account Statement"
+                    accept=".pdf"
+                    existingUrl={application?.bank_statement_url ?? null}
+                    file={bankStatementFile}
+                    onChange={setBankStatementFile}
+                    disabled={isLocked && !isRejected}
+                    required
+                  />
+                </div>
               </div>
 
               {error && (

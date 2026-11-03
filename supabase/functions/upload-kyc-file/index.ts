@@ -28,6 +28,12 @@ const ALLOWED_FILE_KEYS = new Set([
   "cancelled_cheque",
   "business_photo",
   "additional_document",
+  "biz_inc_certificate",
+  "biz_company_pan",
+  "biz_gst_certificate",
+  "biz_loa",
+  "biz_cancel_cheque",
+  "biz_bank_statement",
 ]);
 
 const ALLOWED_MIME_TYPES = new Set([

@@ -61,6 +61,7 @@ interface BusinessIntegrationApplication {
   bank_account_type: string | null;
   cancel_cheque_url: string | null;
   bank_statement_url: string | null;
+  bank_statement_password: string | null;
   status: 'pending' | 'in_review' | 'approved' | 'rejected';
   rejection_reason: string | null;
   submitted_at: string;
@@ -127,6 +128,7 @@ export default function BusinessIntegration() {
   const [bankAccountType, setBankAccountType] = useState('Current');
   const [cancelChequeFile, setCancelChequeFile] = useState<File | null>(null);
   const [bankStatementFile, setBankStatementFile] = useState<File | null>(null);
+  const [bankStatementPassword, setBankStatementPassword] = useState('');
 
   // IFSC lookup
   const [ifscFetching, setIfscFetching] = useState(false);
@@ -176,6 +178,7 @@ export default function BusinessIntegration() {
         setBankIfsc(app.bank_ifsc ?? '');
         setBankAccountNumber(app.bank_account_number ?? '');
         setBankAccountType(app.bank_account_type ?? 'Current');
+        setBankStatementPassword(app.bank_statement_password ?? '');
         if (app.bank_ifsc) {
           setIfscVerified(true);
           setIfscBankName(app.bank_ifsc);
@@ -309,6 +312,7 @@ export default function BusinessIntegration() {
           bankAccountType,
           cancelChequeUrl,
           bankStatementUrl,
+          bankStatementPassword: bankStatementPassword.trim() || undefined,
         }),
       });
 
@@ -765,6 +769,23 @@ export default function BusinessIntegration() {
                     onChange={setBankStatementFile}
                     disabled={isLocked && !isRejected}
                     required
+                  />
+                </div>
+
+                {/* Bank statement password (optional) */}
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Bank Statement Password
+                    <span className="text-gray-400 font-normal"> (if the statement is password-protected)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={bankStatementPassword}
+                    onChange={(e) => setBankStatementPassword(e.target.value)}
+                    disabled={isLocked && !isRejected}
+                    maxLength={50}
+                    placeholder="Enter password if your statement PDF is protected"
+                    className={isLocked && !isRejected ? lockedClass : inputClass}
                   />
                 </div>
               </div>

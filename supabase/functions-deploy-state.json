@@ -515,7 +515,7 @@
     },
     "save-business-integration": {
       "hasChanged": false,
-      "hash": "b9f08ff0e00e85aa0fc043dde9f0d5fc64de7361a1351d06e363f17cc2d76173d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "643f2cc550a95bc17444768e0ff875291c0e15d7e3f85624d077658491fcc3c3d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "save-card-details": {
       "hasChanged": false,
@@ -611,7 +611,7 @@
     },
     "upload-kyc-file": {
       "hasChanged": false,
-      "hash": "f8f233452157ad322632085d565ddf9ab304377a6183bb36f2f3f6e6a4d0081ad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "50e7b853f4026815d6585ec0f792ce1dc74adef5d8f311fda98df088fad57a6dd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
     },
     "upload-ticket-attachment": {
       "hasChanged": false,

@@ -43,6 +43,7 @@ serveUser(async (req: Request) => {
       bankAccountType,
       cancelChequeUrl,
       bankStatementUrl,
+      bankStatementPassword,
     } = body;
 
     if (!userId) {
@@ -150,6 +151,7 @@ serveUser(async (req: Request) => {
       bank_account_type: bankAccountType,
       cancel_cheque_url: cancelChequeUrl || null,
       bank_statement_url: bankStatementUrl || null,
+      bank_statement_password: bankStatementPassword?.trim() || null,
       status: "pending",
       rejection_reason: null,
       reviewed_by_admin_id: null,

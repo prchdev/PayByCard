@@ -66,8 +66,8 @@ serveUser(async (req: Request) => {
     if (!businessPan?.trim() || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(businessPan.toUpperCase())) {
       return new Response(JSON.stringify({ error: "Valid Business PAN is required (format: AAAAA9999A)." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    if (gstNumber?.trim() && gstNumber.trim().length !== 15) {
-      return new Response(JSON.stringify({ error: "GST Number must be exactly 15 characters." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!gstNumber?.trim() || gstNumber.trim().length !== 15) {
+      return new Response(JSON.stringify({ error: "GST Number is required and must be exactly 15 characters." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     if (!businessAddress?.trim() || businessAddress.trim().length < 10) {
       return new Response(JSON.stringify({ error: "Business Address is required (at least 10 characters)." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -83,6 +83,9 @@ serveUser(async (req: Request) => {
     }
     if (!companyPanPhotoUrl) {
       return new Response(JSON.stringify({ error: "Company PAN Photo is required." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (!gstCertificateUrl) {
+      return new Response(JSON.stringify({ error: "GST Certificate is required." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     if (!loaUrl) {
       return new Response(JSON.stringify({ error: "Letter of Authorization (LoA) is required." }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });

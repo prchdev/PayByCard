@@ -192,7 +192,6 @@ export default function BusinessIntegration() {
     }
   };
 
-  const requiresGstCert = gstNumber.trim().length > 0;
 
   const isLocked = application != null && (application.status === 'pending' || application.status === 'in_review' || application.status === 'approved');
   const isRejected = application?.status === 'rejected';
@@ -217,10 +216,9 @@ export default function BusinessIntegration() {
     if (incorporationNumber.length > 21) { setError('Incorporation Number must not exceed 21 characters.'); return; }
     if (!businessPan.trim()) { setError('Business PAN is required.'); return; }
     if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(businessPan.toUpperCase())) { setError('Business PAN must be in the format AAAAA9999A (10 characters).'); return; }
-    if (gstNumber.trim()) {
-      if (!/^[A-Za-z0-9]+$/.test(gstNumber)) { setError('GST Number may only contain letters and numbers.'); return; }
-      if (gstNumber.length !== 15) { setError('GST Number must be exactly 15 characters.'); return; }
-    }
+    if (!gstNumber.trim()) { setError('GST Number is required.'); return; }
+    if (!/^[A-Za-z0-9]+$/.test(gstNumber)) { setError('GST Number may only contain letters and numbers.'); return; }
+    if (gstNumber.length !== 15) { setError('GST Number must be exactly 15 characters.'); return; }
     if (!businessAddress.trim()) { setError('Business Address is required.'); return; }
     if (businessAddress.trim().length < 10) { setError('Business Address must be at least 10 characters.'); return; }
     if (businessAddress.length > 500) { setError('Business Address must not exceed 500 characters.'); return; }
@@ -235,8 +233,8 @@ export default function BusinessIntegration() {
     if (!companyPanFile && !application?.company_pan_photo_url) {
       setError('Company PAN Photo is required.'); return;
     }
-    if (requiresGstCert && !gstCertFile && !application?.gst_certificate_url) {
-      setError('GST Certificate is required when a GST Number is provided.'); return;
+    if (!gstCertFile && !application?.gst_certificate_url) {
+      setError('GST Certificate is required.'); return;
     }
     if (!loaFile && !application?.loa_url) {
       setError('Letter of Authorization (LoA) is required.'); return;
@@ -541,7 +539,7 @@ export default function BusinessIntegration() {
               {/* GST Number */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  GST Number
+                  GST Number <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="text"
@@ -632,7 +630,7 @@ export default function BusinessIntegration() {
                   file={gstCertFile}
                   onChange={setGstCertFile}
                   disabled={isLocked && !isRejected}
-                  required={requiresGstCert}
+                  required
                 />
                 <BizFileUpload
                   label="Letter of Authorization (LoA)"

@@ -3,55 +3,55 @@
   "functions": {
     "add-ticket-reply": {
       "hasChanged": false,
-      "hash": "4e0d739a5715e7d25eeea6dff19f2608646c16bd01ce73776cc32038e1a7215cd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "4e0d739a5715e7d25eeea6dff19f2608646c16bd01ce73776cc32038e1a7215ca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-add-user": {
       "hasChanged": false,
-      "hash": "2671e352cd89c28973fdb42835c27eacc9bf3a39754d57b17cda14fc0df886e9d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "2671e352cd89c28973fdb42835c27eacc9bf3a39754d57b17cda14fc0df886e9a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-bulk-email": {
       "hasChanged": false,
-      "hash": "195d759e00a1378543cf89ee7e52fa7601bf97019de1fe14ad41628dc42415e4d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "195d759e00a1378543cf89ee7e52fa7601bf97019de1fe14ad41628dc42415e4a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-bulk-payout": {
       "hasChanged": false,
-      "hash": "a71976c007dda85c6a8bcb25d61333c05ba8596239516df8ef4efd79c6bf7b72d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "a71976c007dda85c6a8bcb25d61333c05ba8596239516df8ef4efd79c6bf7b72a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-bulk-sms": {
       "hasChanged": false,
-      "hash": "7b7c854f23fadee846c3cd4764c350a2038c493192030034810f87cbda3505bbd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "7b7c854f23fadee846c3cd4764c350a2038c493192030034810f87cbda3505bba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-change-password": {
       "hasChanged": false,
-      "hash": "aa9827926d1f89ef5c83c04691e90887afcf7784acd8256e868838e1c536554cd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "aa9827926d1f89ef5c83c04691e90887afcf7784acd8256e868838e1c536554ca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-clear-kyc": {
       "hasChanged": false,
-      "hash": "8331f649796e453376a2249ee04a1231eab3059b5fdaf0a0ae633807e735d990d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "8331f649796e453376a2249ee04a1231eab3059b5fdaf0a0ae633807e735d990a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-create-backup": {
       "hasChanged": false,
-      "hash": "4383685a781be32633fc4aa38ae2cdb95ee911e13746b9581ec4e8347d05fabdd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "4383685a781be32633fc4aa38ae2cdb95ee911e13746b9581ec4e8347d05fabda3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-delete-backup": {
       "hasChanged": false,
-      "hash": "b79d2f7024342537d3c385f1d7deec4ab2f69b2fe1d29e8be4fd25a398a99740d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "b79d2f7024342537d3c385f1d7deec4ab2f69b2fe1d29e8be4fd25a398a99740a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-delete-user": {
       "hasChanged": false,
-      "hash": "3f8958403c4d27cd6e052b744af45ad105af419de9692548fbdd7fc9d05bbb9ad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "3f8958403c4d27cd6e052b744af45ad105af419de9692548fbdd7fc9d05bbb9aa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-download-backup": {
       "hasChanged": false,
-      "hash": "b809809bc60a9f818ce9b813453a1d1faf3ba9642e7b4c4fbe59b6579790e7ffd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "b809809bc60a9f818ce9b813453a1d1faf3ba9642e7b4c4fbe59b6579790e7ffa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-download-finance-document": {
       "hasChanged": false,
-      "hash": "7411e108a0622a6964e3c8b46096ca66f363d5a638ce7c34ad09fa01a42699c5d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "7411e108a0622a6964e3c8b46096ca66f363d5a638ce7c34ad09fa01a42699c5a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-end-notification": {
       "hasChanged": false,
-      "hash": "1d6f57d3e01292e3d6adae3a666b0f885280917db876afeee47c65d3c41f21ebd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "1d6f57d3e01292e3d6adae3a666b0f885280917db876afeee47c65d3c41f21eba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-forgot-password": {
       "hasChanged": false,
@@ -59,83 +59,83 @@
     },
     "admin-gateway-refund": {
       "hasChanged": false,
-      "hash": "6f7a133845960dfdad219bf8766a0c662ff494e25b0b8aabaf3afbff5c63e611d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "6f7a133845960dfdad219bf8766a0c662ff494e25b0b8aabaf3afbff5c63e611a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-gateway-settlement": {
       "hasChanged": false,
-      "hash": "524e6099cf2e102e6f5ba6ab10e6e6afd9a491db00ea3cdf570ad46755346c9fd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "524e6099cf2e102e6f5ba6ab10e6e6afd9a491db00ea3cdf570ad46755346c9fa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-all-transactions": {
       "hasChanged": false,
-      "hash": "156fad7bcc469d64f5397bc74a564af55070d1822850776da5ecff64ff825a3dd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "156fad7bcc469d64f5397bc74a564af55070d1822850776da5ecff64ff825a3da3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-backup-history": {
       "hasChanged": false,
-      "hash": "9332e84a4d3a110f1e999b6790a7524b15b80b86859e1b5ae55b7a069c055c0ed2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "9332e84a4d3a110f1e999b6790a7524b15b80b86859e1b5ae55b7a069c055c0ea3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-cards": {
       "hasChanged": false,
-      "hash": "8d4a14dbc04a330f77f33b6f4fc736da0c274bf78e4ae178db9198dac40d3b4dd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "8d4a14dbc04a330f77f33b6f4fc736da0c274bf78e4ae178db9198dac40d3b4da3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-coupons": {
       "hasChanged": false,
-      "hash": "e7084a985c8a45828e21be1d3ca4ffb1b5bbc779077374061bb799b5e3de4d3ed2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "e7084a985c8a45828e21be1d3ca4ffb1b5bbc779077374061bb799b5e3de4d3ea3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-dashboard-stats": {
       "hasChanged": false,
-      "hash": "38f629fc91e02170e4360760a5be936d47dcf4e8be3c8cac7eefa3ab9cfaed74d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "38f629fc91e02170e4360760a5be936d47dcf4e8be3c8cac7eefa3ab9cfaed74a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-email-settings": {
       "hasChanged": false,
-      "hash": "0dbd25acb23bc0c610e28f296fd3ace5612323941f700b720d29f7eba084c905d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "0dbd25acb23bc0c610e28f296fd3ace5612323941f700b720d29f7eba084c905a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-invoices": {
       "hasChanged": false,
-      "hash": "65456c6a874d8967ff7885211f97d2eac14ab880db585e2f1796e8d8f6b60a04d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "65456c6a874d8967ff7885211f97d2eac14ab880db585e2f1796e8d8f6b60a04a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-kyc-list": {
       "hasChanged": false,
-      "hash": "34b7902d5dfdadb3dc570c7f0e885170a9f151564c9ab96658e03fd056fbc341d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "34b7902d5dfdadb3dc570c7f0e885170a9f151564c9ab96658e03fd056fbc341a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-master-settings": {
       "hasChanged": false,
-      "hash": "2ffefbc8152d16fc8ff88e09f483c90eec3d4b164f817fbe431b077c3fb654a8d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "2ffefbc8152d16fc8ff88e09f483c90eec3d4b164f817fbe431b077c3fb654a8a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-merchant-kyc": {
       "hasChanged": false,
-      "hash": "253e3e80785f83a2e26dee134ce4ceaf81d20d13adb81b94ca6b23e344c7d9a3d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "253e3e80785f83a2e26dee134ce4ceaf81d20d13adb81b94ca6b23e344c7d9a3a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-notifications": {
       "hasChanged": false,
-      "hash": "659391a8f727a5dfeacbe7f313e13bc0b8e819b42c03f6078aa0be617e146500d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "659391a8f727a5dfeacbe7f313e13bc0b8e819b42c03f6078aa0be617e146500a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-offers": {
       "hasChanged": false,
-      "hash": "9c7c3dacca9d25eaad9f713e0ab8bcebc7d47eed9c3860728d61a0d608c94aa1d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "9c7c3dacca9d25eaad9f713e0ab8bcebc7d47eed9c3860728d61a0d608c94aa1a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-payment-categories": {
       "hasChanged": false,
-      "hash": "aa899671892215dc1aae362199fa0fa13c3a3c7a6fda48efc3fff3bc92574e7ed2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "aa899671892215dc1aae362199fa0fa13c3a3c7a6fda48efc3fff3bc92574e7ea3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-pending-payouts": {
       "hasChanged": false,
-      "hash": "1a5412ccac501c7ac418880b5d4e39c8e025867e1b07414357231fb3e213d7ecd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "1a5412ccac501c7ac418880b5d4e39c8e025867e1b07414357231fb3e213d7eca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-support-tickets": {
       "hasChanged": false,
-      "hash": "3ccd425153ae300b4bbd1fc9ca73534a6f6a4f3d5cec00090a1cc542533e361bd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "3ccd425153ae300b4bbd1fc9ca73534a6f6a4f3d5cec00090a1cc542533e361ba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-user-summary": {
       "hasChanged": false,
-      "hash": "41fc319fbd2e3c5a6b34b15f5a5faccac7284fb3dc5a925d0bd7b6ef09a84d3dd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "41fc319fbd2e3c5a6b34b15f5a5faccac7284fb3dc5a925d0bd7b6ef09a84d3da3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-users": {
       "hasChanged": false,
-      "hash": "05856f88486e36f30f8108ec405fbd12907e02ee7023aee21bf870d596d8989ad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "05856f88486e36f30f8108ec405fbd12907e02ee7023aee21bf870d596d8989aa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-vendors": {
       "hasChanged": false,
-      "hash": "3daa5193995c46c2907ca035b758ac8eb0b1124e17be4e2bef737f0c894372d3d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "3daa5193995c46c2907ca035b758ac8eb0b1124e17be4e2bef737f0c894372d3a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-login": {
       "hasChanged": false,
@@ -143,99 +143,99 @@
     },
     "admin-process-manual-payout": {
       "hasChanged": false,
-      "hash": "d96ba44f4edbe0768c9626f0a3fb87e34382483ca7cad01816516f81caabf5d2d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "d96ba44f4edbe0768c9626f0a3fb87e34382483ca7cad01816516f81caabf5d2a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-reset-password": {
       "hasChanged": false,
-      "hash": "e6ffd4ccf5c1d9bc735a420af454d7749a605153a21ce387bfd3b898abdafabfd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "e6ffd4ccf5c1d9bc735a420af454d7749a605153a21ce387bfd3b898abdafabfa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-review-invoice": {
       "hasChanged": false,
-      "hash": "41884265c8d885b79056cd9c294956cde63b622163e7c55ac1f754636efc86b9d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "41884265c8d885b79056cd9c294956cde63b622163e7c55ac1f754636efc86b9a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-review-kyc": {
       "hasChanged": false,
-      "hash": "1ce1e5a2caf1dffa588cf4f97b1392ec8687873a1f61db052d073d08fe33d60cd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "1ce1e5a2caf1dffa588cf4f97b1392ec8687873a1f61db052d073d08fe33d60ca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-review-merchant-kyc": {
       "hasChanged": false,
-      "hash": "fa7483bd855eeadb5ce0ae3fef95f0157e4a2d3c255646df78dc0fb068bad007d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "fa7483bd855eeadb5ce0ae3fef95f0157e4a2d3c255646df78dc0fb068bad007a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-save-coupon": {
       "hasChanged": false,
-      "hash": "0df3d046f1d48269e13ed476496f8f6abd6c890e35aab43541c392a21d6d642fd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "0df3d046f1d48269e13ed476496f8f6abd6c890e35aab43541c392a21d6d642fa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-save-email-settings": {
       "hasChanged": false,
-      "hash": "34cc157cf6e071815bf1909e5ff3c8e24716156a74dcfcba62ef8cb4e97f7ee6d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "34cc157cf6e071815bf1909e5ff3c8e24716156a74dcfcba62ef8cb4e97f7ee6a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-save-invoice": {
       "hasChanged": false,
-      "hash": "0bf5ad4311efa3858326e9c5cbeea4364a6586bfea594af91946b8f2d7bc9c2ad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "0bf5ad4311efa3858326e9c5cbeea4364a6586bfea594af91946b8f2d7bc9c2aa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-save-master-settings": {
       "hasChanged": false,
-      "hash": "47113a8bcc010d1185a67e6e03cf8d6b3d0f7f63435af3aca7da1a7c4743ccbed2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "47113a8bcc010d1185a67e6e03cf8d6b3d0f7f63435af3aca7da1a7c4743ccbea3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-save-notification": {
       "hasChanged": false,
-      "hash": "bc64aac2a0d278b80b5c00389c6828a7414f4f7de8ca3ff06b0faf9c51c23a24d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "bc64aac2a0d278b80b5c00389c6828a7414f4f7de8ca3ff06b0faf9c51c23a24a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-save-offer": {
       "hasChanged": false,
-      "hash": "48f90bd9a23ebaa1f534a5f7e328f0e56a8f5575b95f81f59edac2f6f8304550d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "48f90bd9a23ebaa1f534a5f7e328f0e56a8f5575b95f81f59edac2f6f8304550a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-save-payment-category": {
       "hasChanged": false,
-      "hash": "f39d0bf65810fdc7fbb7c95b01df12c463fa2b276f87c073ca8b2b5771bd9b42d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "f39d0bf65810fdc7fbb7c95b01df12c463fa2b276f87c073ca8b2b5771bd9b42a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-save-surge-charge": {
       "hasChanged": false,
-      "hash": "f72ecbfe63941a622bd412bcd02fff1f741a789ee4c9987f30487151869ff9ccd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "f72ecbfe63941a622bd412bcd02fff1f741a789ee4c9987f30487151869ff9cca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-save-vendor": {
       "hasChanged": false,
-      "hash": "d48eddae8069e989e49223c5556ad185fa974c17e73c7ef061c9a984838d0cb4d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "d48eddae8069e989e49223c5556ad185fa974c17e73c7ef061c9a984838d0cb4a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-send-push-now": {
       "hasChanged": false,
-      "hash": "09fb4d2d748a53348d8c5d726aba9b28c6f415c64c192f8569fd49e247ca440ed2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "09fb4d2d748a53348d8c5d726aba9b28c6f415c64c192f8569fd49e247ca440ea3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-toggle-account-status": {
       "hasChanged": false,
-      "hash": "bd6790385621bd4627bb4be83a93a8fdad2216ce5320ef147193aa96bdfdfcc4d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "bd6790385621bd4627bb4be83a93a8fdad2216ce5320ef147193aa96bdfdfcc4a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-toggle-hold": {
       "hasChanged": false,
-      "hash": "c7d3207acebdbdad249cf6c7ad89e67322099d6988c0f9810c108e542d4467ccd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "c7d3207acebdbdad249cf6c7ad89e67322099d6988c0f9810c108e542d4467cca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-toggle-user-status": {
       "hasChanged": false,
-      "hash": "95dbc0ace468ee765fe1c9eccce96365648b818e7c93dd5e9c10a77d6d35c4b6d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "95dbc0ace468ee765fe1c9eccce96365648b818e7c93dd5e9c10a77d6d35c4b6a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-update-ticket-status": {
       "hasChanged": false,
-      "hash": "20578c4431ca5701b9bc9f5e2cee6f9a71e1040cd8a8ac517722153bd7fba93bd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "20578c4431ca5701b9bc9f5e2cee6f9a71e1040cd8a8ac517722153bd7fba93ba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-update-user": {
       "hasChanged": false,
-      "hash": "cfacc1c1e312c399535fc302dd3219281332a5515c55fcd6587bccd795c97a51d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "cfacc1c1e312c399535fc302dd3219281332a5515c55fcd6587bccd795c97a51a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-upload-finance-document": {
       "hasChanged": false,
-      "hash": "3b20eadf0827e986cf0595f068eb03bbd931d2b2c2a7a5468fb1719be1f09c3bd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "3b20eadf0827e986cf0595f068eb03bbd931d2b2c2a7a5468fb1719be1f09c3ba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-upload-logo": {
       "hasChanged": false,
-      "hash": "49e088e9355fd306255725ec00738961640e250d114d0c23c55583f481612943d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "49e088e9355fd306255725ec00738961640e250d114d0c23c55583f481612943a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-verify-card": {
       "hasChanged": false,
-      "hash": "3259223ad5d62d904d1a3130cd8882d5951fda3c65af81bbe6659b71d2f88511d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "3259223ad5d62d904d1a3130cd8882d5951fda3c65af81bbe6659b71d2f88511a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-verify-login-otp": {
       "hasChanged": false,
-      "hash": "3c4021886e2ac1dfff0d35b6352ec1ddb4bc62580859b1377b473fe19b0cf29fd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "3c4021886e2ac1dfff0d35b6352ec1ddb4bc62580859b1377b473fe19b0cf29fa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-verify-reset-otp": {
       "hasChanged": false,
@@ -243,11 +243,11 @@
     },
     "auto-payout": {
       "hasChanged": false,
-      "hash": "395e6b54c3ede84e45d62711ac37d9bbe7c831f61a176bf10657960e2f1d4908d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "395e6b54c3ede84e45d62711ac37d9bbe7c831f61a176bf10657960e2f1d4908a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "auto-refund-kyc-expired": {
       "hasChanged": false,
-      "hash": "c74a2168e88cc9b8b35e7c18f546d547ed63e6af338fac39ba207461f24dccb6d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "c74a2168e88cc9b8b35e7c18f546d547ed63e6af338fac39ba207461f24dccb6a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "calculate-payment-option-charges": {
       "hasChanged": false,
@@ -255,39 +255,39 @@
     },
     "change-password": {
       "hasChanged": false,
-      "hash": "a67da7739e494fc21d79231185a41a081b19bf694669171ac2f0bab29fd81aa9d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "a67da7739e494fc21d79231185a41a081b19bf694669171ac2f0bab29fd81aa9a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "check-beneficiary-monthly-limit": {
       "hasChanged": false,
-      "hash": "1513ba1c533a24c402917d274ca1fe69642d12c91418e327f2ade8904c66ace6d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "1513ba1c533a24c402917d274ca1fe69642d12c91418e327f2ade8904c66ace6a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "check-invoice-verification": {
       "hasChanged": false,
-      "hash": "41208f8e7bdb275b6edf85fb28dae713bfc5abac339f99520613dd4666824f12d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "41208f8e7bdb275b6edf85fb28dae713bfc5abac339f99520613dd4666824f12a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "check-kyc-status": {
       "hasChanged": false,
-      "hash": "1544269fe1420e270c09b162e2131da9b16d1bbf634e7e5fe74d0995123974abd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "1544269fe1420e270c09b162e2131da9b16d1bbf634e7e5fe74d0995123974aba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "check-payment-status": {
       "hasChanged": false,
-      "hash": "906bae08a0a7169be307ed0163585ecbdf4b910922869f8a325b8fc0f77578ddd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "906bae08a0a7169be307ed0163585ecbdf4b910922869f8a325b8fc0f77578dda3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "check-settlement-status": {
       "hasChanged": false,
-      "hash": "4d4bd1e5c942970294ef68cf5a002ec65ed4e969e6632c8bb49b40f1eaeed5a5d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "4d4bd1e5c942970294ef68cf5a002ec65ed4e969e6632c8bb49b40f1eaeed5a5a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "create-support-ticket": {
       "hasChanged": false,
-      "hash": "12c3f4135d29b4c7727adcb053314d904721e817e541d46d4f22a8ff80b29decd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "12c3f4135d29b4c7727adcb053314d904721e817e541d46d4f22a8ff80b29deca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "dashboard-notifications": {
       "hasChanged": false,
-      "hash": "add3b4c5b70286f270d3ad399dd8943442d5647177c518f49df7f49b8a3050f6d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "add3b4c5b70286f270d3ad399dd8943442d5647177c518f49df7f49b8a3050f6a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "digilocker-kyc": {
       "hasChanged": false,
-      "hash": "a9afbd2ac95b4299a1bd3481303fd7f84f1fc6c2e2760925ac6809ac450e56a0d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "a9afbd2ac95b4299a1bd3481303fd7f84f1fc6c2e2760925ac6809ac450e56a0a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "digilocker-redirect": {
       "hasChanged": false,
@@ -295,27 +295,27 @@
     },
     "download-kyc-file": {
       "hasChanged": false,
-      "hash": "94e7045748589fae8948ff22485a06694b9a532bf9b25ab945fed934557da645d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "94e7045748589fae8948ff22485a06694b9a532bf9b25ab945fed934557da645a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "download-ticket-attachment": {
       "hasChanged": false,
-      "hash": "8349aca2589f20c2ab4c8386f8ab75e0c8ce1fefac27badbbcb1d3f7d8a8ca71d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "8349aca2589f20c2ab4c8386f8ab75e0c8ce1fefac27badbbcb1d3f7d8a8ca71a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "encrypt-existing-credentials": {
       "hasChanged": false,
-      "hash": "6c436c24fa329b7ed0187b1c59accfaee31a5e4974cbda2b8555d50c9ea3d2a7d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "6c436c24fa329b7ed0187b1c59accfaee31a5e4974cbda2b8555d50c9ea3d2a7a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "generate-invoice-html": {
       "hasChanged": false,
-      "hash": "d9e6dfc109f095d557320098724be95b17c2f29964cd55d4071426f4e44a0954d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "d9e6dfc109f095d557320098724be95b17c2f29964cd55d4071426f4e44a0954a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "generate-invoice-pdf": {
       "hasChanged": false,
-      "hash": "8efb105aabb17c076109d41b61e8f4f4b7aa90e921f4e04f0df80dec4009f8c6d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "8efb105aabb17c076109d41b61e8f4f4b7aa90e921f4e04f0df80dec4009f8c6a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-active-beneficiaries": {
       "hasChanged": false,
-      "hash": "85e83ddd5d8f5dd07b2d3fa6e4763315930660b31f121a537133dfa4d3be32b1d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "85e83ddd5d8f5dd07b2d3fa6e4763315930660b31f121a537133dfa4d3be32b1a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-active-offers": {
       "hasChanged": false,
@@ -323,15 +323,15 @@
     },
     "get-beneficiaries": {
       "hasChanged": false,
-      "hash": "a00d57c9a47794f4c1869240d5ee24cc377a790558470a5e063d68d4a083662bd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "a00d57c9a47794f4c1869240d5ee24cc377a790558470a5e063d68d4a083662ba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-business-integration": {
       "hasChanged": false,
-      "hash": "faab3489066ee44863d90e8bc0dbe8df463c5c963935f589c4cc7723047ccd11d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "faab3489066ee44863d90e8bc0dbe8df463c5c963935f589c4cc7723047ccd11a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-company-settings": {
       "hasChanged": false,
-      "hash": "ad9d8a50e2cb3a71729d3cd8ffe57c3ff3cf0760200759724f1f419e493bd39ad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "ad9d8a50e2cb3a71729d3cd8ffe57c3ff3cf0760200759724f1f419e493bd39aa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-gateway-charges": {
       "hasChanged": false,
@@ -339,11 +339,11 @@
     },
     "get-kyc-data": {
       "hasChanged": false,
-      "hash": "946fb3662b3a0c362a62e24afac91a925b9a653f8c1dae4329235d2d01e91dabd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "946fb3662b3a0c362a62e24afac91a925b9a653f8c1dae4329235d2d01e91daba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-kyc-method-settings": {
       "hasChanged": false,
-      "hash": "31a346bc46a9e5a71bcd0740864c9a32379d814ce7064a47563aa7637015dac1d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "31a346bc46a9e5a71bcd0740864c9a32379d814ce7064a47563aa7637015dac1a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-kyc-provider": {
       "hasChanged": false,
@@ -351,15 +351,15 @@
     },
     "get-merchant-onboarding": {
       "hasChanged": false,
-      "hash": "5db41aa0167859f8c76cc73e7fc38c0bf9ca9b16c1b05d29f000f0b4ee80b789d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "5db41aa0167859f8c76cc73e7fc38c0bf9ca9b16c1b05d29f000f0b4ee80b789a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-payment-categories-list": {
       "hasChanged": false,
-      "hash": "c324e774fbd6e169c11ff350e93ddb89b383c4ef3d9f293589908c895cd0f755d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "c324e774fbd6e169c11ff350e93ddb89b383c4ef3d9f293589908c895cd0f755a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-payment-gateways": {
       "hasChanged": false,
-      "hash": "768e27e2ca77a113449f0d076a5c99b1991fec62b68669a502591588deff35e1d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "768e27e2ca77a113449f0d076a5c99b1991fec62b68669a502591588deff35e1a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-payment-limits": {
       "hasChanged": false,
@@ -367,63 +367,63 @@
     },
     "get-payment-options": {
       "hasChanged": false,
-      "hash": "961416c8eb1232651c6788c7a3a85345ceca96c48169669952471341b391777fd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "961416c8eb1232651c6788c7a3a85345ceca96c48169669952471341b391777fa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-payout-settings": {
       "hasChanged": false,
-      "hash": "086ee3ba00693a4c1729684033df0e16b1b2401663be0105a1fc1918e77075bad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "086ee3ba00693a4c1729684033df0e16b1b2401663be0105a1fc1918e77075baa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-referral-info": {
       "hasChanged": false,
-      "hash": "6033873e39058446a907225b983778ab514e6b7a2f22c3eec13eab89d8092e06d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "6033873e39058446a907225b983778ab514e6b7a2f22c3eec13eab89d8092e06a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-role-permissions": {
       "hasChanged": false,
-      "hash": "3fe10e960afef969dde02d8c1480d5e4279b2501e64650d82e6ecf286d4ab871d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "3fe10e960afef969dde02d8c1480d5e4279b2501e64650d82e6ecf286d4ab871a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-sms-settings": {
       "hasChanged": false,
-      "hash": "c31b15e7bd73fc68beb2f36a2a96fd38d0f58eb0ed746ed88a5bfb1db5aaa81dd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "c31b15e7bd73fc68beb2f36a2a96fd38d0f58eb0ed746ed88a5bfb1db5aaa81da3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-support-tickets": {
       "hasChanged": false,
-      "hash": "a3b7b63efa92c01d0ee9483f9424240d60f91e41c900a5ff1fea919f292a8f89d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "a3b7b63efa92c01d0ee9483f9424240d60f91e41c900a5ff1fea919f292a8f89a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-ticket-details": {
       "hasChanged": false,
-      "hash": "73b01914dc8ec3376edf1290c0d9aa463bf54a17cba2ee29f0e9a718960f898ad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "73b01914dc8ec3376edf1290c0d9aa463bf54a17cba2ee29f0e9a718960f898aa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-user-bank-accounts": {
       "hasChanged": false,
-      "hash": "589121cc735d20869a49110936c4d1a8fcd2b47fdcc0abc4e1a7fbcba20f0cd2d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "589121cc735d20869a49110936c4d1a8fcd2b47fdcc0abc4e1a7fbcba20f0cd2a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-user-cards": {
       "hasChanged": false,
-      "hash": "918ed08011fa410cd5e10294e46277acde71036b464ba93e8f138cb5cfc85632d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "918ed08011fa410cd5e10294e46277acde71036b464ba93e8f138cb5cfc85632a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-user-permission-overrides": {
       "hasChanged": false,
-      "hash": "c910f72546d1df1196a36d10c73495e8c5a5fa1eabce82af550a0d5f4511255fd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "c910f72546d1df1196a36d10c73495e8c5a5fa1eabce82af550a0d5f4511255fa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-user-permissions": {
       "hasChanged": false,
-      "hash": "2d956f7ee9bd65839582541826d00a24f62f7d46a054361973f7a6d1b26c30b9d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "2d956f7ee9bd65839582541826d00a24f62f7d46a054361973f7a6d1b26c30b9a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-user-profile-for-bank": {
       "hasChanged": false,
-      "hash": "1a2dfae9d992f64bbe9b3a4fe9b45dbf353cbbb026c2eda7ef567b12e8f712f6d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "1a2dfae9d992f64bbe9b3a4fe9b45dbf353cbbb026c2eda7ef567b12e8f712f6a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-user-stats": {
       "hasChanged": false,
-      "hash": "90bfab1e33b936ad7c873821aba76a1e9eaba105c628000e95638018ec6db274d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "90bfab1e33b936ad7c873821aba76a1e9eaba105c628000e95638018ec6db274a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-user-transactions": {
       "hasChanged": false,
-      "hash": "c392c543734d1a675c9cd234a6d2eb2173d49dddb902769f01d48270c76d4717d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "c392c543734d1a675c9cd234a6d2eb2173d49dddb902769f01d48270c76d4717a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "initiate-payment": {
       "hasChanged": false,
-      "hash": "45152a2b3e77581cb7b5334f24c416ef9b28a5365ecb6675d7afc3cb54a6afaed2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "45152a2b3e77581cb7b5334f24c416ef9b28a5365ecb6675d7afc3cb54a6afaea3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "log-digilocker-event": {
       "hasChanged": false,
@@ -431,163 +431,163 @@
     },
     "login-user": {
       "hasChanged": false,
-      "hash": "41f1ba97fcf5d2ff44bf895094f02e173bceb4ccfd224cd965f06034f09bad95d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "41f1ba97fcf5d2ff44bf895094f02e173bceb4ccfd224cd965f06034f09bad95a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "merchant-digilocker-kyc": {
       "hasChanged": false,
-      "hash": "bf8fcb9eb430d2abc63356da82fd804eb7181e6acd80cb098e54862e9aad7bdbd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "bf8fcb9eb430d2abc63356da82fd804eb7181e6acd80cb098e54862e9aad7bdba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "on-demand-settlement": {
       "hasChanged": false,
-      "hash": "4e6a0cb56d3256de5a9e2965c3fa152155a5c52fb82f088b1246e219344cb293d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "4e6a0cb56d3256de5a9e2965c3fa152155a5c52fb82f088b1246e219344cb293a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "payment-gateway-webhook": {
       "hasChanged": false,
-      "hash": "ab0943424f796a9051fd87161e7e302ef6b707b1c29501b5c1110f8340edca0dd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "ab0943424f796a9051fd87161e7e302ef6b707b1c29501b5c1110f8340edca0da3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "phonepe-payment-configs": {
       "hasChanged": false,
-      "hash": "f05c8a201b41ac80511897aaf638f036bec3deff4300bdabcd1302dce95531cfd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "f05c8a201b41ac80511897aaf638f036bec3deff4300bdabcd1302dce95531cfa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "poll-stale-payments": {
       "hasChanged": false,
-      "hash": "e65e35ea36ed02197672e2bb4ac4c48cdf468d31710e9d3a4a0f0f61224664f4d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "780ad8e215b444828306d98c263ed5869c2599ef9f9876d577bf325ddbc62fe8a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "process-axis-payout": {
       "hasChanged": false,
-      "hash": "06fd7fa3de886f7f76b645ac139f6065b486d56adba040972a87cfc667b0700ad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "06fd7fa3de886f7f76b645ac139f6065b486d56adba040972a87cfc667b0700aa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "process-cashfree-payout": {
       "hasChanged": false,
-      "hash": "741b9df52d730b0520376ce64d34c0a2dcfd0c857a6dcacefc37555945620b53d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "741b9df52d730b0520376ce64d34c0a2dcfd0c857a6dcacefc37555945620b53a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "process-ccavenue-payout": {
       "hasChanged": false,
-      "hash": "87c3dda698ee2d54838d1c8313698183ce9fc4343ef8a0a31213f79e0c321bcfd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "87c3dda698ee2d54838d1c8313698183ce9fc4343ef8a0a31213f79e0c321bcfa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "process-easebuzz-payout": {
       "hasChanged": false,
-      "hash": "509884d4e30692af3686440181c672366a1303546b3f9f6784d38ae52041888ad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "509884d4e30692af3686440181c672366a1303546b3f9f6784d38ae52041888aa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "process-enkash-payout": {
       "hasChanged": false,
-      "hash": "93dc66275915ab3412b8f4e5d1bb60b06a4c98a865dd2a258c9520cae5f2eba0d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "93dc66275915ab3412b8f4e5d1bb60b06a4c98a865dd2a258c9520cae5f2eba0a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "process-payu-payout": {
       "hasChanged": false,
-      "hash": "ce6fe3463ce7ccca11f1ed95321341f9cecabd2e9e9144f8e173e06dfd9ccbe5d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "ce6fe3463ce7ccca11f1ed95321341f9cecabd2e9e9144f8e173e06dfd9ccbe5a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "process-phonepe-payout": {
       "hasChanged": false,
-      "hash": "f92a7178b88367c23a32f04ba7d061ad178f815f04893171ca5492bd8b09816ed2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "f92a7178b88367c23a32f04ba7d061ad178f815f04893171ca5492bd8b09816ea3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "process-razorpay-payout": {
       "hasChanged": false,
-      "hash": "57c81870ac86d2f6ac71a713a7b26aab2e010f43d68d1d5975bf0e9755b00c06d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "57c81870ac86d2f6ac71a713a7b26aab2e010f43d68d1d5975bf0e9755b00c06a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "process-zaakpay-payout": {
       "hasChanged": false,
-      "hash": "2e2d56cdb11cdbc3e7767819d2629e1cc74ae87fb7e150064c9e96e5999b28ccd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "2e2d56cdb11cdbc3e7767819d2629e1cc74ae87fb7e150064c9e96e5999b28cca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "razorpay-payment-configs": {
       "hasChanged": false,
-      "hash": "a9c12e0efb43229edbce1b45c6a1c66ff112e885c9cd9ed0dce2dcd56751b67ed2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "a9c12e0efb43229edbce1b45c6a1c66ff112e885c9cd9ed0dce2dcd56751b67ea3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "register-push-token": {
       "hasChanged": false,
-      "hash": "ae9746d18453f076adab19659cd7ddfdebd85aea9b026f41d67ce439d242f281d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "ae9746d18453f076adab19659cd7ddfdebd85aea9b026f41d67ce439d242f281a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "register-user": {
       "hasChanged": false,
-      "hash": "fc055d01d7e1e60dad42e37a74d222e28d46756bbfb31fe8b5d1e0ec1014340dd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "fc055d01d7e1e60dad42e37a74d222e28d46756bbfb31fe8b5d1e0ec1014340da3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "remove-business-info": {
       "hasChanged": false,
-      "hash": "1001834392ef7abda2eaa3c6c3f052c7c32c700290b7789ded372c50f004f245d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "1001834392ef7abda2eaa3c6c3f052c7c32c700290b7789ded372c50f004f245a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "resend-otp": {
       "hasChanged": false,
-      "hash": "aec0ec125cb91aff7e99afbeb01ec4545ffd7e03e34639a07aa750866056e799d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "aec0ec125cb91aff7e99afbeb01ec4545ffd7e03e34639a07aa750866056e799a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-beneficiary": {
       "hasChanged": false,
-      "hash": "0b1191913107e86e82588b4b0b3f715900c4479cd3f7962c98a9e34aca2bc719d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "0b1191913107e86e82588b4b0b3f715900c4479cd3f7962c98a9e34aca2bc719a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-business-integration": {
       "hasChanged": false,
-      "hash": "d33eef154ad1eb497fb93e70245673929a59c23b58200cb42774d2220d09013ad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "d33eef154ad1eb497fb93e70245673929a59c23b58200cb42774d2220d09013aa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-card-details": {
       "hasChanged": false,
-      "hash": "e84300bb6455526d289628a30298cc4ab205f9c3f585164ac786dd0f06f070b9d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "e84300bb6455526d289628a30298cc4ab205f9c3f585164ac786dd0f06f070b9a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-card-name": {
       "hasChanged": false,
-      "hash": "6324d2e74e05dd61b2182466194ae89c907abc35eefd33d5d3647f7c7fbc579ed2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "6324d2e74e05dd61b2182466194ae89c907abc35eefd33d5d3647f7c7fbc579ea3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-kyc-data": {
       "hasChanged": false,
-      "hash": "fa1827e69477e6b7671fc98c83a9062696648a1e845ba197ad8c64868fda6947d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "fa1827e69477e6b7671fc98c83a9062696648a1e845ba197ad8c64868fda6947a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-kyc-method-settings": {
       "hasChanged": false,
-      "hash": "5cad00fb5c192ba10ef4d7e82e796248e7778e2e69c71c4e41ea85b0a2b1ce61d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "5cad00fb5c192ba10ef4d7e82e796248e7778e2e69c71c4e41ea85b0a2b1ce61a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-merchant-onboarding": {
       "hasChanged": false,
-      "hash": "93620601705fe7b9453283a47fdcba4a7a8eadbc5265f1470f4c415788034bedd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "93620601705fe7b9453283a47fdcba4a7a8eadbc5265f1470f4c415788034beda3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-payment-gateways": {
       "hasChanged": false,
-      "hash": "4a203387168f14f842dd348cf66d8b6eea4c77c926ec5fe37babd30f2c0416dad2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "4a203387168f14f842dd348cf66d8b6eea4c77c926ec5fe37babd30f2c0416daa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-payment-limits": {
       "hasChanged": false,
-      "hash": "e7e86fb9765fc6d4f8cacb6b499accad47f38de5bc493d24d53fc81a5c423ecdd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "e7e86fb9765fc6d4f8cacb6b499accad47f38de5bc493d24d53fc81a5c423ecda3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-payment-options": {
       "hasChanged": false,
-      "hash": "004ccd8afb936c519471cbb2e2cac8bfa8c538ba8c0f52e607335d2231db7146d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "004ccd8afb936c519471cbb2e2cac8bfa8c538ba8c0f52e607335d2231db7146a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-payout-settings": {
       "hasChanged": false,
-      "hash": "57c7cf62469d6b999b726bf31a22e5557f0ad9defcb74149caa0a1e9ee622ae9d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "57c7cf62469d6b999b726bf31a22e5557f0ad9defcb74149caa0a1e9ee622ae9a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-sms-settings": {
       "hasChanged": false,
-      "hash": "0f9a29a8e4a65830a0be8ae130e1f38fed8fd880d1eacc5da9de3bc49c146facd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "0f9a29a8e4a65830a0be8ae130e1f38fed8fd880d1eacc5da9de3bc49c146faca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-transaction-status": {
       "hasChanged": false,
-      "hash": "51d0a87ba7b31b31bbc54ad960b35571eced21ffc963a42b9b788795e4f2dd27d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "2b72da7c4f2e0962e7798630bb89498a9df693f572a74deaee655288d6d6b0d1a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-user-bank-account": {
       "hasChanged": false,
-      "hash": "dbf57ab7aa9bd00ccb4422f10bb715ebb027517a282de51bbf3e139e4b4f9869d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "dbf57ab7aa9bd00ccb4422f10bb715ebb027517a282de51bbf3e139e4b4f9869a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "send-email": {
       "hasChanged": false,
-      "hash": "c5ad72a4a7c1f1062616a9fbce23183ff78fdf5fc0a3b44880c48aabe9cd1eefd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "c5ad72a4a7c1f1062616a9fbce23183ff78fdf5fc0a3b44880c48aabe9cd1eefa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "send-kyc-reminder": {
       "hasChanged": false,
-      "hash": "18e54a596a625cb91e1b33fabdcc17959d80527f485f1eba45aa6e2c36d2b122d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "18e54a596a625cb91e1b33fabdcc17959d80527f485f1eba45aa6e2c36d2b122a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "send-push-notification": {
       "hasChanged": false,
-      "hash": "ac87b342d1f2db4b6c05882734a663d7c473a6e19ce4ca226afe208b8020beb3d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "ac87b342d1f2db4b6c05882734a663d7c473a6e19ce4ca226afe208b8020beb3a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "send-sms": {
       "hasChanged": false,
-      "hash": "c7b99ff4a84098491aff5f3649b16cce336d558e65cb47209eea260ddfe63d8bd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "c7b99ff4a84098491aff5f3649b16cce336d558e65cb47209eea260ddfe63d8ba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "set-default-bank-account": {
       "hasChanged": false,
-      "hash": "8a4aae9fea0b8ab48319089cb137d5aa1c2ead450f3d0bea11327a50687da689d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "8a4aae9fea0b8ab48319089cb137d5aa1c2ead450f3d0bea11327a50687da689a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "toggle-beneficiary-status": {
       "hasChanged": false,
-      "hash": "5363dd0d1931834c07ef79aa7aba70355dff90cee6d8d1414100ae7d7e59b39bd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "5363dd0d1931834c07ef79aa7aba70355dff90cee6d8d1414100ae7d7e59b39ba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "trigger-merchant-kyc": {
       "hasChanged": false,
@@ -595,27 +595,27 @@
     },
     "update-role-permissions": {
       "hasChanged": false,
-      "hash": "557e7dc0db907e30cef94ba30c52f2a99c0d9065151a678c6acccd1620320bccd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "557e7dc0db907e30cef94ba30c52f2a99c0d9065151a678c6acccd1620320bcca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "update-user-permissions": {
       "hasChanged": false,
-      "hash": "f74f7d2a5adaeab2de36fa96a6e558ec02574d037543d735ab9f19e2bb705aead2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "f74f7d2a5adaeab2de36fa96a6e558ec02574d037543d735ab9f19e2bb705aeaa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "update-user-profile": {
       "hasChanged": false,
-      "hash": "d9da400021da0aa8dfabaa271c8ffe49e0855676bd1154ac5d60a4ab563b13bcd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "d9da400021da0aa8dfabaa271c8ffe49e0855676bd1154ac5d60a4ab563b13bca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "upload-card-photo": {
       "hasChanged": false,
-      "hash": "71b45d9006f867a847d44a9a47941d2c6f7b009e5c55a32b2cbe1cc1ba0d3545d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "71b45d9006f867a847d44a9a47941d2c6f7b009e5c55a32b2cbe1cc1ba0d3545a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "upload-kyc-file": {
       "hasChanged": false,
-      "hash": "50e7b853f4026815d6585ec0f792ce1dc74adef5d8f311fda98df088fad57a6dd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "50e7b853f4026815d6585ec0f792ce1dc74adef5d8f311fda98df088fad57a6da3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "upload-ticket-attachment": {
       "hasChanged": false,
-      "hash": "38012253c0391a898c7506348b5c304a0b9c0acee506e986b44ee39582e00752d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "38012253c0391a898c7506348b5c304a0b9c0acee506e986b44ee39582e00752a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "user-forgot-password": {
       "hasChanged": false,
@@ -623,7 +623,7 @@
     },
     "user-reset-password": {
       "hasChanged": false,
-      "hash": "0357826ab9ca3a1bcd7164d3142197e25b2a72c33051c2a2b220b63724693f2bd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "0357826ab9ca3a1bcd7164d3142197e25b2a72c33051c2a2b220b63724693f2ba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "user-verify-reset-otp": {
       "hasChanged": false,
@@ -631,7 +631,7 @@
     },
     "validate-coupon": {
       "hasChanged": false,
-      "hash": "dde4b3aeca34a0ef926b5797679c34cde6c7f02dd83eb36c5ae470d617030c2fd2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "dde4b3aeca34a0ef926b5797679c34cde6c7f02dd83eb36c5ae470d617030c2fa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "validate-ifsc": {
       "hasChanged": false,
@@ -639,11 +639,11 @@
     },
     "verify-card-ai": {
       "hasChanged": false,
-      "hash": "b3abee78c99a78b8909de3e72e20d36fb2df3b6e70df0c2d0d8590170c4b8921d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "b3abee78c99a78b8909de3e72e20d36fb2df3b6e70df0c2d0d8590170c4b8921a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "verify-otp": {
       "hasChanged": false,
-      "hash": "0f579a775cdfa83797659e3150a322c1012c009962aebaf1b87312b8f5b9cfd2d2f52198380a92ef443701856c02cafefeba54856ab73c06e09f998a38c5570a"
+      "hash": "0f579a775cdfa83797659e3150a322c1012c009962aebaf1b87312b8f5b9cfd2a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "waf-validate": {
       "hasChanged": false,

@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { isInternalCall, serveUser } from "../_shared/session.ts";
+import { checkCardVerification } from "../_shared/cardVerification.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -736,6 +737,39 @@ serveUser(async (req: Request) => {
           .select("*")
           .eq("id", paymentId)
           .maybeSingle();
+
+        // ─── Card verification gate ───────────────────────────────────────
+        // Same check as poll-stale-payments: if credit card verification is
+        // enabled and the card is not yet verified, hold or refund the payment.
+        const cardResult = await checkCardVerification(
+          supabase,
+          updatedPayment || fullPayment,
+          gatewayResponse,
+        );
+        if (cardResult.held || cardResult.refunded) {
+          // Payment was held for card verification or refunded — skip
+          // settlement/KYC/payout and email logic. The poller will pick up
+          // held payments once the admin approves the card.
+          if (existingStatus) {
+            const txStatus = cardResult.refunded ? "refunded" : "card_verification_pending";
+            await supabase.from("transaction_status").update({
+              status: txStatus,
+              gateway_response: gatewayResponse || {},
+              gateway_transaction_id: resolvedGatewayTxId || null,
+            }).eq("id", existingStatus.id);
+          }
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: cardResult.held
+                ? "Payment held for card verification"
+                : "Payment refunded (card verification failed)",
+              cardVerification: { held: cardResult.held, refunded: cardResult.refunded },
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        // ─── End card verification gate ───────────────────────────────────
 
         // Trigger auto-payout for 'payout' mode, and for 'payment_split' only when
         // split was NOT configured at order time (split configured = gateway handles settlement directly)

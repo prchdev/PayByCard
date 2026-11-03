@@ -13,66 +13,8 @@ import {
   ShieldCheck,
   Info,
   ChevronDown,
-  ScanLine,
 } from 'lucide-react';
-import Tesseract from 'tesseract.js';
 import { useDashboardContext } from '../hooks/useDashboardContext';
-
-function extractCardholderName(rawText: string): string | null {
-  const lines = rawText
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-
-  for (const line of lines) {
-    const upperCount = line.replace(/[^A-Z]/g, '').length;
-    const letterCount = line.replace(/[^A-Za-z]/g, '').length;
-    const hasDigits = /\d/.test(line);
-
-    if (hasDigits) continue;
-    if (letterCount < 4) continue;
-    if (upperCount / letterCount < 0.7) continue;
-
-    if (/valid|thru|expires|cvv|debit|credit|bank|card|visa|mastercard|rupay|amex|maestro|rupay| platinum| signature| global| debit/i.test(line)) continue;
-
-    const cleanName = line
-      .replace(/[^A-Za-z\s]/g, '')
-      .split(/\s+/)
-      .filter((w) => w.length >= 2)
-      .join(' ');
-
-    if (cleanName.length >= 4 && /^([A-Z]{2,}\s+)+[A-Z]{2,}$/i.test(cleanName)) {
-      return cleanName;
-    }
-  }
-
-  for (const line of lines) {
-    const hasDigits = /\d/.test(line);
-    if (hasDigits) continue;
-    const cleanName = line
-      .replace(/[^A-Za-z\s]/g, '')
-      .split(/\s+/)
-      .filter((w) => w.length >= 2)
-      .join(' ');
-    if (cleanName.length >= 4 && cleanName.split(/\s+/).length >= 2) {
-      return cleanName;
-    }
-  }
-
-  return null;
-}
-
-function extractLastFourDigits(rawText: string): string | null {
-  const digitGroups = rawText
-    .replace(/\s/g, '')
-    .match(/\d{4,}/g);
-
-  if (!digitGroups || digitGroups.length === 0) return null;
-
-  const lastGroup = digitGroups[digitGroups.length - 1];
-  if (lastGroup.length < 4) return null;
-  return lastGroup.slice(-4);
-}
 
 interface CardPayment {
   payment_id: string;
@@ -144,8 +86,9 @@ export default function MyCards() {
   const [uploadSide, setUploadSide] = useState<'front' | 'back'>('front');
   const [isUploading, setIsUploading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [ocrStatus, setOcrStatus] = useState<string>('');
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [cardNameInput, setCardNameInput] = useState('');
+  const [nameError, setNameError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -181,6 +124,8 @@ export default function MyCards() {
   const handleUploadClick = (card: UserCard, side: 'front' | 'back') => {
     setSelectedCard(card);
     setUploadSide(side);
+    setCardNameInput(card.name_on_card || '');
+    setNameError('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -202,34 +147,13 @@ export default function MyCards() {
       setIsUploading(true);
       setError('');
 
-      let extractedName: string | null = null;
-      let extractedLastFour: string | null = null;
-
-      if (uploadSide === 'front') {
-        setOcrStatus('Reading name from card photo...');
-        try {
-          const imageDataUrl = await fileToDataUrl(file);
-          const { data: { text } } = await Tesseract.recognize(imageDataUrl, 'eng', {
-            logger: () => {},
-          });
-          extractedName = extractCardholderName(text);
-          extractedLastFour = extractLastFourDigits(text);
-        } catch (ocrErr) {
-          console.warn('OCR failed, proceeding without name extraction:', ocrErr);
-        }
-        setOcrStatus('');
-      }
-
       const formData = new FormData();
       formData.append('userId', userId);
       formData.append('cardId', selectedCard.id);
       formData.append('side', uploadSide);
       formData.append('file', file);
-      if (extractedName) {
-        formData.append('extractedName', extractedName);
-      }
-      if (extractedLastFour) {
-        formData.append('extractedLastFour', extractedLastFour);
+      if (uploadSide === 'front' && cardNameInput.trim()) {
+        formData.append('extractedName', cardNameInput.trim());
       }
 
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-card-photo`, {
@@ -244,10 +168,9 @@ export default function MyCards() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
 
-      if (uploadSide === 'front' && !data.extractedName) {
-        setSuccess('Front photo uploaded. Name could not be read automatically — it will be checked during verification.');
-      } else if (uploadSide === 'front' && data.extractedName) {
-        setSuccess(`Front photo uploaded. Name detected: ${data.extractedName}`);
+      if (uploadSide === 'front' && cardNameInput.trim()) {
+        setSuccess(`Front photo uploaded. Name on card: ${cardNameInput.trim()}`);
+        setCardNameInput('');
       } else {
         setSuccess('Back photo uploaded successfully');
       }
@@ -257,12 +180,15 @@ export default function MyCards() {
       setError(err.message || 'Upload failed');
     } finally {
       setIsUploading(false);
-      setOcrStatus('');
     }
   };
 
   const handleVerify = async (card: UserCard) => {
     if (!userId) return;
+    if (!card.name_on_card || card.name_on_card.trim().length < 4) {
+      setNameError('Please enter the name on card before verifying.');
+      return;
+    }
     try {
       setIsVerifying(true);
       setError('');
@@ -278,13 +204,7 @@ export default function MyCards() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Verification failed');
 
-      if (data.status === 'verified') {
-        setSuccess('Card verified successfully!');
-      } else if (data.status === 'third_party') {
-        setSuccess('Card marked as third party. Please wait for admin review.');
-      } else {
-        setSuccess('Card submitted for admin review.');
-      }
+      setSuccess('Card submitted for admin review. You will be notified once it is reviewed.');
       await fetchCards();
     } catch (err: any) {
       setError(err.message || 'Verification failed');
@@ -320,7 +240,7 @@ export default function MyCards() {
             <p className="text-sm text-blue-800 leading-relaxed">
               Upload a <strong>masked photo</strong> of your card where only the <strong>last 4 digits</strong> and the <strong>name on card</strong> are clearly visible.
               All other digits, expiry date, and CVV must be <strong>masked/covered</strong>.
-              Our AI will automatically read the name from the photo, verify that the last 4 digits match the transaction, and compare the name with your KYC profile.
+              Enter the name on card manually when uploading the front photo. An admin will verify that the last 4 digits match the transaction and that the name matches your KYC profile.
             </p>
             <div className="mt-3 flex items-center gap-4 text-sm text-blue-700">
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4" /> Last 4 digits visible</span>
@@ -503,16 +423,35 @@ export default function MyCards() {
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <p className="text-xs text-blue-700">
-                Ensure only last 4 digits and name are visible. Mask all other digits, expiry, and CVV before photographing. The name will be read automatically using in-browser OCR.
+                Ensure only last 4 digits and name are visible. Mask all other digits, expiry, and CVV before photographing.
               </p>
             </div>
+            {uploadSide === 'front' && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Name on Card <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={cardNameInput}
+                  onChange={(e) => {
+                    setCardNameInput(e.target.value.replace(/[^A-Za-z\s]/g, ''));
+                    setNameError('');
+                  }}
+                  maxLength={50}
+                  placeholder="Enter the name exactly as printed on the card"
+                  className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl text-sm focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-200 outline-none transition-colors"
+                />
+                {nameError && <p className="text-xs text-red-600 mt-1">{nameError}</p>}
+              </div>
+            )}
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
               className="w-full px-4 py-3 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white font-medium rounded-xl hover:from-[#7a66e0] hover:to-purple-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {isUploading ? (ocrStatus ? <ScanLine className="w-5 h-5 animate-pulse" /> : <Loader2 className="w-5 h-5 animate-spin" />) : <Upload className="w-5 h-5" />}
-              {isUploading ? (ocrStatus || 'Uploading...') : 'Select Photo'}
+              {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+              {isUploading ? 'Uploading...' : 'Select Photo'}
             </button>
           </div>
         </div>
@@ -522,11 +461,4 @@ export default function MyCards() {
   );
 }
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+

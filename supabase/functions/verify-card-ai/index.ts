@@ -8,24 +8,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-session, x-pbc-admin-session",
 };
 
-const NAME_MATCH_THRESHOLD = 0.5;
-
-/**
- * verify-card-ai
- *
- * Performs verification of a user's card submission:
- * 1. Reads the cardholder name that was extracted by in-browser OCR
- *    (Tesseract.js) at upload time and stored in name_on_card.
- * 2. Checks that last 4 digits on the uploaded card photo match the
- *    last 4 digits recorded from the payment gateway.
- * 3. Checks that the name extracted from the card photo matches the user's
- *    KYCed name (minimum 50% token overlap to pass).
- *
- * If verification passes both checks → status = "verified"
- * If last 4 matches but name does NOT match → status = "third_party"
- * If name could not be read (OCR failed) → status = "submitted" (admin review)
- */
-
 function tokenizeName(name: string): Set<string> {
   return new Set(
     name.toLowerCase()
@@ -47,6 +29,14 @@ function nameMatchScore(name1: string, name2: string): number {
   return matches / Math.max(tokens1.size, tokens2.size);
 }
 
+/**
+ * verify-card-ai
+ *
+ * Submits the card for admin review. No automatic AI verification is performed.
+ * The cardholder name (entered manually by the user) and last 4 digits are
+ * compared against the user's KYC name and gateway-recorded last 4 digits,
+ * and the comparison result is stored for the admin to review.
+ */
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -111,51 +101,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Use the name extracted by in-browser OCR at upload time
-    const extractedName = card.name_on_card;
-    const ocrLastFour = card.ocr_last_four;
-    const dbLastFour = card.card_last_four;
-
-    // Compare the last 4 digits read from the photo against the gateway record
-    const last4Match = !!(ocrLastFour && dbLastFour && ocrLastFour === dbLastFour);
-
-    if (!extractedName) {
-      const aiResult = {
-        ocr_name: null,
-        ocr_status: "failed",
-        ocr_last_four: ocrLastFour,
-        db_last_four: dbLastFour,
-        last4_match: last4Match,
-        name_match_score: 0,
-        name_match_threshold: NAME_MATCH_THRESHOLD,
-        verified: false,
-        is_third_party: false,
-        verified_at: new Date().toISOString(),
-        note: "OCR could not read the name from the card photo. Submitted for admin review.",
-      };
-
-      await supabase.from("user_cards").update({
-        status: "submitted",
-        ai_verification_result: aiResult,
-        updated_at: new Date().toISOString(),
-      }).eq("id", cardId);
-
-      await supabase.from("card_payment_links")
-        .update({ verification_status: "submitted" })
-        .eq("user_card_id", cardId);
-
+    if (!card.name_on_card || card.name_on_card.trim().length < 4) {
       return new Response(
-        JSON.stringify({
-          success: true,
-          status: "submitted",
-          aiResult,
-          message: "Could not read the name from the card photo. Submitted for admin review.",
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "Please enter the name on card before submitting for verification" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Fetch user's KYC name for comparison
+    const dbLastFour = card.card_last_four;
+    const last4Match = !!(dbLastFour && dbLastFour !== "????" && dbLastFour.length === 4);
+
     const { data: user } = await supabase
       .from("users")
       .select("first_name, middle_name, last_name")
@@ -174,48 +129,30 @@ Deno.serve(async (req: Request) => {
       .join(" ")
       .trim();
 
-    const nameScore = nameMatchScore(extractedName, kycName);
+    const nameScore = nameMatchScore(card.name_on_card, kycName);
 
-    const verified = last4Match && nameScore >= NAME_MATCH_THRESHOLD;
-    const isThirdParty = last4Match && nameScore < NAME_MATCH_THRESHOLD;
-
-    let newStatus: string;
-    if (verified) {
-      newStatus = "verified";
-    } else if (isThirdParty) {
-      newStatus = "third_party";
-    } else {
-      newStatus = "submitted";
-    }
-
-    const aiResult = {
-      ocr_name: extractedName,
-      ocr_status: "success",
-      ocr_last_four: ocrLastFour,
-      db_last_four: dbLastFour,
-      last4_match: last4Match,
-      name_match_score: nameScore,
-      name_match_threshold: NAME_MATCH_THRESHOLD,
-      name_on_card: extractedName,
+    const reviewResult = {
+      name_on_card: card.name_on_card,
       kyc_name: kycName,
-      verified,
-      is_third_party: isThirdParty,
-      verified_at: new Date().toISOString(),
+      name_match_score: nameScore,
+      last4_match: last4Match,
+      db_last_four: dbLastFour,
+      submitted_at: new Date().toISOString(),
+      note: "Submitted for admin review. Admin to verify last 4 digits match and name match.",
     };
 
     await supabase.from("user_cards").update({
-      status: newStatus,
-      name_on_card: extractedName,
-      ai_verification_result: aiResult,
+      status: "submitted",
+      ai_verification_result: reviewResult,
       updated_at: new Date().toISOString(),
     }).eq("id", cardId);
 
     await supabase.from("card_payment_links")
-      .update({ verification_status: newStatus })
+      .update({ verification_status: "submitted" })
       .eq("user_card_id", cardId);
 
     return new Response(
-      JSON.stringify({ success: true, status: newStatus, aiResult }),
+      JSON.stringify({ success: true, status: "submitted", aiResult: reviewResult }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {

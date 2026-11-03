@@ -253,7 +253,7 @@ export default function AdminVerifyCards() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Bank</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name on Card</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">AI Match</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name Match</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
@@ -385,18 +385,30 @@ export default function AdminVerifyCards() {
                 </div>
               </div>
 
-              {/* AI Result */}
+              {/* Verification Details */}
               {selectedCard.ai_verification_result && (
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                  <p className="text-sm font-medium text-blue-900 mb-2">AI Verification Result</p>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="text-blue-700">Last 4 Match:</span>
-                      <span className="ml-2 font-medium text-blue-900">{selectedCard.ai_verification_result.last4_match ? 'Yes' : 'No'}</span>
+                  <p className="text-sm font-medium text-blue-900 mb-2">Verification Details</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-blue-700">Last 4 Digits Match:</span>
+                      <span className={`font-medium ${selectedCard.ai_verification_result.last4_match ? 'text-green-700' : 'text-red-700'}`}>
+                        {selectedCard.ai_verification_result.last4_match ? 'Matched' : 'Not matched'}
+                      </span>
                     </div>
-                    <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-blue-700">Name on Card:</span>
+                      <span className="font-medium text-blue-900">{selectedCard.ai_verification_result.name_on_card || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-blue-700">KYC Name:</span>
+                      <span className="font-medium text-blue-900">{selectedCard.ai_verification_result.kyc_name || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
                       <span className="text-blue-700">Name Match:</span>
-                      <span className="ml-2 font-medium text-blue-900">{Math.round((selectedCard.ai_verification_result.name_match_score || 0) * 100)}%</span>
+                      <span className={`font-medium ${(selectedCard.ai_verification_result.name_match_score || 0) >= 0.5 ? 'text-green-700' : 'text-red-700'}`}>
+                        {Math.round((selectedCard.ai_verification_result.name_match_score || 0) * 100)}%
+                      </span>
                     </div>
                   </div>
                 </div>

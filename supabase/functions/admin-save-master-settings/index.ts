@@ -42,6 +42,7 @@ serveAdmin(async (req: Request) => {
       allow_self_transfer,
       allow_credit_card_payment,
       allow_manual_kyc,
+      allow_manual_addr_proof_when_pan_verified,
       enable_credit_card_verification,
       enable_third_party_card_usage,
       gateway_encryption_key,
@@ -102,6 +103,7 @@ serveAdmin(async (req: Request) => {
     if (allow_self_transfer !== undefined) payload.allow_self_transfer = !!allow_self_transfer;
     if (allow_credit_card_payment !== undefined) payload.allow_credit_card_payment = !!allow_credit_card_payment;
     if (allow_manual_kyc !== undefined) payload.allow_manual_kyc = !!allow_manual_kyc;
+    if (allow_manual_addr_proof_when_pan_verified !== undefined) payload.allow_manual_addr_proof_when_pan_verified = !!allow_manual_addr_proof_when_pan_verified;
     if (enable_credit_card_verification !== undefined) payload.enable_credit_card_verification = !!enable_credit_card_verification;
     if (enable_third_party_card_usage !== undefined) payload.enable_third_party_card_usage = !!enable_third_party_card_usage;
     if (gateway_encryption_key !== undefined && gateway_encryption_key !== '') payload.gateway_encryption_key = gateway_encryption_key;

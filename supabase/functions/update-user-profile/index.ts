@@ -40,6 +40,19 @@ serveUser(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    const { data: panRecord } = await supabase
+      .from("kyc_pan_verification")
+      .select("status")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (panRecord?.status === "verified") {
+      return new Response(
+        JSON.stringify({ error: "Personal details cannot be changed after your PAN has been verified." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const fullName = [first_name.trim(), middle_name?.trim(), last_name.trim()]
       .filter(Boolean)
       .join(" ");

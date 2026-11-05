@@ -99,7 +99,7 @@
     },
     "admin-get-master-settings": {
       "hasChanged": false,
-      "hash": "2ffefbc8152d16fc8ff88e09f483c90eec3d4b164f817fbe431b077c3fb654a8a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "24165778f200765e5e8a30e74bf090a1097bc160718bbd280c5329bb03e145c2a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-merchant-kyc": {
       "hasChanged": false,
@@ -175,7 +175,7 @@
     },
     "admin-save-master-settings": {
       "hasChanged": false,
-      "hash": "47113a8bcc010d1185a67e6e03cf8d6b3d0f7f63435af3aca7da1a7c4743ccbea3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "6bf3a92fd3095ef633ad54eca5ba2a101def792d145344583a888ad77ac960f5a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-save-notification": {
       "hasChanged": false,
@@ -331,7 +331,7 @@
     },
     "get-company-settings": {
       "hasChanged": false,
-      "hash": "ad9d8a50e2cb3a71729d3cd8ffe57c3ff3cf0760200759724f1f419e493bd39aa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "9466ebed3d1e132dd3e82567ce6075397869f70866e23b451690ed5a90de3898a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-gateway-charges": {
       "hasChanged": false,
@@ -527,7 +527,7 @@
     },
     "save-kyc-data": {
       "hasChanged": false,
-      "hash": "fa1827e69477e6b7671fc98c83a9062696648a1e845ba197ad8c64868fda6947a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "9041a0bee08b27fbbf67af87b2e9b699ff1eb7a2eb266f2f738f8e3a20dab456a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-kyc-method-settings": {
       "hasChanged": false,
@@ -603,7 +603,7 @@
     },
     "update-user-profile": {
       "hasChanged": false,
-      "hash": "d9da400021da0aa8dfabaa271c8ffe49e0855676bd1154ac5d60a4ab563b13bca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "1e8a325a5431ff678f22796210b6a60148fc071b33cf93dcb04b16c9b11b3e9aa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "upload-card-photo": {
       "hasChanged": false,

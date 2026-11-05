@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScanFace, Save, AlertCircle, CheckCircle, Loader2, KeyRound, Eye, EyeOff, Info, FileText } from 'lucide-react';
+import { ScanFace, Save, AlertCircle, CheckCircle, Loader2, KeyRound, Eye, EyeOff, Info, FileText, MapPin } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAdminPermission } from './useAdminPermission';
 
@@ -108,6 +108,7 @@ export default function KycMethodSettings() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [allowManualKyc, setAllowManualKyc] = useState(true);
+  const [allowManualAddrWhenPan, setAllowManualAddrWhenPan] = useState(false);
   const [masterLoading, setMasterLoading] = useState(true);
   const [masterSaving, setMasterSaving] = useState(false);
 
@@ -132,9 +133,10 @@ export default function KycMethodSettings() {
       const data = await response.json();
       if (response.ok && data.settings) {
         setAllowManualKyc(data.settings.allow_manual_kyc ?? true);
+        setAllowManualAddrWhenPan(data.settings.allow_manual_addr_proof_when_pan_verified ?? false);
       }
     } catch {
-      // default to true
+      // default to true / false
     } finally {
       setMasterLoading(false);
     }
@@ -152,7 +154,7 @@ export default function KycMethodSettings() {
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ adminId, allow_manual_kyc: allowManualKyc }),
+          body: JSON.stringify({ adminId, allow_manual_kyc: allowManualKyc, allow_manual_addr_proof_when_pan_verified: allowManualAddrWhenPan }),
         }
       );
       const data = await response.json();
@@ -317,6 +319,49 @@ export default function KycMethodSettings() {
               >
                 <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
                   allowManualKyc ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <button
+                onClick={saveManualKycSetting}
+                disabled={masterSaving || masterLoading || !canEdit}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#8c76f0] to-purple-600 text-white rounded-xl font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {masterSaving ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" />Saving...</>
+                ) : (
+                  <><Save className="w-4 h-4" />Save Setting</>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Allow Manual Address Proof When PAN Verified Toggle */}
+          <div className="bg-white rounded-2xl border-2 border-gray-300 hover:border-[#8c76f0] p-6 transition-all hover:shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl flex items-center justify-center">
+                  <MapPin className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Enable Manual KYC for Address Proof When PAN is Verified</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    When enabled, users whose PAN is already verified can upload address proof documents manually. Personal details (name) remain locked. When disabled, the standard KYC verification approach is followed.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={masterLoading || masterSaving || !canEdit}
+                aria-checked={allowManualAddrWhenPan}
+                onClick={() => setAllowManualAddrWhenPan(!allowManualAddrWhenPan)}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  allowManualAddrWhenPan ? 'bg-[#8c76f0]' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                  allowManualAddrWhenPan ? 'translate-x-6' : 'translate-x-1'
                 }`} />
               </button>
             </div>

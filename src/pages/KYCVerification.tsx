@@ -40,6 +40,7 @@ export default function KYCVerification() {
   const userEmail = (location.state?.userEmail as string | undefined) || authUserEmail || '';
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [allowManualKyc, setAllowManualKyc] = useState(true);
+  const [allowManualAddrWhenPan, setAllowManualAddrWhenPan] = useState(false);
 
   // CashFree DigiLocker redirects back to this page with ?cf_verification_id=...
   // Bridge-based DigiLocker redirect falls back to ?code=...&state=... when popup is blocked.
@@ -88,9 +89,10 @@ export default function KYCVerification() {
       const data = await res.json();
       if (res.ok && data.settings) {
         setAllowManualKyc(data.settings.allow_manual_kyc ?? true);
+        setAllowManualAddrWhenPan(data.settings.allow_manual_addr_proof_when_pan_verified ?? false);
       }
     } catch {
-      // default to true
+      // default values
     }
   };
 
@@ -154,6 +156,9 @@ export default function KYCVerification() {
     }
     return 'pending';
   })();
+
+  const panVerifiedOnly =
+    kycData?.pan?.status === 'verified' && kycData?.address?.status !== 'verified';
 
   const alreadyVerified =
     kycData?.pan?.status === 'verified' && kycData?.address?.status === 'verified';
@@ -350,6 +355,21 @@ export default function KYCVerification() {
                     <PanSection userId={userId} data={kycData?.pan ?? null} onSaved={refresh} />
                     <AddressSection userId={userId} data={kycData?.address ?? null} onSaved={refresh} />
                   </>
+                )}
+
+                {/* Manual address proof upload when PAN is verified but address is not, and the setting is enabled */}
+                {panVerifiedOnly && allowManualAddrWhenPan && !alreadyVerified && (
+                  <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl px-5 py-4 flex items-start gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-blue-800">Upload Address Proof Manually</p>
+                      <p className="text-sm text-blue-700 mt-0.5">
+                        Your PAN is verified. Please upload your address proof document below to complete your KYC. Your personal details are locked since your PAN is already verified.
+                      </p>
+                    </div>
+                  </div>
                 )}
 
                 {/* Business section — only available after PAN and Address KYC are both verified */}

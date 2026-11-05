@@ -109,7 +109,7 @@ serveUser(async (req: Request) => {
 
     const { data: settings } = await supabase
       .from("master_settings")
-      .select("allow_manual_kyc")
+      .select("allow_manual_kyc, allow_manual_addr_proof_when_pan_verified")
       .limit(1)
       .maybeSingle();
 
@@ -118,6 +118,21 @@ serveUser(async (req: Request) => {
         JSON.stringify({ error: "Manual KYC submission is currently disabled. Please use DigiLocker to complete your KYC." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    if (section === "address" && settings?.allow_manual_addr_proof_when_pan_verified === false) {
+      const { data: panRecord } = await supabase
+        .from("kyc_pan_verification")
+        .select("status")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (panRecord?.status === "verified") {
+        return new Response(
+          JSON.stringify({ error: "Manual address proof upload is not available when your PAN is already verified. Please complete your address proof verification through DigiLocker." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const clientIp = ipAddress || getClientIp(req);

@@ -577,7 +577,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
           <p className="text-sm text-gray-700 leading-relaxed">
             {isDlSpecific
               ? 'Driver License is not available in DigiLocker. Please proceed with uploading address proof manually or connect your driving license with DigiLocker and verify again.'
-              : 'Address proof documents are not available in your DigiLocker account. Please upload your address proof manually or ensure your documents (Aadhaar, Passport, Driving License, or Voter ID) are linked to DigiLocker and try again.'}
+              : 'Address proof documents are not available in your DigiLocker account. Please upload your address proof manually or ensure your documents (Address Proof: Driving License, Passport, or Voter ID) are linked to DigiLocker and try again.'}
           </p>
           <div className="flex flex-col gap-3">
             {allowManualKyc && (
@@ -666,7 +666,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
             <p className="font-medium mb-1">What to do next</p>
             <p className="text-xs text-amber-700 leading-relaxed">
-              The name in your DigiLocker / Aadhaar or PAN must match the name you registered with.
+              The name in your DigiLocker / Address Proof (Driving License, Passport, Voter ID) or PAN must match the name you registered with.
               If there is a genuine discrepancy, please submit your KYC manually with supporting documents,
               or contact support to update your account name.
             </p>
@@ -781,7 +781,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
             <div className="space-y-2">
               {[
                 ['1', 'Click <strong>Connect DigiLocker</strong> — a secure popup window will open.'],
-                ['2', 'Log in to DigiLocker and authorize access to your Aadhaar and PAN.'],
+                ['2', 'Log in to DigiLocker and authorize access to your PAN and Address Proof (Driving License, Passport, Voter ID).'],
                 ['3', 'Close the popup after authorizing — your KYC will complete automatically.'],
               ].map(([num, text]) => (
                 <div key={num} className="flex items-start gap-2 text-sm text-gray-600">
@@ -873,7 +873,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
             <Loader2 className="w-5 h-5 animate-spin flex-shrink-0 text-[#8c76f0]" />
             <div>
               <p className="text-sm font-medium text-gray-800">Verifying your identity…</p>
-              <p className="text-xs text-gray-500 mt-0.5">Fetching your Aadhaar and PAN from DigiLocker</p>
+              <p className="text-xs text-gray-500 mt-0.5">Fetching your PAN and Address Proof (Driving License, Passport, Voter ID) from DigiLocker</p>
             </div>
           </div>
         )}

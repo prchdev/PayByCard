@@ -134,12 +134,16 @@ serveUser(async (req: Request) => {
     }
 
     // Check applicable_to: first_transaction vs non_first_transaction
+    // Exclude only failed and cancelled — all other statuses (completed, pending,
+    // processing, kyc_pending, settlement_pending, merchant_kyc_review, etc.)
+    // count as prior transactions. Failed transactions must NOT block a
+    // first-transaction coupon.
     if (coupon.applicable_to === "first_transaction" || coupon.applicable_to === "non_first_transaction") {
       const { count: paymentCount } = await supabase
         .from("payments")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
-        .in("status", ["completed", "settlement_pending", "kyc_pending"]);
+        .not("status", "in", '("failed","cancelled")');
 
       const hasPriorPayments = (paymentCount || 0) > 0;
 

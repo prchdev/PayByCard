@@ -12,6 +12,7 @@ export interface DigiLockerFlowProps {
   onSuccess: (data: DigiLockerResult) => void;
   onFallback: (reason: string) => void;
   allowManualKyc?: boolean;
+  allowManualAddrWhenPan?: boolean;
 }
 
 export interface DigiLockerResult {
@@ -88,7 +89,7 @@ function logEvent(userId: string, provider: string, action: string, success: boo
   }).catch(() => { /* non-critical */ });
 }
 
-export default function DigiLockerFlow({ userId, providerName, authToken, onSuccess, onFallback, allowManualKyc = true }: DigiLockerFlowProps) {
+export default function DigiLockerFlow({ userId, providerName, authToken, onSuccess, onFallback, allowManualKyc = true, allowManualAddrWhenPan = false }: DigiLockerFlowProps) {
   const [step, setStep] = useState<Step>('idle');
   const [error, setError] = useState('');
   const [addrError, setAddrError] = useState<'DRIVING_LICENSE_UNAVAILABLE' | 'ADDRESS_PROOF_UNAVAILABLE' | null>(null);
@@ -596,7 +597,7 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
           </p>
 
           <div className="flex flex-col gap-3">
-            {allowManualKyc && (
+            {(allowManualKyc || allowManualAddrWhenPan) && (
               <button
                 onClick={() => onFallback('dl_unavailable')}
                 className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"

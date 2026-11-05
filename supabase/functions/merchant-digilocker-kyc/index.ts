@@ -198,10 +198,14 @@ async function fetchCashFreeDocuments(
   environment: string, verificationId: string,
   merchantId: string,
 ): Promise<KycData> {
-  const [aadhaarData, panData] = await Promise.all([
-    getCashFreeDocument(apiKey, apiSecret, publicKey, environment, verificationId, 'AADHAAR'),
-    getCashFreeDocument(apiKey, apiSecret, publicKey, environment, verificationId, 'PAN'),
-  ]);
+  const panData = await getCashFreeDocument(apiKey, apiSecret, publicKey, environment, verificationId, 'PAN');
+
+  let aadhaarData: any = null;
+  try {
+    aadhaarData = await getCashFreeDocument(apiKey, apiSecret, publicKey, environment, verificationId, 'AADHAAR');
+  } catch (e) {
+    console.warn('[fetchCashFreeDocuments] Aadhaar not available from DigiLocker, proceeding with PAN only:', (e as Error).message);
+  }
 
   const sa = aadhaarData?.split_address || {};
   const addressParts = [aadhaarData?.care_of, sa.house, sa.street, sa.landmark].filter(Boolean);
@@ -224,6 +228,8 @@ async function fetchCashFreeDocuments(
     panData ? storeJson(panData, 'pan_data') : Promise.resolve(null),
   ]);
 
+  if (!panData?.pan) throw new Error('Could not retrieve PAN from DigiLocker. Please use Manual KYC.');
+
   let cfState = sa.state || '';
   let cfCity = sa.dist || sa.vtc || sa.subdist || '';
   if (!cfState && sa.pincode) {
@@ -235,16 +241,18 @@ async function fetchCashFreeDocuments(
     }
   }
 
+  const fullName = panData?.name || aadhaarData?.name || '';
+
   return {
     pan_number: panData?.pan || '',
-    full_name: panData?.name || aadhaarData?.name || '',
+    full_name: fullName,
     dob: panData?.dob || aadhaarData?.dob || '',
     address: addressParts.join(', '),
     city: cfCity,
     state: cfState,
     pincode: sa.pincode || '',
     id_number: aadhaarData?.uid || '',
-    address_proof_type: 'aadhar',
+    address_proof_type: aadhaarData ? 'aadhar' : 'driving_license',
     aadhaar_front_url: aadhaarUrl || undefined,
     pan_photo_url: panUrl || undefined,
   };

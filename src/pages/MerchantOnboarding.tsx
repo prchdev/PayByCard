@@ -576,7 +576,7 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
             <div className="space-y-2">
               {[
                 ['1', 'Click <strong>Connect DigiLocker</strong> — a secure popup window will open.'],
-                ['2', 'Sign in to DigiLocker and authorize access to your Aadhaar and PAN.'],
+                ['2', 'Sign in to DigiLocker and authorize access to your PAN and Address Proof (Driving License, Passport, Voter ID).'],
                 ['3', 'Close the popup after authorizing — your KYC will complete automatically.'],
               ].map(([n, t]) => (
                 <div key={n} className="flex items-start gap-2 text-sm text-gray-600">
@@ -651,7 +651,7 @@ function MerchantDlFlow({ token, providerName, expectedPan, onSuccess, onFallbac
             <Loader2 className="w-5 h-5 animate-spin flex-shrink-0 text-[#8c76f0]" />
             <div>
               <p className="text-sm font-medium text-gray-800">Verifying your identity…</p>
-              <p className="text-xs text-gray-500 mt-0.5">Fetching Aadhaar and PAN from DigiLocker</p>
+              <p className="text-xs text-gray-500 mt-0.5">Fetching PAN and Address Proof from DigiLocker</p>
             </div>
           </div>
         )}
@@ -696,7 +696,7 @@ function KycSummaryCard({ kycData }: { kycData: KycData }) {
         {kycData.address && (
           <div className="mt-3 flex items-start gap-2 text-xs text-gray-500 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
             <MapPin className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" />
-            <span>Address details fetched from your Aadhaar via DigiLocker.</span>
+            <span>Address details fetched from your Address Proof (Driving License, Passport, Voter ID) via DigiLocker.</span>
           </div>
         )}
       </div>

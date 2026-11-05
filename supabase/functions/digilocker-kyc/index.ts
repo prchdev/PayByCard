@@ -22,6 +22,8 @@ interface DigiLockerKycRequest {
   platform?: string;
 }
 
+const ADDRESS_PROOF_FAIL_CODES = new Set(['DRIVING_LICENSE_UNAVAILABLE', 'ADDRESS_PROOF_UNAVAILABLE']);
+
 type AddressProofType = 'aadhar' | 'passport' | 'voter_id' | 'driving_license';
 
 interface KycData {
@@ -37,6 +39,8 @@ interface KycData {
   pan_photo_url?: string;
   aadhaar_front_url?: string;
   aadhaar_back_url?: string;
+  addressProofFailed?: boolean;
+  addressProofErrorCode?: string;
 }
 
 // ── Name matching ─────────────────────────────────────────────────────────────
@@ -317,18 +321,39 @@ async function fetchCashFreeDocuments(
   apiKey: string, apiSecret: string, publicKey: string,
   environment: string, verificationId: string, userId: string,
 ): Promise<KycData> {
-  const [aadhaarData, panData] = await Promise.all([
-    getCashFreeDocument(apiKey, apiSecret, publicKey, environment, verificationId, 'AADHAAR'),
-    getCashFreeDocument(apiKey, apiSecret, publicKey, environment, verificationId, 'PAN'),
-  ]);
+  const panData = await getCashFreeDocument(apiKey, apiSecret, publicKey, environment, verificationId, 'PAN');
+
+  let aadhaarData: any = null;
+  try {
+    aadhaarData = await getCashFreeDocument(apiKey, apiSecret, publicKey, environment, verificationId, 'AADHAAR');
+  } catch (e) {
+    console.warn('[fetchCashFreeDocuments] Aadhaar fetch failed, continuing with PAN only:', (e as Error).message);
+  }
+
+  const panPhotoUrl = await buildAndStoreCashFreeXml(supabase, 'PAN', panData, userId, 'pan_photo');
+
+  if (!panData?.pan) throw new Error('Could not retrieve PAN from DigiLocker. Please use Manual KYC.');
+
+  if (!aadhaarData) {
+    return {
+      pan_number: panData.pan,
+      full_name: panData.name || '',
+      dob: panData.dob || '',
+      address: '', city: '', state: '', pincode: '',
+      id_number: '',
+      address_proof_type: 'driving_license',
+      pan_photo_url: panPhotoUrl || undefined,
+      addressProofFailed: true,
+      addressProofErrorCode: 'ADDRESS_PROOF_UNAVAILABLE',
+    };
+  }
 
   const sa = aadhaarData?.split_address || {};
   const addressParts = [aadhaarData?.care_of, sa.house, sa.street, sa.landmark].filter(Boolean);
 
-  const [aadhaarFrontUrl, aadhaarBackUrl, panPhotoUrl] = await Promise.all([
+  const [aadhaarFrontUrl, aadhaarBackUrl] = await Promise.all([
     buildAndStoreCashFreeXml(supabase, 'AADHAAR', aadhaarData, userId, 'address_front'),
     buildAndStoreCashFreeXml(supabase, 'AADHAAR', aadhaarData, userId, 'address_back'),
-    buildAndStoreCashFreeXml(supabase, 'PAN', panData, userId, 'pan_photo'),
   ]);
 
   let cfState = sa.state || '';
@@ -343,14 +368,14 @@ async function fetchCashFreeDocuments(
   }
 
   return {
-    pan_number: panData?.pan || '',
-    full_name: panData?.name || aadhaarData?.name || '',
-    dob: panData?.dob || aadhaarData?.dob || '',
+    pan_number: panData.pan,
+    full_name: panData.name || aadhaarData.name || '',
+    dob: panData.dob || aadhaarData.dob || '',
     address: addressParts.join(', '),
     city: cfCity,
     state: cfState,
     pincode: sa.pincode || '',
-    id_number: aadhaarData?.uid || '',
+    id_number: aadhaarData.uid || '',
     address_proof_type: 'aadhar',
     pan_photo_url: panPhotoUrl || undefined,
     aadhaar_front_url: aadhaarFrontUrl || undefined,
@@ -1051,21 +1076,36 @@ async function fetchDigiLockerData(
     } catch { /* ignore */ }
   }
 
+  const panPhotoUrl = panRawXml ? await storeXmlFile(supabase, panRawXml, userId, 'pan_photo') : null;
+
   if (!addrParsed) {
     const hadOtherProofs = !!(aadhaarDoc || passportDoc || voterDoc);
+    const failCode = dlAttemptedButFailed && !hadOtherProofs ? 'DRIVING_LICENSE_UNAVAILABLE' : 'ADDRESS_PROOF_UNAVAILABLE';
     console.error('[fetchDigiLockerData] address proof failed. docs found:', JSON.stringify({
       aadhaar: !!aadhaarDoc, pan: !!panDoc, passport: !!passportDoc, dl: !!dlDoc, voter: !!voterDoc,
       dlHadUri: !!(dlDoc?.uri), dlAttemptedButFailed, hadOtherProofs,
     }));
-    throw new Error(dlAttemptedButFailed && !hadOtherProofs ? 'DRIVING_LICENSE_UNAVAILABLE' : 'ADDRESS_PROOF_UNAVAILABLE');
+    return {
+      pan_number:         panParsed?.panNumber      || '',
+      full_name:          panParsed?.name || aadhaarParsed?.name || userDetailsName || tokenName,
+      dob:                panParsed?.dob  || aadhaarParsed?.dob  || userDetailsDob  || tokenDob,
+      address:            '',
+      city:               '',
+      state:              '',
+      pincode:            '',
+      id_number:          '',
+      address_proof_type: 'driving_license',
+      pan_photo_url:      panPhotoUrl  || undefined,
+      addressProofFailed: true,
+      addressProofErrorCode: failCode,
+    } as KycData & { addressProofFailed: true; addressProofErrorCode: string };
   }
 
   const addrFileKey = addrProofType === 'passport' ? 'passport'
     : addrProofType === 'driving_license' ? 'dl'
     : addrProofType === 'voter_id' ? 'voter_id'
     : 'aadhar';
-  const [panPhotoUrl, addrFrontUrl, addrBackUrl] = await Promise.all([
-    panRawXml  ? storeXmlFile(supabase, panRawXml,  userId, 'pan_photo')           : Promise.resolve(null),
+  const [addrFrontUrl, addrBackUrl] = await Promise.all([
     addrRawXml ? storeXmlFile(supabase, addrRawXml, userId, `${addrFileKey}_front`) : Promise.resolve(null),
     addrRawXml ? storeXmlFile(supabase, addrRawXml, userId, `${addrFileKey}_back`)  : Promise.resolve(null),
   ]);
@@ -1153,7 +1193,11 @@ async function writeKycRecords(supabase: ReturnType<typeof createClient>, userId
     if (!addrError) addressRecord = addr;
   }
 
-  await supabase.from('users').update({ kyc_completed: true, updated_at: now }).eq('id', userId);
+  const isPanOnly = !addressRecord;
+  await supabase.from('users').update({
+    kyc_completed: !isPanOnly,
+    updated_at: now,
+  }).eq('id', userId);
   return { panRecord, addressRecord };
 }
 
@@ -1338,7 +1382,7 @@ serveUser(async (req: Request) => {
           kycData = await fetchDigiLockerData(supabase, apiKey, apiSecret, code, redirectUri, userId, codeVerifier);
         } catch (e) {
           const msg = (e as Error).message;
-          if (msg === 'DRIVING_LICENSE_UNAVAILABLE' || msg === 'ADDRESS_PROOF_UNAVAILABLE') {
+          if (ADDRESS_PROOF_FAIL_CODES.has(msg)) {
             return new Response(
               JSON.stringify({ success: false, autoApproved: false, error: msg }),
               { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -1403,6 +1447,26 @@ serveUser(async (req: Request) => {
         req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
         req.headers.get("x-real-ip")?.trim() ||
         null;
+
+      // ── PAN-only path: address proof failed but PAN is valid ────────────────
+      if (kycData.addressProofFailed) {
+        const { panRecord } = await writeKycRecords(supabase, userId, kycData, provider.provider_name, resolvedIp);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            autoApproved: false,
+            panVerified: true,
+            addressProofPending: true,
+            nameMatches: true,
+            kycData,
+            panRecord,
+            error: kycData.addressProofErrorCode || 'ADDRESS_PROOF_UNAVAILABLE',
+            message: 'Your PAN has been verified via DigiLocker. Please upload your address proof manually to complete KYC.',
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const { panRecord, addressRecord } = await writeKycRecords(supabase, userId, kycData, provider.provider_name, resolvedIp);
 
       try {

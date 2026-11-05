@@ -35,7 +35,8 @@ type Step =
   | 'success'
   | 'error'
   | 'name_mismatch'
-  | 'dl_unavailable';
+  | 'dl_unavailable'
+  | 'pan_verified_addr_pending';
 
 interface NameMismatch {
   registeredName: string;
@@ -490,6 +491,14 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
         });
         setStep('success');
         onSuccess({ ...data.kycData, autoApproved: true });
+      } else if (data.panVerified && data.addressProofPending) {
+        logEvent(userId, providerName, 'auto_approve_pan_only', true, {
+          duration_ms,
+          error_code: data.error,
+          has_pan: !!(data.kycData?.pan_number),
+        });
+        setAddrError(data.error === 'DRIVING_LICENSE_UNAVAILABLE' ? 'DRIVING_LICENSE_UNAVAILABLE' : 'ADDRESS_PROOF_UNAVAILABLE');
+        setStep('pan_verified_addr_pending');
       } else if (data.error === 'DRIVING_LICENSE_UNAVAILABLE' || data.error === 'ADDRESS_PROOF_UNAVAILABLE') {
         logEvent(userId, providerName, 'auto_approve_addr_unavailable', false, {
           error_code: data.error,
@@ -551,6 +560,62 @@ export default function DigiLockerFlow({ userId, providerName, authToken, onSucc
     sessionStorage.removeItem('digilocker_code');
     sessionStorage.removeItem('digilocker_code_verifier');
   };
+
+  // ── PAN verified, address proof pending state ─────────────────────────────────
+  if (step === 'pan_verified_addr_pending') {
+    const isDlSpecific = addrError === 'DRIVING_LICENSE_UNAVAILABLE';
+    return (
+      <div className="bg-white border-2 border-amber-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-5 py-4 bg-amber-50 border-b border-amber-200 flex items-start gap-3">
+          <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <AlertCircle className="w-5 h-5 text-amber-600" />
+          </div>
+          <div>
+            <p className="font-semibold text-amber-800 text-sm">
+              PAN Verified — Address Proof Required
+            </p>
+            <p className="text-xs text-amber-600 mt-0.5">
+              Your PAN was successfully verified, but address proof could not be retrieved.
+            </p>
+          </div>
+        </div>
+
+        <div className="px-5 py-5 space-y-4">
+          <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-green-800">PAN Verified</p>
+              <p className="text-xs text-green-700">Your PAN card has been verified via DigiLocker.</p>
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-700 leading-relaxed">
+            {isDlSpecific
+              ? 'Your Driving License could not be retrieved from DigiLocker. Please upload your address proof manually to complete your KYC.'
+              : 'Address proof documents (Driving License, Passport, or Voter ID) could not be retrieved from your DigiLocker account. Please upload your address proof manually to complete your KYC.'}
+          </p>
+
+          <div className="flex flex-col gap-3">
+            {allowManualKyc && (
+              <button
+                onClick={() => onFallback('dl_unavailable')}
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                Upload Address Proof Manually
+              </button>
+            )}
+            <button
+              onClick={retry}
+              className="w-full py-2.5 px-4 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl border-2 border-gray-200 transition-colors flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Try DigiLocker Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── DL Unavailable state ─────────────────────────────────────────────────────
   if (step === 'dl_unavailable') {

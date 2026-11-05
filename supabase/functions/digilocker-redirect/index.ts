@@ -55,9 +55,17 @@ Deno.serve(async (req: Request) => {
   const code = url.searchParams.get('code') || '';
   const error = url.searchParams.get('error') || '';
   const state = url.searchParams.get('state') || '';
+  const platformParam = url.searchParams.get('platform') || '';
+  const verificationId = url.searchParams.get('verification_id') || '';
+
+  // CashFree DigiLocker callback: redirect_url included ?platform=mobile and
+  // CashFree appends verification_id after the user completes the DigiLocker
+  // journey. Detect mobile via the platform param and redirect to the app's
+  // custom scheme so expo-web-browser closes the webview and returns to the app.
+  const isCashFreeMobile = platformParam === 'mobile';
 
   const isMerchant = isMerchantState(state);
-  const isMobile = isMobileState(state);
+  const isMobile = isMobileState(state) || isCashFreeMobile;
   const fallbackPath = isMerchant ? '/merchant-onboarding' : '/kyc-verification';
 
   const appUrl = resolveAppUrl(req, state);
@@ -67,12 +75,14 @@ Deno.serve(async (req: Request) => {
   if (code) params.push('code=' + encodeURIComponent(code));
   if (state) params.push('state=' + encodeURIComponent(state));
   if (error) params.push('error=' + encodeURIComponent(error));
+  if (verificationId) params.push('verification_id=' + encodeURIComponent(verificationId));
   const queryString = params.length > 0 ? '?' + params.join('&') : '';
 
   // ── Mobile: redirect to the custom app scheme ──────────────────────────────
   // expo-web-browser's openAuthSessionAsync intercepts this and returns the
-  // full URL (paybycard://digilocker-callback?code=...&state=...) to the app,
-  // which then extracts the code and calls auto_approve.
+  // full URL (paybycard://digilocker-callback?code=...&state=... or
+  // ?verification_id=...) to the app, which then polls check_status (CashFree)
+  // or calls auto_approve (direct DigiLocker).
   if (isMobile) {
     const mobileRedirect = MOBILE_CALLBACK_SCHEME + queryString;
     return new Response(null, {

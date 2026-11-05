@@ -1270,19 +1270,26 @@ serveUser(async (req: Request) => {
     // ── get_auth_url ──────────────────────────────────────────────────────────
     if (action === 'get_auth_url') {
       if (provider.provider_name === 'CashFree DigiLocker') {
-        const originHeader = req.headers.get('origin') || req.headers.get('referer') || '';
-        let appOrigin = '';
-        try { appOrigin = originHeader ? new URL(originHeader).origin : ''; } catch { /* ignore */ }
-        if (!appOrigin || appOrigin.includes('supabase')) appOrigin = 'https://paybycard.in';
-        const redirectUrl = `${appOrigin}/kyc-verification`;
+        let redirectUrl: string;
+        if (isMobile) {
+          // On mobile, route through the digilocker-redirect edge function with
+          // a platform=mobile query param so it issues a paybycard:// custom-scheme
+          // redirect that closes the webview and returns to the app. CashFree
+          // appends verification_id to this URL after the user completes DigiLocker.
+          const supabaseUrlEnv = Deno.env.get('SUPABASE_URL') || '';
+          redirectUrl = `${supabaseUrlEnv}/functions/v1/digilocker-redirect?platform=mobile`;
+        } else {
+          const originHeader = req.headers.get('origin') || req.headers.get('referer') || '';
+          let appOrigin = '';
+          try { appOrigin = originHeader ? new URL(originHeader).origin : ''; } catch { /* ignore */ }
+          if (!appOrigin || appOrigin.includes('supabase')) appOrigin = 'https://paybycard.in';
+          redirectUrl = `${appOrigin}/kyc-verification`;
+        }
 
         const { url, verificationId } = await createCashFreeVerification(
           apiKey, apiSecret, publicKey, provider.environment, userId, redirectUrl,
         );
 
-        // CashFree uses polling for status, so the mobile app doesn't need a
-        // custom-scheme redirect — it polls check_status. Return the verification
-        // ID so the mobile client can poll.
         return new Response(
           JSON.stringify({
             authUrl: url, verificationId, provider_name: provider.provider_name,

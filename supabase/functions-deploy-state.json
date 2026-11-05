@@ -287,11 +287,11 @@
     },
     "digilocker-kyc": {
       "hasChanged": false,
-      "hash": "cc9f4b016648adb884f114796c16ec2d0c0e7f3a37341960cbe7c31de1a262d8a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "c92647ac533cc0adcf6dc06dffe64815c09604088e218158d5ae65b467970b19a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "digilocker-redirect": {
       "hasChanged": false,
-      "hash": "63f2c00a33541a92a0581cf9e51b7f216a461da654dfded17d588b7187df4229"
+      "hash": "5397a9ddad046b2aed061ab2bacbf1550591da1ff264e6de573eae43a483e0f1"
     },
     "download-kyc-file": {
       "hasChanged": false,

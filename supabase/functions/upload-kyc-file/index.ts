@@ -161,13 +161,35 @@ Deno.serve(async (req: Request) => {
 
     const { data: settings } = await supabase
       .from("master_settings")
-      .select("allow_manual_kyc")
+      .select("allow_manual_kyc, allow_manual_addr_proof_when_pan_verified")
       .limit(1)
       .maybeSingle();
 
+    const ADDRESS_FILE_KEYS = new Set(["address_proof_front", "address_proof_back", "address_front", "address_back"]);
+    const isAddressUpload = ADDRESS_FILE_KEYS.has(fileKey);
+
+    let panVerified = false;
+    if (sessionUserId && isAddressUpload) {
+      const { data: panRecord } = await supabase
+        .from("kyc_pan_verification")
+        .select("status")
+        .eq("user_id", sessionUserId)
+        .maybeSingle();
+      panVerified = panRecord?.status === "verified";
+    }
+
     if (settings?.allow_manual_kyc === false) {
+      if (isAddressUpload && settings?.allow_manual_addr_proof_when_pan_verified === true && panVerified) {
+        // allowed: manual address proof upload when PAN is verified
+      } else {
+        return new Response(
+          JSON.stringify({ error: "Manual KYC submission is currently disabled. Please use DigiLocker to complete your KYC." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else if (isAddressUpload && settings?.allow_manual_addr_proof_when_pan_verified === false && panVerified) {
       return new Response(
-        JSON.stringify({ error: "Manual KYC submission is currently disabled. Please use DigiLocker to complete your KYC." }),
+        JSON.stringify({ error: "Manual address proof upload is not available when your PAN is already verified. Please complete your address proof verification through DigiLocker." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

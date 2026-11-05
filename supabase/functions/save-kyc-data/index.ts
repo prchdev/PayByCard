@@ -113,26 +113,30 @@ serveUser(async (req: Request) => {
       .limit(1)
       .maybeSingle();
 
-    if (settings?.allow_manual_kyc === false) {
-      return new Response(
-        JSON.stringify({ error: "Manual KYC submission is currently disabled. Please use DigiLocker to complete your KYC." }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (section === "address" && settings?.allow_manual_addr_proof_when_pan_verified === false) {
+    let panVerified = false;
+    if (section === "address") {
       const { data: panRecord } = await supabase
         .from("kyc_pan_verification")
         .select("status")
         .eq("user_id", userId)
         .maybeSingle();
+      panVerified = panRecord?.status === "verified";
+    }
 
-      if (panRecord?.status === "verified") {
+    if (settings?.allow_manual_kyc === false) {
+      if (section === "address" && settings?.allow_manual_addr_proof_when_pan_verified === true && panVerified) {
+        // allowed: manual address proof when PAN is verified
+      } else {
         return new Response(
-          JSON.stringify({ error: "Manual address proof upload is not available when your PAN is already verified. Please complete your address proof verification through DigiLocker." }),
+          JSON.stringify({ error: "Manual KYC submission is currently disabled. Please use DigiLocker to complete your KYC." }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+    } else if (section === "address" && settings?.allow_manual_addr_proof_when_pan_verified === false && panVerified) {
+      return new Response(
+        JSON.stringify({ error: "Manual address proof upload is not available when your PAN is already verified. Please complete your address proof verification through DigiLocker." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const clientIp = ipAddress || getClientIp(req);

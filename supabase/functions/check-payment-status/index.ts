@@ -63,6 +63,16 @@ async function checkRazorPayStatus(payment: any, gateway: any, isTestMode: boole
       const pmtRes = await fetch(`${baseUrl}/orders/${orderId}/payments`, { headers });
       const pmtData = await pmtRes.json();
       const payments: any[] = pmtData.items || [];
+      const captured = payments.find((p: any) => p.status === "captured");
+      const authorized = payments.find((p: any) => p.status === "authorized");
+      if (captured || authorized) {
+        const latest = captured || authorized;
+        return {
+          status: (captured ? "completed" : "processing") as "completed" | "processing",
+          transaction_id: latest?.id ?? orderId,
+          gateway_response: { order, payment: latest, payments },
+        };
+      }
       const allFailed = payments.length > 0 && payments.every((p: any) => p.status === "failed");
       return {
         status: (allFailed ? "failed" : "processing") as "failed" | "processing",
@@ -267,7 +277,7 @@ serveUser(async (req: Request) => {
       gateway_response: payment.gateway_response,
     };
 
-    if (payment.status === "processing" || payment.status === "pending") {
+    if (payment.status === "processing" || payment.status === "pending" || payment.status === "failed") {
       const encryptionKey = await getGatewayEncryptionKey(supabase);
       const gateway = await decryptGateway(payment.payment_gateway_settings, encryptionKey);
       const isTestMode = payment.gateway_environment === "test";

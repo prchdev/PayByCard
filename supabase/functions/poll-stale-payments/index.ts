@@ -108,6 +108,16 @@ async function checkRazorPayStatus(payment: any, gateway: any, isTest: boolean) 
       const pmtRes = await fetch(`${base}/orders/${orderId}/payments`, { headers });
       const pmtData = await pmtRes.json();
       const payments: any[] = pmtData.items || [];
+      const captured = payments.find((p: any) => p.status === "captured");
+      const authorized = payments.find((p: any) => p.status === "authorized");
+      if (captured || authorized) {
+        const latest = captured || authorized;
+        return {
+          status: (captured ? "completed" : "processing") as "completed" | "processing",
+          transaction_id: latest?.id ?? orderId,
+          gateway_response: { order, payment: latest, payments },
+        };
+      }
       const allFailed = payments.length > 0 && payments.every((p: any) => p.status === "failed");
       return {
         status: (allFailed ? "failed" : "processing") as "failed" | "processing",

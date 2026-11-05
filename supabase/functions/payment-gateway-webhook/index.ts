@@ -31,10 +31,15 @@ async function recordPaymentStatus(
 ): Promise<{ status: string; skipped: boolean }> {
   const terminalStates = new Set([
     "completed", "settlement_pending", "kyc_pending",
-    "failed", "cancelled", "refunded", "refund_pending",
+    "cancelled", "refunded", "refund_pending",
   ]);
 
-  if (terminalStates.has(payment.status)) {
+  // A "failed" payment can be revived if the gateway sends a genuine success
+  // (Razorpay allows retrying on the same order — a late captured webhook may
+  // arrive after the poller prematurely marked the payment as failed).
+  if (status === "completed" && payment.status === "failed") {
+    // fall through to recordPaymentStatus — do NOT skip
+  } else if (terminalStates.has(payment.status)) {
     // Already processed — log and skip
     await supabase.from("payment_logs").insert({
       payment_id: payment.id,

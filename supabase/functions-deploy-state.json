@@ -648,6 +648,10 @@
     "waf-validate": {
       "hasChanged": false,
       "hash": "78d21943b3213525f4d2f6ab768cc10144e1bb96f60cab01efce391730ff80ec"
+    },
+    "trigger-kyc-notifications": {
+      "hasChanged": false,
+      "hash": "dee1aaf1cef2389ea2dae095c8ea890312f01c0df17a44510a2f6017e7c3ea3ba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     }
   }
 }

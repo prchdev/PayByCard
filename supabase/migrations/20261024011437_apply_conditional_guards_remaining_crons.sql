@@ -33,7 +33,7 @@ SELECT cron.alter_job(
     SELECT public.call_edge_function_if(
       EXISTS(
         SELECT 1 FROM bulk_email_campaigns
-        WHERE status = 'scheduled'
+        WHERE status IN ('scheduled', 'sending')
           AND sent_count < total_recipients
         LIMIT 1
       ),
@@ -44,7 +44,7 @@ SELECT cron.alter_job(
     SELECT public.call_edge_function_if(
       EXISTS(
         SELECT 1 FROM bulk_sms_campaigns
-        WHERE status = 'scheduled'
+        WHERE status IN ('scheduled', 'sending')
           AND sent_count < total_recipients
         LIMIT 1
       ),

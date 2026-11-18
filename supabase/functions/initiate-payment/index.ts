@@ -702,6 +702,22 @@ async function createGatewayPaymentConfig(
       let cardTypes = razorpayConfig?.card_types || [];
       let networks = razorpayConfig?.allowed_card_networks || [];
 
+      // Normalize network names to Razorpay's expected format.
+      // Razorpay checkout API expects: "Visa", "MasterCard", "RuPay", "Maestro",
+      // "American Express", "Diners Club", "Discover", "JCB", "Bajaj Finserv"
+      const NETWORK_ALIASES: Record<string, string> = {
+        "americanexpress": "American Express",
+        "american_express": "American Express",
+        "amex": "American Express",
+        "dinersclub": "Diners Club",
+        "diners_club": "Diners Club",
+        "diners": "Diners Club",
+      };
+      networks = networks.map((n: string) => {
+        const key = n.toLowerCase().replace(/[\s_-]/g, "");
+        return NETWORK_ALIASES[key] || n;
+      });
+
       // Fallback: if no config row exists, restrict based on the option name
       if (!razorpayConfig) {
         if (isNonCreditCardOption) {

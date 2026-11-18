@@ -19,7 +19,7 @@ interface RazorpayConfig {
 }
 
 const RAZORPAY_METHODS = ['card', 'netbanking', 'wallet', 'upi'];
-const RAZORPAY_CARD_NETWORKS = ['Visa', 'MasterCard', 'RuPay', 'AmericanExpress', 'DinersClub', 'Discover', 'JCB', 'Maestro'];
+const RAZORPAY_CARD_NETWORKS = ['Visa', 'MasterCard', 'RuPay', 'American Express', 'Diners Club', 'Discover', 'JCB', 'Maestro'];
 const RAZORPAY_CARD_TYPES = ['credit', 'debit'];
 const RAZORPAY_CARD_SUB_TYPES = ['customer', 'business'];
 

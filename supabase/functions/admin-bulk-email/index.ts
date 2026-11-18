@@ -9,10 +9,20 @@ const corsHeaders = {
 
 const CRON_INTERVAL_MINUTES = 5;
 const MINUTES_PER_HOUR = 60;
-const LOCK_WINDOW_MINUTES = 2;
+const LOCK_WINDOW_MINUTES = 3;
+const RATE_LIMIT_PAUSE_MS = 60_000;
 
 // How many emails to send concurrently within a single cron cycle
 const CONCURRENCY = 5;
+
+function isRateLimitError(errorText: string): boolean {
+  const lower = errorText.toLowerCase();
+  return lower.includes("rate limit") ||
+    lower.includes("rate exceeded") ||
+    lower.includes("too many requests") ||
+    lower.includes("429") ||
+    lower.includes("throttl");
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -335,7 +345,7 @@ async function sendSingleEmail(
   supabaseKey: string,
   recipient: { id: string; email_or_phone: string; first_name: string; middle_name: string; last_name: string },
   campaign: any,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; rateLimited?: boolean }> {
   const firstName = recipient.first_name || "";
   const middleName = recipient.middle_name || "";
   const lastName = recipient.last_name || "";
@@ -372,10 +382,13 @@ async function sendSingleEmail(
       return { success: true };
     } else {
       const errData = await emailResponse.json().catch(() => ({}));
-      return { success: false, error: (errData.error || "Email send failed").substring(0, 500) };
+      const errText = (errData.error || errData.details || "Email send failed").toString();
+      const rateLimited = isRateLimitError(errText);
+      return { success: false, error: errText.substring(0, 500), rateLimited };
     }
   } catch (err) {
-    return { success: false, error: (err instanceof Error ? err.message : "Fetch failed").substring(0, 500) };
+    const errText = err instanceof Error ? err.message : "Fetch failed";
+    return { success: false, error: errText.substring(0, 500), rateLimited: isRateLimitError(errText) };
   }
 }
 
@@ -461,9 +474,15 @@ async function processEmailCampaignBatch(
     return { ...r, ...names };
   });
 
-  // Send emails concurrently in chunks of CONCURRENCY
-  const results: { id: string; success: boolean; error?: string }[] = [];
+  // Send emails concurrently in chunks of CONCURRENCY.
+  // If any recipient hits a rate-limit error, stop the batch immediately,
+  // pause for 60 seconds, then retry the remaining recipients once.
+  const results: { id: string; success: boolean; error?: string; rateLimited?: boolean }[] = [];
+  let rateLimitHit = false;
+  let rateLimitedIds: string[] = [];
+
   for (let i = 0; i < enrichedBatch.length; i += CONCURRENCY) {
+    if (rateLimitHit) break;
     const chunk = enrichedBatch.slice(i, i + CONCURRENCY);
     const chunkResults = await Promise.all(
       chunk.map(async (recipient) => {
@@ -472,11 +491,42 @@ async function processEmailCampaignBatch(
       })
     );
     results.push(...chunkResults);
+
+    if (chunkResults.some((r) => r.rateLimited)) {
+      rateLimitHit = true;
+      rateLimitedIds = chunkResults.filter((r) => r.rateLimited).map((r) => r.id);
+      break;
+    }
+  }
+
+  // If rate-limited, pause 60s then retry remaining un-sent recipients in this batch
+  if (rateLimitHit) {
+    const alreadySentIds = new Set(results.filter((r) => r.success).map((r) => r.id));
+    const remaining = enrichedBatch.filter((r) => !alreadySentIds.has(r.id));
+
+    if (remaining.length > 0) {
+      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_PAUSE_MS));
+
+      for (let i = 0; i < remaining.length; i += CONCURRENCY) {
+        const chunk = remaining.slice(i, i + CONCURRENCY);
+        const chunkResults = await Promise.all(
+          chunk.map(async (recipient) => {
+            const result = await sendSingleEmail(supabaseUrl, supabaseKey, recipient, campaign);
+            return { id: recipient.id, ...result };
+          })
+        );
+        results.push(...chunkResults);
+
+        // If rate-limited again on retry, stop — remaining recipients stay pending
+        if (chunkResults.some((r) => r.rateLimited)) break;
+      }
+    }
   }
 
   // Batch-update recipient statuses: collect sent and failed IDs, update in bulk
   const sentIds = results.filter((r) => r.success).map((r) => r.id);
-  const failedResults = results.filter((r) => !r.success);
+  const failedResults = results.filter((r) => !r.success && !r.rateLimited);
+  const rateLimitedResults = results.filter((r) => r.rateLimited);
   const nowIso = new Date().toISOString();
 
   // Batch-update in chunks to avoid URL length limits
@@ -487,11 +537,21 @@ async function processEmailCampaignBatch(
       .in("id", sentIds.slice(i, i + ID_CHUNK));
   }
 
+  // Non-rate-limit failures are marked as failed permanently
   for (const fr of failedResults) {
     await supabase
       .from("bulk_campaign_recipients")
       .update({ status: "failed", error_message: (fr.error || "Email send failed").substring(0, 500) })
       .eq("id", fr.id);
+  }
+
+  // Rate-limited recipients are reset to pending so the next cron cycle retries them
+  const rlIds = rateLimitedResults.map((r) => r.id);
+  for (let i = 0; i < rlIds.length; i += ID_CHUNK) {
+    await supabase
+      .from("bulk_campaign_recipients")
+      .update({ status: "pending", error_message: null })
+      .in("id", rlIds.slice(i, i + ID_CHUNK));
   }
 
   // Update campaign counters

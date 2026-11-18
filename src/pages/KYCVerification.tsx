@@ -39,7 +39,7 @@ export default function KYCVerification() {
   const userId = (location.state?.userId as string | undefined) || authUserId || '';
   const userEmail = (location.state?.userEmail as string | undefined) || authUserEmail || '';
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [allowManualKyc, setAllowManualKyc] = useState(true);
+  const [allowManualKyc, setAllowManualKyc] = useState(false);
   const [allowManualAddrWhenPan, setAllowManualAddrWhenPan] = useState(false);
 
   // CashFree DigiLocker redirects back to this page with ?cf_verification_id=...
@@ -349,14 +349,30 @@ export default function KYCVerification() {
                   />
                 )}
 
-                {/* Manual KYC sections — shown when user picks manual, has no provider, completed
-                    DigiLocker, or already has existing KYC data they need to see the status of */}
-                {((effectiveMethod === 'manual' || (!showDigilockerOption && allowManualKyc) || digilockerDone || !!(kycData?.pan || kycData?.address))) && (
-                  <>
-                    <PanSection userId={userId} data={kycData?.pan ?? null} onSaved={refresh} />
-                    <AddressSection userId={userId} data={kycData?.address ?? null} onSaved={refresh} />
-                  </>
-                )}
+                {/* Manual KYC sections — shown when manual KYC is allowed (user picked manual,
+                    no provider available, or DigiLocker completed and manual is still enabled).
+                    Also shown when the PAN-verified address-proof exception is active.
+                    When allowManualKyc is false and the exception doesn't apply, existing verified
+                    or pending KYC records are still shown as read-only status displays. */}
+                {(() => {
+                  const hasExistingKyc = !!(kycData?.pan || kycData?.address);
+                  const hasStatusToDisplay = hasExistingKyc && (
+                    kycData?.pan?.status === 'verified' ||
+                    kycData?.pan?.status === 'verification_pending' ||
+                    kycData?.address?.status === 'verified' ||
+                    kycData?.address?.status === 'verification_pending'
+                  );
+                  const manualAllowed = allowManualKyc || allowManualAddrWhenPan;
+                  const showManual = (effectiveMethod === 'manual' || (!showDigilockerOption && allowManualKyc) || digilockerDone) && manualAllowed;
+                  const showAddrException = panVerifiedOnly && allowManualAddrWhenPan && !alreadyVerified;
+                  const showStatusOnly = hasStatusToDisplay && !showManual && !showAddrException && !allowManualKyc;
+                  return (showManual || showStatusOnly || showAddrException || (hasExistingKyc && allowManualKyc)) && (
+                    <>
+                      <PanSection userId={userId} data={kycData?.pan ?? null} onSaved={refresh} />
+                      <AddressSection userId={userId} data={kycData?.address ?? null} onSaved={refresh} />
+                    </>
+                  );
+                })()}
 
                 {/* Manual address proof upload when PAN is verified but address is not, and the setting is enabled */}
                 {panVerifiedOnly && allowManualAddrWhenPan && !alreadyVerified && (

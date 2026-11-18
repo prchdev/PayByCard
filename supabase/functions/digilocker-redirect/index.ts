@@ -70,12 +70,21 @@ Deno.serve(async (req: Request) => {
 
   const appUrl = resolveAppUrl(req, state);
 
-  // Build query params for the redirect target
+  // Build query params for the redirect target.
+  // For CashFree mobile (platform=mobile), the callback carries verification_id
+  // instead of an OAuth code. The mobile app's openAuthSessionAsync result handler
+  // looks for a "code" query param, so we also pass verification_id as code to
+  // ensure the mobile app picks it up and calls auto_approve with it.
   const params: string[] = [];
   if (code) params.push('code=' + encodeURIComponent(code));
   if (state) params.push('state=' + encodeURIComponent(state));
   if (error) params.push('error=' + encodeURIComponent(error));
-  if (verificationId) params.push('verification_id=' + encodeURIComponent(verificationId));
+  if (verificationId) {
+    params.push('verification_id=' + encodeURIComponent(verificationId));
+    if (isCashFreeMobile && !code) {
+      params.push('code=' + encodeURIComponent(verificationId));
+    }
+  }
   const queryString = params.length > 0 ? '?' + params.join('&') : '';
 
   // ── Mobile: redirect to the custom app scheme ──────────────────────────────

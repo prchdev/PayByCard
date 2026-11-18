@@ -21,6 +21,10 @@
       "hasChanged": false,
       "hash": "7b7c854f23fadee846c3cd4764c350a2038c493192030034810f87cbda3505bba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
+    "admin-business-settings": {
+      "hasChanged": false,
+      "hash": "56ca65724b80657ade732b25825f1063a4356cfa47b968e2707220bac9dba2aba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+    },
     "admin-change-password": {
       "hasChanged": false,
       "hash": "aa9827926d1f89ef5c83c04691e90887afcf7784acd8256e868838e1c536554ca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
@@ -59,7 +63,7 @@
     },
     "admin-gateway-refund": {
       "hasChanged": false,
-      "hash": "6f7a133845960dfdad219bf8766a0c662ff494e25b0b8aabaf3afbff5c63e611a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "fd82d5af50929bfed0bf8ca9f7bb847ed32668ee03b21c400d2619c9e08f9393a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-gateway-settlement": {
       "hasChanged": false,
@@ -143,7 +147,7 @@
     },
     "admin-process-manual-payout": {
       "hasChanged": false,
-      "hash": "d96ba44f4edbe0768c9626f0a3fb87e34382483ca7cad01816516f81caabf5d2a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "f1864ccedbd8158b4e3a0bb9f90b3c7aee2da4416b65499d03bff5af28fe3c4da3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-reset-password": {
       "hasChanged": false,
@@ -159,7 +163,7 @@
     },
     "admin-review-merchant-kyc": {
       "hasChanged": false,
-      "hash": "fa7483bd855eeadb5ce0ae3fef95f0157e4a2d3c255646df78dc0fb068bad007a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "063ef01d1f4fd506b45f65b6bcdb4e0ffa6859b626b42e0b3225dda1329b6e58a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-save-coupon": {
       "hasChanged": false,
@@ -247,7 +251,7 @@
     },
     "auto-refund-kyc-expired": {
       "hasChanged": false,
-      "hash": "c74a2168e88cc9b8b35e7c18f546d547ed63e6af338fac39ba207461f24dccb6a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "8a1e5b5a13f40a2b9c5af43e873ab27582849fa3333082e87b15e8e4b4bfed4fa3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "calculate-payment-option-charges": {
       "hasChanged": false,
@@ -648,10 +652,6 @@
     "waf-validate": {
       "hasChanged": false,
       "hash": "78d21943b3213525f4d2f6ab768cc10144e1bb96f60cab01efce391730ff80ec"
-    },
-    "admin-business-settings": {
-      "hasChanged": false,
-      "hash": "56ca65724b80657ade732b25825f1063a4356cfa47b968e2707220bac9dba2aba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     }
   }
 }

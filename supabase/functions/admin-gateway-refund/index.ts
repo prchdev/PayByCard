@@ -89,7 +89,7 @@ async function refundRazorPay(
   const res = await fetch(`https://api.razorpay.com/v1/payments/${txnId}/refund`, {
     method: "POST",
     headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ amount: Math.round(parseFloat(String(payment.amount)) * 100) }),
+    body: JSON.stringify({ amount: Math.round(parseFloat(String(payment.amount)) * 100), speed: "optimum" }),
   });
   const data = await res.json();
 

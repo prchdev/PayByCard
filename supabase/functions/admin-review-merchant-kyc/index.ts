@@ -69,7 +69,7 @@ async function processGatewayRefund(
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Basic ${auth}` },
-          body: JSON.stringify({ amount: Math.round(refundAmount * 100) }),
+          body: JSON.stringify({ amount: Math.round(refundAmount * 100), speed: "optimum" }),
         }
       );
       const data = await res.json();

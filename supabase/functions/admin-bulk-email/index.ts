@@ -9,8 +9,9 @@ const corsHeaders = {
 
 const CRON_INTERVAL_MINUTES = 5;
 const MINUTES_PER_HOUR = 60;
-const LOCK_WINDOW_MINUTES = 3;
+const LOCK_WINDOW_MINUTES = 4;
 const RATE_LIMIT_PAUSE_MS = 60_000;
+const CRON_TIMEOUT_BUFFER_MS = 5_000;
 
 // How many emails to send concurrently within a single cron cycle
 const CONCURRENCY = 5;
@@ -411,22 +412,9 @@ async function processEmailCampaignBatch(
     .update({ last_batch_sent_at: new Date().toISOString() })
     .eq("id", campaign.id);
 
-  // Sync counters from DB first (in case a previous run timed out before updating them)
-  const { count: syncedSent } = await supabase
-    .from("bulk_campaign_recipients")
-    .select("id", { count: "exact", head: true })
-    .eq("campaign_type", "email")
-    .eq("campaign_id", campaign.id)
-    .eq("status", "sent");
-  const { count: syncedFailed } = await supabase
-    .from("bulk_campaign_recipients")
-    .select("id", { count: "exact", head: true })
-    .eq("campaign_type", "email")
-    .eq("campaign_id", campaign.id)
-    .eq("status", "failed");
-  await supabase.from("bulk_email_campaigns")
-    .update({ sent_count: syncedSent || 0, failed_count: syncedFailed || 0 })
-    .eq("id", campaign.id);
+  const batchStartTime = Date.now();
+  const mustFinishBy = batchStartTime + 45_000; // leave buffer under the 55s cron timeout
+  const nowIso = new Date().toISOString();
 
   // Fetch a batch of pending recipients — include user names to avoid per-recipient lookups
   const { data: batch, error } = await supabase
@@ -479,10 +467,10 @@ async function processEmailCampaignBatch(
   // pause for 60 seconds, then retry the remaining recipients once.
   const results: { id: string; success: boolean; error?: string; rateLimited?: boolean }[] = [];
   let rateLimitHit = false;
-  let rateLimitedIds: string[] = [];
 
   for (let i = 0; i < enrichedBatch.length; i += CONCURRENCY) {
     if (rateLimitHit) break;
+    if (Date.now() > mustFinishBy) break;
     const chunk = enrichedBatch.slice(i, i + CONCURRENCY);
     const chunkResults = await Promise.all(
       chunk.map(async (recipient) => {
@@ -494,17 +482,28 @@ async function processEmailCampaignBatch(
 
     if (chunkResults.some((r) => r.rateLimited)) {
       rateLimitHit = true;
-      rateLimitedIds = chunkResults.filter((r) => r.rateLimited).map((r) => r.id);
       break;
     }
   }
 
-  // If rate-limited, pause 60s then retry remaining un-sent recipients in this batch
+  // If rate-limited, record sent results immediately, then pause and retry.
+  // We persist the already-sent statuses BEFORE pausing so they survive a timeout.
   if (rateLimitHit) {
-    const alreadySentIds = new Set(results.filter((r) => r.success).map((r) => r.id));
+    // Persist sent statuses immediately before the pause
+    const sentSoFar = results.filter((r) => r.success).map((r) => r.id);
+    for (let i = 0; i < sentSoFar.length; i += ID_CHUNK) {
+      await supabase
+        .from("bulk_campaign_recipients")
+        .update({ status: "sent", sent_at: nowIso })
+        .in("id", sentSoFar.slice(i, i + ID_CHUNK));
+    }
+
+    const alreadySentIds = new Set(sentSoFar);
     const remaining = enrichedBatch.filter((r) => !alreadySentIds.has(r.id));
 
-    if (remaining.length > 0) {
+    // Only pause + retry if we have enough time left before the cron timeout
+    const timeRemaining = mustFinishBy - Date.now();
+    if (remaining.length > 0 && timeRemaining > RATE_LIMIT_PAUSE_MS + CRON_TIMEOUT_BUFFER_MS) {
       await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_PAUSE_MS));
 
       for (let i = 0; i < remaining.length; i += CONCURRENCY) {
@@ -520,14 +519,20 @@ async function processEmailCampaignBatch(
         // If rate-limited again on retry, stop — remaining recipients stay pending
         if (chunkResults.some((r) => r.rateLimited)) break;
       }
+    } else {
+      // Not enough time to pause+retry — mark remaining as rate-limited (reset to pending)
+      // They'll be retried on the next cron cycle when the rate limit has reset
+      for (const r of remaining) {
+        results.push({ id: r.id, success: false, rateLimited: true });
+      }
     }
   }
 
   // Batch-update recipient statuses: collect sent and failed IDs, update in bulk
+  // Skip sent IDs that were already persisted during the rate-limit pause path
   const sentIds = results.filter((r) => r.success).map((r) => r.id);
   const failedResults = results.filter((r) => !r.success && !r.rateLimited);
   const rateLimitedResults = results.filter((r) => r.rateLimited);
-  const nowIso = new Date().toISOString();
 
   // Batch-update in chunks to avoid URL length limits
   for (let i = 0; i < sentIds.length; i += ID_CHUNK) {

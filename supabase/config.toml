@@ -376,3 +376,6 @@ verify_jwt = false
 
 [functions.save-business-integration]
 verify_jwt = false
+
+[functions.admin-business-settings]
+verify_jwt = false

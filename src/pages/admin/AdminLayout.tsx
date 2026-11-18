@@ -70,6 +70,7 @@ const MENU_SECTIONS: MenuSection[] = [
       { key: 'user-summary', name: 'User Summary', path: '/admin/user-summary', icon: 'UserSearch' },
       { key: 'manual-payout', name: 'Manual Payout', path: '/admin/manual-payout', icon: 'Wallet' },
       { key: 'reports', name: 'Reports', path: '/admin/reports', icon: 'BarChart2' },
+      { key: 'business-settings', name: 'Business Settings', path: '/admin/business-settings', icon: 'Building2' },
     ],
   },
   {

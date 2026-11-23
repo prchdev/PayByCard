@@ -141,6 +141,9 @@ Deno.serve(withUserSession(async (req: Request) => {
     // Build server-validated category details from the actual payment_categories
     // row — NOT from the payment option.  The category's receiver_kyc_required
     // drives the merchant KYC flow in save-transaction-status.
+    // settlement_time always comes from payment_options (the card-type row the
+    // admin configures on the Payment Options page), NOT from payment_categories.
+    const settlementTime = payOption.settlement_time || "";
     const serverCategoryDetails = payCategory
       ? {
           category_name: payCategory.category_name,
@@ -148,7 +151,7 @@ Deno.serve(withUserSession(async (req: Request) => {
           display_order: payCategory.display_order,
           receiver_kyc_required: payCategory.receiver_kyc_required || false,
           refund_after_hours: payCategory.refund_after_hours || 0,
-          settlement_time: payCategory.settlement_time || "",
+          settlement_time: settlementTime,
         }
       : {
           category_name: payOption.category_name,
@@ -156,7 +159,7 @@ Deno.serve(withUserSession(async (req: Request) => {
           display_order: payOption.display_order,
           receiver_kyc_required: payOption.receiver_kyc_required || false,
           refund_after_hours: payOption.refund_after_hours || 0,
-          settlement_time: payOption.settlement_time || "",
+          settlement_time: settlementTime,
         };
 
     // ── Input validation ──────────────────────────────────────────────────────

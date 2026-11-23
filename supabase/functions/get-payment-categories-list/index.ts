@@ -71,8 +71,24 @@ serveUserOrAdmin(async (req: Request) => {
       );
     }
 
+    // Override settlement_time with the value from payment_options, which is
+    // what the admin configures on the Payment Options page. All enabled
+    // payment_options share the same settlement_time.
+    const { data: optionsData } = await supabase
+      .from("payment_options")
+      .select("settlement_time")
+      .eq("is_enabled", true)
+      .limit(1);
+
+    const optionsSettlementTime = optionsData?.[0]?.settlement_time || "instant";
+
+    const categoriesWithSettlement = (categories || []).map((cat: any) => ({
+      ...cat,
+      settlement_time: optionsSettlementTime,
+    }));
+
     return new Response(
-      JSON.stringify({ categories: categories || [] }),
+      JSON.stringify({ categories: categoriesWithSettlement }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

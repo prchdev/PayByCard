@@ -359,7 +359,7 @@
     },
     "get-payment-categories-list": {
       "hasChanged": false,
-      "hash": "c324e774fbd6e169c11ff350e93ddb89b383c4ef3d9f293589908c895cd0f755a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "3bf7aaba295a766797f859f4228ee294eead611e14356797af2c2d31665f74d1a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "get-payment-gateways": {
       "hasChanged": false,
@@ -427,7 +427,7 @@
     },
     "initiate-payment": {
       "hasChanged": false,
-      "hash": "a99483a7b77ab6c2fe3c2edcb4f74b774f2b8611cffb47d2aeebed0919ef417ba3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "db2952fec2373a3e517c29295b2f619db0d161ef1dbf40be5009a968a7ac9826a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "log-digilocker-event": {
       "hasChanged": false,

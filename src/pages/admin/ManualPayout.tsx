@@ -239,6 +239,9 @@ export default function ManualPayout() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [axisExporting, setAxisExporting] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [settlementFilter, setSettlementFilter] = useState('');
 
   const adminId = sessionStorage.getItem('adminId') ?? localStorage.getItem('adminId');
 
@@ -371,7 +374,14 @@ export default function ManualPayout() {
     const matchesStatus = !statusFilter || rawStatus === statusFilter ||
       (statusFilter === 'processing' && rawStatus === 'pending') ||
       (statusFilter === 'settlement_pending' && rawStatus === 'settlement_in_progress');
-    return matchesSearch && matchesStatus;
+    const createdDate = new Date(p.created_at);
+    const matchesDateFrom = !dateFrom || createdDate >= new Date(dateFrom + 'T00:00:00');
+    const matchesDateTo = !dateTo || createdDate <= new Date(dateTo + 'T23:59:59');
+    const rawSettlement = (p.settlement_time || '').toLowerCase();
+    const matchesSettlement = !settlementFilter ||
+      (settlementFilter === 'instant' && (rawSettlement === 'instant' || rawSettlement === 't+0')) ||
+      rawSettlement === settlementFilter.toLowerCase();
+    return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo && matchesSettlement;
   });
 
   const { sortedData, sortConfig, handleSort } = useTableSort<PayoutRecord>(filtered, (p, key) => {
@@ -470,7 +480,7 @@ export default function ManualPayout() {
               className="w-full pl-9 pr-4 py-2.5 border-2 border-gray-300 rounded-xl text-sm focus:border-[#8c76f0] focus:ring-2 focus:ring-purple-100 focus:outline-none transition-all"
             />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-gray-400" />
               <select
@@ -489,6 +499,36 @@ export default function ManualPayout() {
                 <option value="refunded">Refunded</option>
                 <option value="refund_pending">Refund Pending</option>
               </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={settlementFilter}
+                onChange={e => { setSettlementFilter(e.target.value); setPage(1); }}
+                className="border-2 border-gray-300 rounded-xl px-3 py-2 focus:border-[#8c76f0] focus:outline-none bg-white text-sm text-gray-700"
+              >
+                <option value="">All Settlement</option>
+                <option value="instant">Instant</option>
+                <option value="T+0">T+0 Day</option>
+                <option value="T+1">T+1 Day</option>
+                <option value="T+2">T+2 Days</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                className="border-2 border-gray-300 rounded-xl px-2.5 py-2 focus:border-[#8c76f0] focus:outline-none bg-white text-sm text-gray-700"
+                title="From date"
+              />
+              <span className="text-gray-400 text-xs">to</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                className="border-2 border-gray-300 rounded-xl px-2.5 py-2 focus:border-[#8c76f0] focus:outline-none bg-white text-sm text-gray-700"
+                title="To date"
+              />
             </div>
             <p className="text-sm text-gray-500 whitespace-nowrap">
               <span className="font-semibold text-gray-800">{filtered.length}</span> pending payout{filtered.length !== 1 ? 's' : ''}

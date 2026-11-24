@@ -123,7 +123,7 @@
     },
     "admin-get-pending-payouts": {
       "hasChanged": false,
-      "hash": "1a5412ccac501c7ac418880b5d4e39c8e025867e1b07414357231fb3e213d7eca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "6f6d0f344b6acede09f0834be3657cf28b62c8ba766d687e39d0c7da597ec1bca3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-support-tickets": {
       "hasChanged": false,

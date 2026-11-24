@@ -49,7 +49,7 @@ serveAdmin(async (req: Request) => {
         created_at, user_id, beneficiary_id, payment_gateway_id,
         gateway_transaction_id, card_type, gateway_environment,
         payment_category_id, gateway_settlement_status, auto_payout_failed,
-        payout_mode, payment_gateway_settings(*), beneficiaries(*)
+        payout_mode, category_details, payment_gateway_settings(*), beneficiaries(*)
       `)
       .in("status", ["settlement_pending", "settlement_in_progress", "kyc_pending", "merchant_kyc_review"])
       .order("created_at", { ascending: false });
@@ -78,18 +78,25 @@ serveAdmin(async (req: Request) => {
       (existingPayouts || []).map((p: any) => p.payment_id)
     );
 
-    // Fetch kyc_required AND settlement_time in a single query
-    async function getCategoryDetails(categoryId: string | null): Promise<{ kyc_required: boolean; settlement_time: string | null }> {
-      if (!categoryId) return { kyc_required: false, settlement_time: null };
+    // Fetch kyc_required from payment_options. settlement_time is read from the
+    // stored category_details JSON on the payment record (same source as Reports),
+    // NOT from a live payment_options lookup — the live option may differ from
+    // what was in effect when the payment was made.
+    async function getCategoryDetails(categoryId: string | null): Promise<{ kyc_required: boolean }> {
+      if (!categoryId) return { kyc_required: false };
       const { data } = await supabase
         .from("payment_options")
-        .select("receiver_kyc_required, settlement_time")
+        .select("receiver_kyc_required")
         .eq("id", categoryId)
         .maybeSingle();
       return {
         kyc_required: data?.receiver_kyc_required ?? false,
-        settlement_time: data?.settlement_time ?? null,
       };
+    }
+
+    function storedSettlementTime(payment: any): string | null {
+      const st = payment?.category_details?.settlement_time;
+      return st ?? null;
     }
 
     const enrichedFromPayments = await Promise.all(
@@ -130,7 +137,7 @@ serveAdmin(async (req: Request) => {
             card_type: payment.card_type || null,
             gateway_environment: payment.gateway_environment || null,
             kyc_required: categoryDetails.kyc_required,
-            settlement_time: categoryDetails.settlement_time,
+            settlement_time: storedSettlementTime(payment),
             payout_mode: isAutoFailed ? "manual" : (payment.payout_mode ?? gw?.payout_mode ?? null),
             gateway_settlement_status: payment.gateway_settlement_status ?? null,
             sender: u ? { full_name: `${u.first_name || ""} ${u.last_name || ""}`.trim(), email: u.email, mobile: u.mobile_number } : null,
@@ -156,7 +163,7 @@ serveAdmin(async (req: Request) => {
           supabase.from("payment_gateway_settings").select("gateway_name, payout_mode").eq("id", payout.payment_gateway_id).maybeSingle(),
           supabase.from("merchant_onboarding").select("status, pan_number, pan_photo_url, token").eq("payment_id", payout.payment_id).maybeSingle(),
           payout.payment_id
-            ? supabase.from("payments").select("gateway_transaction_id, card_type, gateway_environment, charges, gst, total_amount, payment_reference, status, payment_category_id, gateway_settlement_status, payout_mode").eq("id", payout.payment_id).maybeSingle()
+            ? supabase.from("payments").select("gateway_transaction_id, card_type, gateway_environment, charges, gst, total_amount, payment_reference, status, payment_category_id, gateway_settlement_status, payout_mode, category_details").eq("id", payout.payment_id).maybeSingle()
             : Promise.resolve({ data: null }),
         ]);
 
@@ -177,7 +184,7 @@ serveAdmin(async (req: Request) => {
           payment_reference: pm?.payment_reference || payout.payment_reference || null,
           payment_status: pm?.status || null,
           kyc_required: categoryDetails.kyc_required,
-          settlement_time: categoryDetails.settlement_time,
+          settlement_time: storedSettlementTime(pm),
           payout_mode: pm?.payout_mode ?? gw?.payout_mode ?? payout.payout_mode ?? null,
           gateway_settlement_status: pm?.gateway_settlement_status ?? null,
           sender: u ? { full_name: `${u.first_name || ""} ${u.last_name || ""}`.trim(), email: u.email, mobile: u.mobile_number } : null,

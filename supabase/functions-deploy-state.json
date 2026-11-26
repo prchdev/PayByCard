@@ -99,7 +99,7 @@
     },
     "admin-get-kyc-list": {
       "hasChanged": false,
-      "hash": "34b7902d5dfdadb3dc570c7f0e885170a9f151564c9ab96658e03fd056fbc341a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "0d3689826ab85a0555ee21cbdf7ba780537a256b9bb0b861440c5a4ecfdcfe10a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "admin-get-master-settings": {
       "hasChanged": false,

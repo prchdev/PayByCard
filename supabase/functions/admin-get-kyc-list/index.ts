@@ -53,32 +53,36 @@ serveAdmin(withSignedKycUrls(async (req: Request) => {
 
     // --- Batch fetch all data in parallel instead of N+1 queries ---
 
-    const { data: users, error: usersError } = await supabase
-      .from("users")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (usersError) {
-      return new Response(
-        JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+    // PostgREST caps each query at 1000 rows by default, so paginate
+    // until every page is exhausted.
+    const PAGE = 1000;
+    async function fetchAll(table: string, orderCol = "created_at") {
+      const rows: any[] = [];
+      let from = 0;
+      for (;;) {
+        const { data, error } = await supabase
+          .from(table)
+          .select("*")
+          .order(orderCol, { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (error) return { data: null, error };
+        if (!data || data.length === 0) break;
+        rows.push(...data);
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+      return { data: rows, error: null as any };
     }
 
-    // Fetch all KYC records without user_id filter — with 700+ users the .in()
-    // filter exceeds the PostgREST URL length limit (~25k chars of UUIDs), causing
-    // the query to fail silently. We need all records anyway, so fetch everything
-    // and map by user_id in memory.
-    const [panRes, addressRes, businessRes] = await Promise.all([
-      supabase.from("kyc_pan_verification").select("*"),
-      supabase.from("kyc_address_proof").select("*"),
-      supabase.from("kyc_business_info").select("*"),
+    const [usersRes, panRes, addressRes, businessRes] = await Promise.all([
+      fetchAll("users"),
+      fetchAll("kyc_pan_verification"),
+      fetchAll("kyc_address_proof"),
+      fetchAll("kyc_business_info"),
     ]);
 
-    if (panRes.error || addressRes.error || businessRes.error) {
+    const users = usersRes.data;
+    if (usersRes.error) {
       return new Response(
         JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
         {

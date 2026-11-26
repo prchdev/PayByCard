@@ -63,6 +63,9 @@ const SETTLEMENT_TIME_OPTIONS = [
   { value: 'same_day', label: 'Same Day' },
   { value: 't1', label: 'T+1' },
   { value: 't2', label: 'T+2' },
+  { value: 'T+3', label: 'T+3' },
+  { value: 'T+4', label: 'T+4' },
+  { value: 'T+5', label: 'T+5' },
 ];
 
 const EMPTY_FORM: CategoryFormData = {

@@ -44,6 +44,9 @@ const SETTLEMENT_TIME_OPTIONS = [
   { value: 'T+0', label: 'Transaction + 0 Day' },
   { value: 'T+1', label: 'Transaction + 1 Day' },
   { value: 'T+2', label: 'Transaction + 2 Days' },
+  { value: 'T+3', label: 'Transaction + 3 Days' },
+  { value: 'T+4', label: 'Transaction + 4 Days' },
+  { value: 'T+5', label: 'Transaction + 5 Days' },
 ];
 
 function settlementLabel(value: string) {

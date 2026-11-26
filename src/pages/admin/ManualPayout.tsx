@@ -83,6 +83,9 @@ function formatSettlementTime(t: string | null | undefined): string {
   if (s === 'INSTANT' || s === 'T+0') return 'Instant';
   if (s === 'T+1') return 'T+1 Day';
   if (s === 'T+2') return 'T+2 Days';
+  if (s === 'T+3') return 'T+3 Days';
+  if (s === 'T+4') return 'T+4 Days';
+  if (s === 'T+5') return 'T+5 Days';
   return t;
 }
 
@@ -511,6 +514,9 @@ export default function ManualPayout() {
                 <option value="T+0">T+0 Day</option>
                 <option value="T+1">T+1 Day</option>
                 <option value="T+2">T+2 Days</option>
+                <option value="T+3">T+3 Days</option>
+                <option value="T+4">T+4 Days</option>
+                <option value="T+5">T+5 Days</option>
               </select>
             </div>
             <div className="flex items-center gap-1.5">

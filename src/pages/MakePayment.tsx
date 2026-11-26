@@ -125,6 +125,9 @@ function formatSettlementTime(t: string): string {
     case 't+1': return 'T+1 Day Settlement';
     case 't2':
     case 't+2': return 'T+2 Days Settlement';
+    case 't+3': return 'T+3 Days Settlement';
+    case 't+4': return 'T+4 Days Settlement';
+    case 't+5': return 'T+5 Days Settlement';
     default: return t;
   }
 }

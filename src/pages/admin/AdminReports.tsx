@@ -427,6 +427,9 @@ function buildInvoiceHTML(r: TxRecord, co: CompanyInfo, invoiceNo: number): stri
             : r.category_details.settlement_time === 'T+0' ? 'Transaction + 0 Day'
             : r.category_details.settlement_time === 'T+1' ? 'Transaction + 1 Day'
             : r.category_details.settlement_time === 'T+2' ? 'Transaction + 2 Days'
+            : r.category_details.settlement_time === 'T+3' ? 'Transaction + 3 Days'
+            : r.category_details.settlement_time === 'T+4' ? 'Transaction + 4 Days'
+            : r.category_details.settlement_time === 'T+5' ? 'Transaction + 5 Days'
             : r.category_details.settlement_time) : ''}
           ${row('Payment Option', escHtml(option) || '—')}
           ${row('Gateway', escHtml(r.gateway_name) || '—')}
@@ -546,6 +549,9 @@ function formatSettlementTime(t: string | null | undefined): string {
   if (s === 'INSTANT' || s === 'T+0') return 'Instant';
   if (s === 'T+1') return 'T+1 Day';
   if (s === 'T+2') return 'T+2 Days';
+  if (s === 'T+3') return 'T+3 Days';
+  if (s === 'T+4') return 'T+4 Days';
+  if (s === 'T+5') return 'T+5 Days';
   return t;
 }
 

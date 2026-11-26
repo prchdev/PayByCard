@@ -205,7 +205,7 @@ serveUser(async (req: Request) => {
             } catch { /* 2FA optional */ }
           }
 
-          const bankRes = await fetch(`${cfBase}/verification/bank/account`, {
+          const bankRes = await fetch(`${cfBase}/verification/bank-account/sync`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -216,20 +216,28 @@ serveUser(async (req: Request) => {
             body: JSON.stringify({
               bank_account: cleanAccount,
               ifsc: ifscUpper,
+              name: full_name,
             }),
           });
 
           if (bankRes.ok) {
             const bankData = await bankRes.json();
-            const apiName = bankData?.name || bankData?.account_holder_name || bankData?.bank_account_holder_name || '';
+            const apiName = bankData?.data?.name_at_bank
+              || bankData?.data?.nameAtBank
+              || bankData?.name_at_bank
+              || bankData?.nameAtBank
+              || bankData?.name
+              || '';
             if (apiName && apiName.trim().length >= 2) {
-              // Strip honorifics (Mr, Mrs, Miss, Ms, Shri, Smt, Dr, Sri, Ku) — case insensitive
               const honorifics = /^(mr|mrs|miss|ms|shri|smt|dr|sri|ku)\s*\.?\s+/i;
               resolvedFullName = apiName.trim().replace(honorifics, '').trim();
               if (resolvedFullName.length < 2) {
-                resolvedFullName = apiName.trim(); // fallback if stripping removed too much
+                resolvedFullName = apiName.trim();
               }
             }
+          } else {
+            const errBody = await bankRes.text().catch(() => '');
+            console.warn('[save-beneficiary] CashFree bank verification returned HTTP', bankRes.status, errBody.slice(0, 300));
           }
         } catch (e) {
           console.warn('[save-beneficiary] CashFree bank verification failed:', (e as Error).message);

@@ -1411,25 +1411,49 @@ serveUser(async (req: Request) => {
         userRow.first_name || '', userRow.middle_name || '', userRow.last_name || '', kycData.full_name,
       );
 
+      // ── Name mismatch: update user's name from DigiLocker data, then approve ──
+      // Instead of rejecting when the DigiLocker name doesn't match the registered
+      // name, parse the DigiLocker name and update the user's first/middle/last
+      // name fields. This handles cases where the user registered with a slightly
+      // different name (e.g. nickname, missing middle name, spelling variation).
       if (!nameResult.matches) {
-        if (userRow.mobile_number) await sendSms(supabaseUrl, supabaseKey, userRow.mobile_number, 'kyc_rejected');
-        return new Response(
-          JSON.stringify({
-            success: false, autoApproved: false, nameMatches: false,
-            nameMismatch: {
-              registeredName: nameResult.registeredName,
-              kycName: nameResult.kycName,
-              firstMatch: nameResult.firstMatch,
-              middleMatch: nameResult.middleMatch,
-              lastMatch: nameResult.lastMatch,
-              firstName: userRow.first_name || '',
-              middleName: userRow.middle_name || '',
-              lastName: userRow.last_name || '',
-            },
-            kycData,
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        const kycNameParts = (kycData.full_name || '').trim().split(/\s+/).filter(Boolean);
+        let newFirst = '';
+        let newMiddle = '';
+        let newLast = '';
+        if (kycNameParts.length === 1) {
+          newFirst = kycNameParts[0];
+        } else if (kycNameParts.length === 2) {
+          newFirst = kycNameParts[0];
+          newLast = kycNameParts[1];
+        } else {
+          newFirst = kycNameParts[0];
+          newMiddle = kycNameParts.slice(1, -1).join(' ');
+          newLast = kycNameParts[kycNameParts.length - 1];
+        }
+
+        await supabase.from('users').update({
+          first_name: newFirst,
+          middle_name: newMiddle,
+          last_name: newLast,
+          full_name: kycData.full_name,
+          updated_at: new Date().toISOString(),
+        }).eq('id', userId);
+
+        await supabase.from('payment_logs').insert({
+          payment_id: null,
+          status: 'kyc_name_updated',
+          message: `User name auto-updated from DigiLocker KYC. Old: "${nameResult.registeredName}" → New: "${kycData.full_name}"`,
+          metadata: {
+            old_first_name: userRow.first_name,
+            old_middle_name: userRow.middle_name,
+            old_last_name: userRow.last_name,
+            new_first_name: newFirst,
+            new_middle_name: newMiddle,
+            new_last_name: newLast,
+            kyc_name: kycData.full_name,
+          },
+        }).catch(() => {});
       }
 
       const { data: existingPan } = await supabase
@@ -1484,7 +1508,7 @@ serveUser(async (req: Request) => {
           body: JSON.stringify({
             to: userRow.email,
             subject: 'KYC Verified via DigiLocker - Account Ready',
-            body: `<p>Dear ${nameResult.registeredName},</p><p>Congratulations! Your KYC has been <strong style="color:#16a34a;">automatically verified</strong> via DigiLocker.</p><p>Your account is now fully active and ready for transactions.</p><p>Please find attached the accepted terms and conditions for your reference.</p>`,
+            body: `<p>Dear ${kycData.full_name},</p><p>Congratulations! Your KYC has been <strong style="color:#16a34a;">automatically verified</strong> via DigiLocker.</p><p>Your account is now fully active and ready for transactions.</p><p>Please find attached the accepted terms and conditions for your reference.</p>`,
             body_type: 'html',
             use_template: true,
             ...attachment,

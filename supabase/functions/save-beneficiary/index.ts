@@ -169,8 +169,77 @@ serveUser(async (req: Request) => {
       }
     }
 
+    // ── CashFree bank account name verification ──────────────────────────────────
+    // When CashFree DigiLocker KYC is enabled, verify the beneficiary's banking
+    // name via CashFree's bank verification API using account number + IFSC.
+    // The API-returned name (with honorifics stripped) overrides the user-entered
+    // name. If the API call fails or CashFree is disabled, use the user-entered name.
+    let resolvedFullName = full_name;
+
+    const { data: cfProvider } = await supabase
+      .from('kyc_method_settings')
+      .select('provider_name, environment, is_enabled, production_api_key, production_api_secret, test_api_key, test_api_secret, production_public_key, test_public_key')
+      .eq('is_enabled', true)
+      .ilike('provider_name', '%CashFree%')
+      .maybeSingle();
+
+    if (cfProvider) {
+      const isProd = cfProvider.environment === 'production';
+      const cfKey = isProd ? cfProvider.production_api_key : cfProvider.test_api_key;
+      const cfSecret = isProd ? cfProvider.production_api_secret : cfProvider.test_api_secret;
+      const cfPubKey = isProd ? (cfProvider.production_public_key || '') : (cfProvider.test_public_key || '');
+
+      if (cfKey && cfSecret) {
+        try {
+          const cfBase = isProd ? 'https://api.cashfree.com' : 'https://sandbox.cashfree.com';
+          const epoch = Math.floor(Date.now() / 1000);
+          const sigPayload = `${cfKey}.${epoch}`;
+          const pemBody = (cfPubKey || '').replace(/-----BEGIN (CERTIFICATE|PUBLIC KEY)-----/g, '').replace(/-----END (CERTIFICATE|PUBLIC KEY)-----/g, '').replace(/\s+/g, '');
+          let cfSignature = '';
+          if (pemBody) {
+            try {
+              const binaryDer = Uint8Array.from(atob(pemBody), (c) => c.charCodeAt(0));
+              const cryptoKey = await crypto.subtle.importKey('spki', binaryDer.buffer, { name: 'RSA-OAEP', hash: 'SHA-1' }, false, ['encrypt']);
+              const encrypted = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, cryptoKey, new TextEncoder().encode(sigPayload));
+              cfSignature = btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+            } catch { /* 2FA optional */ }
+          }
+
+          const bankRes = await fetch(`${cfBase}/verification/bank/account`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-client-id': cfKey,
+              'x-client-secret': cfSecret,
+              ...(cfSignature ? { 'x-cf-signature': cfSignature } : {}),
+            },
+            body: JSON.stringify({
+              bank_account: cleanAccount,
+              ifsc: ifscUpper,
+            }),
+          });
+
+          if (bankRes.ok) {
+            const bankData = await bankRes.json();
+            const apiName = bankData?.name || bankData?.account_holder_name || bankData?.bank_account_holder_name || '';
+            if (apiName && apiName.trim().length >= 2) {
+              // Strip honorifics (Mr, Mrs, Miss, Ms, Shri, Smt, Dr, Sri, Ku) — case insensitive
+              const honorifics = /^(mr|mrs|miss|ms|shri|smt|dr|sri|ku)\s*\.?\s+/i;
+              resolvedFullName = apiName.trim().replace(honorifics, '').trim();
+              if (resolvedFullName.length < 2) {
+                resolvedFullName = apiName.trim(); // fallback if stripping removed too much
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[save-beneficiary] CashFree bank verification failed:', (e as Error).message);
+        }
+      }
+    }
+
+    const ifscResponse = await fetch(`https://ifsc.razorpay.com/${ifscUpper}`);
+
     try {
-      const ifscResponse = await fetch(`https://ifsc.razorpay.com/${ifscUpper}`);
       if (!ifscResponse.ok) {
         return new Response(
           JSON.stringify({ error: 'Invalid IFSC code. Please verify the IFSC code before saving.' }),
@@ -256,7 +325,7 @@ serveUser(async (req: Request) => {
     const userEmail    = normalize(userRecord.email || '');
     const userMobile   = (userRecord.mobile_number || '').replace(/\D/g, '').slice(-10);
 
-    const bName   = normalize(full_name);
+    const bName   = normalize(resolvedFullName);
     const bEmail  = normalize(email);
     const bMobile = (mobile || '').replace(/\D/g, '').slice(-10);
 
@@ -337,7 +406,7 @@ serveUser(async (req: Request) => {
       .from('beneficiaries')
       .insert([{
         user_id: userId,
-        full_name,
+        full_name: resolvedFullName,
         bank_account: cleanAccount,
         ifsc: ifscUpper,
         bank_name,

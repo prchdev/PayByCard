@@ -291,7 +291,7 @@
     },
     "digilocker-kyc": {
       "hasChanged": false,
-      "hash": "c92647ac533cc0adcf6dc06dffe64815c09604088e218158d5ae65b467970b19a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "7dd7a7c127b04efc592f30c7f6f5376965c325c8bbe181c961fffaafd31f73fea3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "digilocker-redirect": {
       "hasChanged": false,
@@ -515,7 +515,7 @@
     },
     "save-beneficiary": {
       "hasChanged": false,
-      "hash": "0b1191913107e86e82588b4b0b3f715900c4479cd3f7962c98a9e34aca2bc719a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
+      "hash": "8ce8222f5facc8fbe97008f7185bb564db03eaebd0664fdc3ad8a0d6ac1f5301a3fadd2935ceb52f61a7ce6a243f29c324629feef402b06dc59e93ab5eb8a5be"
     },
     "save-business-integration": {
       "hasChanged": false,

@@ -1440,20 +1440,22 @@ serveUser(async (req: Request) => {
           updated_at: new Date().toISOString(),
         }).eq('id', userId);
 
-        await supabase.from('payment_logs').insert({
-          payment_id: null,
-          status: 'kyc_name_updated',
-          message: `User name auto-updated from DigiLocker KYC. Old: "${nameResult.registeredName}" → New: "${kycData.full_name}"`,
-          metadata: {
-            old_first_name: userRow.first_name,
-            old_middle_name: userRow.middle_name,
-            old_last_name: userRow.last_name,
-            new_first_name: newFirst,
-            new_middle_name: newMiddle,
-            new_last_name: newLast,
-            kyc_name: kycData.full_name,
-          },
-        }).catch(() => {});
+        try {
+          await supabase.from('payment_logs').insert({
+            payment_id: null,
+            status: 'kyc_name_updated',
+            message: `User name auto-updated from DigiLocker KYC. Old: "${nameResult.registeredName}" → New: "${kycData.full_name}"`,
+            metadata: {
+              old_first_name: userRow.first_name,
+              old_middle_name: userRow.middle_name,
+              old_last_name: userRow.last_name,
+              new_first_name: newFirst,
+              new_middle_name: newMiddle,
+              new_last_name: newLast,
+              kyc_name: kycData.full_name,
+            },
+          });
+        } catch (_) { /* non-critical audit log */ }
       }
 
       const { data: existingPan } = await supabase

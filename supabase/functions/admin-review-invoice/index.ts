@@ -35,7 +35,7 @@ serveAdmin(async (req: Request) => {
 
     // Verify admin session
     const { data: admin, error: adminError } = await supabase
-      .from("admins")
+      .from("admin_users")
       .select("id")
       .eq("id", adminId)
       .maybeSingle();

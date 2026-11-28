@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   RefreshCw, Users, Clock, XCircle, CheckCircle, Search,
   ChevronLeft, ChevronRight, ShieldCheck, X, ZoomIn, Eye,
-  AlertCircle, Loader2, FileCode2, Globe, CalendarCheck, ScanFace, CreditCard,
+  AlertCircle, Loader2, FileCode2, FileText, Globe, CalendarCheck, ScanFace, CreditCard,
   Download, Link as LinkIcon, Copy, Check,
 } from 'lucide-react';
 import AdminLayout from './AdminLayout';

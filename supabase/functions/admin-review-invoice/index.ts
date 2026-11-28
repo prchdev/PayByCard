@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 serveAdmin(async (req: Request) => {
+  // Invoice review: verify or reject bill/invoice uploaded for a payment
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }

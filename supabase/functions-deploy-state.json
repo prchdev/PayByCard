@@ -155,7 +155,7 @@
     },
     "admin-review-invoice": {
       "hasChanged": false,
-      "hash": "49ecfcc61f4833cff76aaed1ff118f7d3890fc774ba6dc000dceb80db78e45ce440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
+      "hash": "345f4147aeecc305492740e664a8e71d8281e1e0aa375acf52d8cd8a27678746440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "admin-review-kyc": {
       "hasChanged": false,
@@ -530,67 +530,67 @@
       "hash": "6324d2e74e05dd61b2182466194ae89c907abc35eefd33d5d3647f7c7fbc579e440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "save-kyc-data": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "0d92b16dcd8d434ab0a16ff697114c92e169d99eeec510c619a22b277dde996a440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "save-kyc-method-settings": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "5cad00fb5c192ba10ef4d7e82e796248e7778e2e69c71c4e41ea85b0a2b1ce61440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "save-merchant-onboarding": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "93620601705fe7b9453283a47fdcba4a7a8eadbc5265f1470f4c415788034bed440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "save-payment-gateways": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "4a203387168f14f842dd348cf66d8b6eea4c77c926ec5fe37babd30f2c0416da440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "save-payment-limits": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "e7e86fb9765fc6d4f8cacb6b499accad47f38de5bc493d24d53fc81a5c423ecd440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "save-payment-options": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "004ccd8afb936c519471cbb2e2cac8bfa8c538ba8c0f52e607335d2231db7146440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "save-payout-settings": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "57c7cf62469d6b999b726bf31a22e5557f0ad9defcb74149caa0a1e9ee622ae9440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "save-sms-settings": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "0f9a29a8e4a65830a0be8ae130e1f38fed8fd880d1eacc5da9de3bc49c146fac440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "save-transaction-status": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "2b72da7c4f2e0962e7798630bb89498a9df693f572a74deaee655288d6d6b0d1440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "save-user-bank-account": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "dbf57ab7aa9bd00ccb4422f10bb715ebb027517a282de51bbf3e139e4b4f9869440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "send-email": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "c5ad72a4a7c1f1062616a9fbce23183ff78fdf5fc0a3b44880c48aabe9cd1eef440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "send-kyc-reminder": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "18e54a596a625cb91e1b33fabdcc17959d80527f485f1eba45aa6e2c36d2b122440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "send-push-notification": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "ac87b342d1f2db4b6c05882734a663d7c473a6e19ce4ca226afe208b8020beb3440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "send-sms": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "c7b99ff4a84098491aff5f3649b16cce336d558e65cb47209eea260ddfe63d8b440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "set-default-bank-account": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "8a4aae9fea0b8ab48319089cb137d5aa1c2ead450f3d0bea11327a50687da689440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "toggle-beneficiary-status": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "5363dd0d1931834c07ef79aa7aba70355dff90cee6d8d1414100ae7d7e59b39b440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "trigger-merchant-kyc": {
@@ -598,27 +598,27 @@
       "hash": "72f623d744126b2d4ab882272b82d0f59cc5907431c486079c4c15d057da27da"
     },
     "update-role-permissions": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "557e7dc0db907e30cef94ba30c52f2a99c0d9065151a678c6acccd1620320bcc440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "update-user-permissions": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "f74f7d2a5adaeab2de36fa96a6e558ec02574d037543d735ab9f19e2bb705aea440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "update-user-profile": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "1e8a325a5431ff678f22796210b6a60148fc071b33cf93dcb04b16c9b11b3e9a440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "upload-card-photo": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "71b45d9006f867a847d44a9a47941d2c6f7b009e5c55a32b2cbe1cc1ba0d3545440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "upload-kyc-file": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "d7c1edf71f61d53e135c76ec05eb2af4f61896584154656989897ed7838dcaa3440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "upload-ticket-attachment": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "38012253c0391a898c7506348b5c304a0b9c0acee506e986b44ee39582e00752440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "user-forgot-password": {
@@ -626,7 +626,7 @@
       "hash": "c6cdb3f50f61ef00f256c725c3958b101a351b5ae92f18ed97816623da060237"
     },
     "user-reset-password": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "0357826ab9ca3a1bcd7164d3142197e25b2a72c33051c2a2b220b63724693f2b440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "user-verify-reset-otp": {
@@ -634,7 +634,7 @@
       "hash": "ad5ab655f067447b79e73120f923f0de4141a06c67b6de137cd87aa1ba2fefd7"
     },
     "validate-coupon": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "9d8490321ef39b7196bce4cf1d829a620ab87cf59f2b12a22c081249f31f932b440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "validate-ifsc": {
@@ -642,11 +642,11 @@
       "hash": "4f23b3825153864a8d985ce6e4616971999f965bf3b81c3ef29ecfff64f23be4"
     },
     "verify-card-ai": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "b3abee78c99a78b8909de3e72e20d36fb2df3b6e70df0c2d0d8590170c4b8921440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "verify-otp": {
-      "hasChanged": true,
+      "hasChanged": false,
       "hash": "0f579a775cdfa83797659e3150a322c1012c009962aebaf1b87312b8f5b9cfd2440df82b38a820e3093422a80e8a54f2d6ab081a699d97a4e0a3d13fa3f711ea"
     },
     "waf-validate": {

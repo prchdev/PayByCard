@@ -9,6 +9,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-pbc-admin-session, x-pbc-session",
 };
 
+const ALLOWED_BUCKETS = ["kyc-documents", "bill-files"];
+
 Deno.serve(withAdminSession(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -23,10 +25,18 @@ Deno.serve(withAdminSession(async (req: Request) => {
     const filePath = url.searchParams.get("filePath");
     const adminId = url.searchParams.get("adminId");
     const mode = url.searchParams.get("mode");
+    const bucket = url.searchParams.get("bucket") || "kyc-documents";
 
     if (!filePath || !adminId) {
       return new Response(
         JSON.stringify({ error: "File path and admin ID are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!ALLOWED_BUCKETS.includes(bucket)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid bucket" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -45,7 +55,7 @@ Deno.serve(withAdminSession(async (req: Request) => {
       );
     }
 
-    // Security: ensure the path is within the kyc-documents bucket
+    // Security: ensure the path doesn't escape the bucket
     if (filePath.includes("..")) {
       return new Response(
         JSON.stringify({ error: "Invalid file path" }),
@@ -54,7 +64,7 @@ Deno.serve(withAdminSession(async (req: Request) => {
     }
 
     const { data: signedUrlData, error: signError } = await supabase.storage
-      .from("kyc-documents")
+      .from(bucket)
       .createSignedUrl(filePath, 3600, {
         download: mode === "download",
       });

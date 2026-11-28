@@ -14,17 +14,27 @@ import { useTableSort, SortableTh } from './TableSort';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-function extractKycFilePath(url: string): string | null {
-  const marker = '/storage/v1/object/public/kyc-documents/';
-  const signMarker = '/storage/v1/object/sign/kyc-documents/';
-  let rawPath: string | null = null;
-  if (url.includes(marker)) {
-    rawPath = url.split(marker)[1];
-  } else if (url.includes(signMarker)) {
-    rawPath = url.split(signMarker)[1];
+const STORAGE_BUCKETS = ['kyc-documents', 'bill-files'] as const;
+
+type ExtractedPath = { path: string; bucket: string } | null;
+
+function extractStoragePath(url: string): ExtractedPath {
+  for (const bucket of STORAGE_BUCKETS) {
+    const publicMarker = `/storage/v1/object/public/${bucket}/`;
+    const signMarker = `/storage/v1/object/sign/${bucket}/`;
+    if (url.includes(publicMarker)) {
+      return { path: url.split(publicMarker)[1].split('?')[0], bucket };
+    }
+    if (url.includes(signMarker)) {
+      return { path: url.split(signMarker)[1].split('?')[0], bucket };
+    }
   }
-  if (!rawPath) return null;
-  return rawPath.split('?')[0];
+  return null;
+}
+
+function extractKycFilePath(url: string): string | null {
+  const result = extractStoragePath(url);
+  return result ? result.path : null;
 }
 
 function useKycDownload() {
@@ -32,15 +42,16 @@ function useKycDownload() {
   const [error, setError] = useState<string | null>(null);
 
   const download = useCallback(async (url: string, mode: 'view' | 'download' = 'view') => {
-    const filePath = extractKycFilePath(url);
-    if (!filePath) return null;
+    const extracted = extractStoragePath(url);
+    if (!extracted) return null;
+    const { path: filePath, bucket } = extracted;
     const adminId = sessionStorage.getItem('adminId') ?? '';
     if (!adminId) return null;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/download-kyc-file?filePath=${encodeURIComponent(filePath)}&adminId=${encodeURIComponent(adminId)}&mode=${mode}`,
+        `${SUPABASE_URL}/functions/v1/download-kyc-file?filePath=${encodeURIComponent(filePath)}&adminId=${encodeURIComponent(adminId)}&mode=${mode}&bucket=${encodeURIComponent(bucket)}`,
         { headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
       );
       const data = await res.json();
@@ -1279,13 +1290,13 @@ export default function AdminMerchantKyc() {
                           {rec.pan_photo_url && (
                             <button
                               onClick={async () => {
-                                const filePath = extractKycFilePath(rec.pan_photo_url!);
-                                if (!filePath) return;
+                                const extracted = extractStoragePath(rec.pan_photo_url!);
+                                if (!extracted) return;
                                 const adminId = sessionStorage.getItem('adminId') ?? '';
                                 if (!adminId) return;
                                 try {
                                   const res = await fetch(
-                                    `${SUPABASE_URL}/functions/v1/download-kyc-file?filePath=${encodeURIComponent(filePath)}&adminId=${encodeURIComponent(adminId)}&mode=view`,
+                                    `${SUPABASE_URL}/functions/v1/download-kyc-file?filePath=${encodeURIComponent(extracted.path)}&adminId=${encodeURIComponent(adminId)}&mode=view&bucket=${encodeURIComponent(extracted.bucket)}`,
                                     { headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
                                   );
                                   const data = await res.json();

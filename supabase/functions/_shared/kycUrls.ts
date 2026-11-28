@@ -1,14 +1,13 @@
-// The kyc-documents bucket is private. Identity documents are still stored with
-// their canonical public-style URL, so this helper rewrites any such URL found in
-// a response into a short-lived signed URL. It runs as a response post-processor
-// so that every page that already renders a stored document URL keeps working
-// without the bucket being readable by the world.
+// Private storage buckets (kyc-documents, bill-files) store sensitive files.
+// Identity documents and bill/invoice files are stored with their canonical
+// public-style URL, so this helper rewrites any such URL found in a response
+// into a short-lived signed URL. It runs as a response post-processor so that
+// every page that already renders a stored document URL keeps working without
+// the bucket being readable by the world.
 
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
-const BUCKET = "kyc-documents";
-const PUBLIC_MARKER = `/storage/v1/object/public/${BUCKET}/`;
-const SIGN_MARKER = `/storage/v1/object/sign/${BUCKET}/`;
+const BUCKETS = ["kyc-documents", "bill-files"] as const;
 const SIGN_TTL_SECONDS = 3600;
 
 // The internal SUPABASE_URL (https://<ref>.supabase.co) is not reachable from
@@ -26,17 +25,45 @@ export function rewriteToPublicHost(url: string): string {
   return url.replace(`https://${INTERNAL_HOST}`, `https://${PUBLIC_HOST}`);
 }
 
-const URL_PATTERN = new RegExp(
-  `https?://[^"'\\\\\\s)<>]+/storage/v1/object/(?:public|sign)/${BUCKET}/[^"'\\\\\\s)<>]+`,
+// Build patterns for all buckets
+interface BucketConfig {
+  name: string;
+  publicMarker: string;
+  signMarker: string;
+  pattern: RegExp;
+}
+
+const BUCKET_CONFIGS: BucketConfig[] = BUCKETS.map((bucket) => ({
+  name: bucket,
+  publicMarker: `/storage/v1/object/public/${bucket}/`,
+  signMarker: `/storage/v1/object/sign/${bucket}/`,
+  pattern: new RegExp(
+    `https?://[^"'\\\\\\s)<>]+/storage/v1/object/(?:public|sign)/${bucket}/[^"'\\\\\\s)<>]+`,
+    "g",
+  ),
+}));
+
+// Combined pattern to match any bucket URL
+const ALL_PATTERNS = new RegExp(
+  BUCKET_CONFIGS.map((c) => c.pattern.source.replace(/[g]$/, "")).join("|"),
   "g",
 );
 
-function extractPath(fullUrl: string): string | null {
+function findBucket(fullUrl: string): BucketConfig | null {
+  for (const cfg of BUCKET_CONFIGS) {
+    if (fullUrl.includes(cfg.publicMarker) || fullUrl.includes(cfg.signMarker)) {
+      return cfg;
+    }
+  }
+  return null;
+}
+
+function extractPath(fullUrl: string, cfg: BucketConfig): string | null {
   let rawPath: string | null = null;
-  if (fullUrl.includes(PUBLIC_MARKER)) {
-    rawPath = fullUrl.split(PUBLIC_MARKER)[1];
-  } else if (fullUrl.includes(SIGN_MARKER)) {
-    rawPath = fullUrl.split(SIGN_MARKER)[1];
+  if (fullUrl.includes(cfg.publicMarker)) {
+    rawPath = fullUrl.split(cfg.publicMarker)[1];
+  } else if (fullUrl.includes(cfg.signMarker)) {
+    rawPath = fullUrl.split(cfg.signMarker)[1];
   }
   if (!rawPath) return null;
   let path = rawPath.split("?")[0];
@@ -49,9 +76,14 @@ function extractPath(fullUrl: string): string | null {
 }
 
 export async function signKycUrlsInText(text: string): Promise<string> {
-  if (!text || (!text.includes(PUBLIC_MARKER) && !text.includes(SIGN_MARKER))) return text;
+  if (!text) return text;
 
-  const found = Array.from(new Set(text.match(URL_PATTERN) || []));
+  const hasAnyBucketUrl = BUCKET_CONFIGS.some(
+    (cfg) => text.includes(cfg.publicMarker) || text.includes(cfg.signMarker),
+  );
+  if (!hasAnyBucketUrl) return text;
+
+  const found = Array.from(new Set(text.match(ALL_PATTERNS) || []));
   if (found.length === 0) return text;
 
   const supabase = createClient(
@@ -61,10 +93,12 @@ export async function signKycUrlsInText(text: string): Promise<string> {
 
   const signedResults = await Promise.all(
     found.map(async (fullUrl) => {
-      const path = extractPath(fullUrl);
+      const cfg = findBucket(fullUrl);
+      if (!cfg) return null;
+      const path = extractPath(fullUrl, cfg);
       if (!path) return null;
       try {
-        const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGN_TTL_SECONDS);
+        const { data } = await supabase.storage.from(cfg.name).createSignedUrl(path, SIGN_TTL_SECONDS);
         return data?.signedUrl ? { original: fullUrl, signed: rewriteToPublicHost(data.signedUrl) } : null;
       } catch {
         return null;

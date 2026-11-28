@@ -219,7 +219,7 @@ export default function AdminHome() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {/* Non-KYCed Transactions — highlighted */}
           <div
-            onClick={() => navigate('/admin/non-kyced-transactions')}
+            onClick={() => navigate('/admin/manual-payout', { state: { statusFilter: 'kyc_pending' } })}
             className={`relative bg-white rounded-2xl border-2 p-6 transition-all hover:shadow-xl cursor-pointer group ${
               (stats?.nonKycedTransactions ?? 0) > 0
                 ? 'border-amber-400 bg-amber-50'

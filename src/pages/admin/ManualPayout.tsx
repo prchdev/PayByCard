@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Loader2,
   AlertCircle,
@@ -241,7 +241,9 @@ export default function ManualPayout() {
   const [pageSize, setPageSize] = useState(10);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [axisExporting, setAxisExporting] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('');
+  const location = useLocation();
+  const initialStatusFilter = (location.state as { statusFilter?: string } | null)?.statusFilter ?? '';
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [settlementFilter, setSettlementFilter] = useState('');
